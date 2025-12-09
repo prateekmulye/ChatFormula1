@@ -4,7 +4,7 @@ An AI-powered Formula 1 chatbot that provides real-time race information, predic
 
 ## 🚀 Live Demo
 
-**Try it now**: [https://chatformula1-ui.onrender.com](https://chatformula1-ui.onrender.com)
+**Try it now**: [https://chatformula1.com](https://chatformula1.com)
 
 *Note: First load may take 30 seconds as the free tier wakes up.*
 
@@ -64,7 +64,7 @@ ChatFormula1 is an intelligent chatbot that can:
 - **[Docker](https://www.docker.com/)** - Containerization platform
 - **[Render](https://render.com/)** - Cloud hosting platform (free tier available)
 
-### Observability
+### Observability - COMMING SOON
 - **[Structlog](https://www.structlog.org/)** - Structured logging library
 - **[Prometheus](https://prometheus.io/)** - Monitoring and alerting toolkit
 - **[Grafana](https://grafana.com/)** - Analytics and monitoring platform
@@ -171,7 +171,7 @@ docker-compose up --build
 
 ## 🎯 Deployment
 
-### Option 1: Automated with GitHub Actions (Recommended)
+### Automated with GitHub Actions
 
 Deploy automatically on every commit prefixed with `deploy:`:
 
@@ -187,44 +187,6 @@ git push origin main
 **What happens**: Code quality checks → Tests → Build → Deploy to Render → Health checks
 
 📖 **Guide**: [GitHub Actions Quick Start](GITHUB_ACTIONS_QUICKSTART.md) | [Full Documentation](docs/GITHUB_ACTIONS.md)
-
-### Option 2: Manual Deployment
-
-Deploy your own instance for free using Render:
-
-1. **Quick Deploy** (15 minutes)
-   ```bash
-   ./scripts/deploy_to_render.sh
-   ```
-
-2. **Manual Deploy**
-   - Follow the step-by-step guide in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
-
-**Free Tier Costs:**
-- Render: $0 (750 hours/month)
-- OpenAI: $0-5 ($5 free credit)
-- Pinecone: $0 (100K vectors)
-- Tavily: $0 (1000 searches/month)
-
-**Total: $0-5/month**
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-poetry run pytest
-
-# Run with coverage
-poetry run pytest --cov=src --cov-report=html
-
-# Run specific test types
-poetry run pytest -m unit        # Unit tests only
-poetry run pytest -m integration # Integration tests only
-```
-
----
 
 ## 📁 Project Structure
 
@@ -251,7 +213,6 @@ chatformula1/
 │   ├── ARCHITECTURE.md     # System architecture
 │   ├── API.md              # API reference
 │   └── ...                 # Additional technical docs
-├── monitoring/              # Prometheus & Grafana configs
 ├── pyproject.toml          # Poetry dependencies
 ├── Dockerfile              # Docker configuration
 └── README.md               # This file (start here!)
@@ -297,16 +258,6 @@ Contributions are welcome! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.m
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- Formula 1 data and statistics
-- LangChain and LangGraph communities
-- OpenAI for GPT models
-- Pinecone for vector database
-- Tavily for search API
 
 ---
 
