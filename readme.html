@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatFormula1 | The Race Engineer Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&family=Roboto+Mono:wght@400;700&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Palette: Italian Racing Luxury -->
+    <!-- 
+         Palette Name: "Scuderia Technica" 
+         Primary: #FF1801 (Racing Red)
+         Secondary: #1F2937 (Carbon Asphalt)
+         Accent: #FCD116 (Modena Yellow)
+         Text: #F3F4F6 (Titanium White)
+    -->
+
+    <style>
+        :root {
+            --racing-red: #FF1801;
+            --carbon-dark: #111827;
+            --modena-yellow: #FCD116;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--carbon-dark);
+            color: #F3F4F6;
+            overflow-x: hidden;
+        }
+
+        .font-racing {
+            font-family: 'Racing Sans One', cursive;
+        }
+
+        .font-mono-tech {
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        /* Chart Container Standards */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--racing-red);
+            border-radius: 4px;
+        }
+
+        /* Animation Utilities */
+        .fade-in-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            will-change: opacity, visibility;
+        }
+        .fade-in-section.is-visible {
+            opacity: 1;
+            transform: none;
+        }
+
+        .pulse-btn {
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 24, 1, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 24, 1, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 24, 1, 0); }
+        }
+
+        /* CSS Grid Flowchart Lines (No SVG) */
+        .flow-line-vertical {
+            width: 2px;
+            background-color: #4B5563;
+            height: 40px;
+            margin: 0 auto;
+        }
+        
+        /* Loading Spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--racing-red);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- PLAN SUMMARY (HTML Comment) -->
+    <!-- 
+    NARRATIVE PLAN:
+    1. Introduction (The Grid): Hook the user with the "Paddock Luxury" aesthetic.
+    2. The Input (Telemetry In): FUNCTIONAL FORM using Gemini API.
+    3. The Router (The Pit Wall): Dynamic Bar Chart updated by Gemini classification.
+    4. Retrieval (The Warehouse): Plotly 3D visualization.
+    5. Synthesis (The Engine): Dynamic Text Output from Gemini.
+    6. Conclusion (Podium): Summary.
+    -->
+
+    <!-- Navigation Overlay -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-gray-900/90 backdrop-blur-md border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl font-racing text-[color:var(--racing-red)]">CF1</span>
+                    <span class="ml-2 font-mono-tech text-xs text-gray-400">v2.1_BETA</span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#sector1" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Telemetry</a>
+                        <a href="#sector2" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Routing</a>
+                        <a href="#sector3" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Vector DB</a>
+                        <a href="#sector4" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Synthesis</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-gray-900 via-gray-900 to-black">
+        <div class="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+        <div class="text-center z-10 px-4 max-w-4xl mx-auto fade-in-section">
+            <h1 class="text-5xl md:text-7xl font-racing text-white mb-6 tracking-tighter uppercase">
+                Your AI <span class="text-[color:var(--racing-red)]">Race Engineer</span>
+            </h1>
+            <p class="mt-4 text-xl md:text-2xl text-gray-400 font-light max-w-2xl mx-auto leading-relaxed">
+                Deterministic reliability meets probabilistic reasoning. 
+                <br>
+                <span class="text-[color:var(--modena-yellow)] text-sm font-mono-tech mt-2 block">POWERED BY GEMINI 2.5</span>
+            </p>
+            <div class="mt-10">
+                <a href="#sector1" class="pulse-btn inline-block px-8 py-4 bg-[color:var(--racing-red)] text-white font-bold rounded-full transition transform hover:scale-105 hover:bg-red-600">
+                    Enter the Paddock
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTOR 1: THE INPUT (The Query) -->
+    <section id="sector1" class="min-h-screen py-24 bg-gray-900 relative fade-in-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-sm font-bold text-[color:var(--modena-yellow)] tracking-widest uppercase mb-2">Sector 1</h2>
+                <h3 class="text-4xl font-bold text-white">Complex Query Injection</h3>
+                <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
+                    Type a complex F1 question below. The system will use <strong>Gemini 2.5 Flash</strong> to analyze your intent in real-time.
+                </p>
+            </div>
+
+            <!-- Interactive Input Form -->
+            <div class="bg-gray-800 rounded-xl shadow-2xl p-8 max-w-3xl mx-auto border-l-4 border-[color:var(--racing-red)]">
+                <div class="flex flex-col space-y-4">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <div class="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="font-mono-tech text-green-400 text-xs uppercase">System Ready // Waiting for Input</span>
+                    </div>
+                    
+                    <textarea id="userQuery" rows="3" 
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg p-4 text-white font-mono-tech focus:border-[color:var(--racing-red)] focus:ring-1 focus:ring-[color:var(--racing-red)] focus:outline-none transition"
+                        placeholder="e.g., Analyze the penalty decision for Verstappen in Jeddah 2021 regarding the brake check..."></textarea>
+                    
+                    <div class="flex justify-between items-center">
+                        <span id="statusText" class="text-xs text-gray-500 font-mono-tech"></span>
+                        <button id="analyzeBtn" onclick="processQuery()" 
+                            class="bg-[color:var(--racing-red)] hover:bg-red-700 text-white font-bold py-2 px-6 rounded transition flex items-center">
+                            <span id="btnText">Inject Query</span>
+                            <div id="btnLoader" class="loader ml-2 hidden"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTOR 2: THE ROUTER (Intent Classification) -->
+    <section id="sector2" class="min-h-screen py-24 bg-black relative fade-in-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            
+            <!-- Context Text -->
+            <div>
+                <h2 class="text-sm font-bold text-[color:var(--modena-yellow)] tracking-widest uppercase mb-2">Sector 2</h2>
+                <h3 class="text-4xl font-bold text-white mb-6">The Pit Wall: Router Agent</h3>
+                <p class="text-gray-400 text-lg mb-6 leading-relaxed">
+                    The <strong>Gemini Supervisor</strong> analyzes the query. It doesn't guess; it calculates the probability of required domains. 
+                </p>
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h4 class="text-white font-bold mb-2">Live Analysis:</h4>
+                    <p id="routerExplanation" class="text-sm text-gray-400 font-mono-tech">
+                        [Waiting for query data...]
+                    </p>
+                </div>
+            </div>
+
+            <!-- Visualization: Intent Confidence Bar Chart -->
+            <div>
+                <div class="bg-gray-800 rounded-xl shadow-lg p-6 border-t-4 border-[color:var(--modena-yellow)]">
+                    <h4 class="text-white font-mono-tech text-xs uppercase mb-4 text-center">Intent Classification Confidence</h4>
+                    
+                    <div class="chart-container">
+                        <canvas id="intentChart"></canvas>
+                    </div>
+                    <p class="text-center text-xs text-gray-500 mt-4">Real-time classification probability score (Gemini 2.5)</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- SECTOR 3: THE WAREHOUSE (Vector Retrieval) -->
+    <section id="sector3" class="min-h-screen py-24 bg-gray-900 relative fade-in-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-sm font-bold text-[color:var(--modena-yellow)] tracking-widest uppercase mb-2">Sector 3</h2>
+                <h3 class="text-4xl font-bold text-white">Semantic Retrieval (RAG)</h3>
+                <p class="mt-4 text-gray-400 max-w-2xl mx-auto">
+                    The Regulation Expert agent queries the <strong>PostgreSQL (pgvector)</strong> database. It searches high-dimensional space to find the exact FIA sporting codes relevant to your query.
+                </p>
+            </div>
+
+            <!-- Visualization: Plotly 3D Scatter -->
+            <div class="bg-gray-800 rounded-xl shadow-2xl p-2 md:p-6 border border-gray-700">
+                <div class="flex justify-between items-center mb-4 px-4">
+                    <h4 class="text-white font-mono-tech text-xs uppercase">Embedding Space Visualization</h4>
+                    <div class="flex space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-[color:var(--racing-red)]"></span>
+                        <span class="text-xs text-gray-400">Query Vector</span>
+                        <span class="w-3 h-3 rounded-full bg-blue-500 ml-2"></span>
+                        <span class="text-xs text-gray-400">Relevant Docs</span>
+                    </div>
+                </div>
+
+                <div id="vectorPlot" class="w-full h-[500px] bg-black rounded-lg overflow-hidden"></div>
+                <p class="text-center text-xs text-gray-500 mt-2">Interactive 3D View: Drag to rotate the semantic cluster</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTOR 4: THE ENGINE (Orchestration & Synthesis) -->
+    <section id="sector4" class="min-h-screen py-24 bg-black relative fade-in-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-16">
+            
+            <!-- Flow Visualization -->
+            <div class="order-2 lg:order-1">
+                <h3 class="text-2xl font-bold text-white mb-8 text-center lg:text-left">The Execution Loop</h3>
+                
+                <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-2 relative opacity-50 transition" id="step1">
+                    <div class="flex justify-between">
+                        <span class="font-bold text-white">1. Router</span>
+                        <span class="text-xs text-blue-400 font-mono-tech">Gemini 2.5</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">Classified intent & delegated tasks.</p>
+                </div>
+                
+                <div class="flow-line-vertical"></div>
+
+                <div class="grid grid-cols-2 gap-4 mb-2 opacity-50 transition" id="step2">
+                    <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-[color:var(--modena-yellow)]">
+                        <span class="font-bold text-white block text-sm">Regs Agent</span>
+                        <p class="text-xs text-gray-400 mt-1">Vectors Retrieved</p>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-purple-500">
+                        <span class="font-bold text-white block text-sm">Data Agent</span>
+                        <p class="text-xs text-gray-400 mt-1">API Tools Called</p>
+                    </div>
+                </div>
+
+                <div class="flow-line-vertical"></div>
+
+                <div class="bg-gray-800 p-4 rounded-lg border-l-4 border-[color:var(--racing-red)] opacity-50 transition" id="step3">
+                    <div class="flex justify-between">
+                        <span class="font-bold text-white">3. Synthesis</span>
+                        <span class="text-xs text-red-400 font-mono-tech">Gemini 2.5</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">Response generated.</p>
+                </div>
+            </div>
+
+            <!-- Narrative / Stats -->
+            <div class="order-1 lg:order-2 flex flex-col justify-center">
+                <h2 class="text-sm font-bold text-[color:var(--modena-yellow)] tracking-widest uppercase mb-2">Sector 4</h2>
+                <h3 class="text-4xl font-bold text-white mb-6">Generated Insight</h3>
+                
+                <div class="bg-gray-900 border border-gray-700 p-6 rounded-lg min-h-[200px] shadow-inner relative">
+                    <div class="absolute top-0 right-0 p-2 opacity-50">
+                         <span class="text-[color:var(--racing-red)] text-xs font-mono-tech">LIVE_OUTPUT</span>
+                    </div>
+                    <div id="aiOutput" class="text-gray-300 leading-relaxed font-mono-tech text-sm typing-cursor">
+                        [System Waiting for Input in Sector 1...]
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-900 border-t border-gray-800 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-6 md:mb-0">
+                <span class="text-2xl font-racing text-white">ChatFormula1</span>
+                <p class="text-gray-500 text-sm mt-2">Architected by Prateek Mulye</p>
+            </div>
+            <div class="flex space-x-6">
+                <a href="#" class="text-gray-400 hover:text-[color:var(--racing-red)] transition">GitHub</a>
+                <a href="#" class="text-gray-400 hover:text-[color:var(--racing-red)] transition">Documentation</a>
+                <a href="#" class="text-gray-400 hover:text-[color:var(--racing-red)] transition">Live Demo</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script>
+        // --- GLOBAL API KEY ---
+        // As per instructions, this is empty. The environment injects it.
+        const apiKey = ""; 
+
+        // --- CHART INSTANCES ---
+        let intentChartInstance = null;
+
+        // --- HELPER FUNCTION: Label Wrapping ---
+        function formatLabel(str, maxwidth) {
+            if (typeof str !== 'string' || str.length <= maxwidth) return str;
+            const sections = [];
+            const words = str.split(' ');
+            let temp = '';
+            words.forEach(function(item, index) {
+                if (temp.length > 0) {
+                    let concat = temp + ' ' + item;
+                    if (concat.length > maxwidth) {
+                        sections.push(temp);
+                        temp = item;
+                    } else {
+                        temp = concat;
+                    }
+                } else {
+                    temp = item;
+                }
+                if (index === words.length - 1) {
+                    sections.push(temp);
+                }
+            });
+            return sections;
+        }
+
+        const commonTooltipOptions = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(' ');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
+
+        // --- MAIN LOGIC ---
+        async function processQuery() {
+            const query = document.getElementById('userQuery').value;
+            if (!query) return;
+
+            // UI Updates
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const statusText = document.getElementById('statusText');
+
+            btnText.innerText = "Analyzing...";
+            btnLoader.classList.remove('hidden');
+            analyzeBtn.disabled = true;
+            statusText.innerText = "Connecting to Gemini 2.5 Flash...";
+
+            try {
+                // 1. ROUTER CALL (Intent Classification)
+                statusText.innerText = "Routing Intent...";
+                const routerResponse = await callGeminiRouter(query);
+                
+                // Update UI based on Router
+                updateIntentChart(routerResponse);
+                document.getElementById('routerExplanation').innerText = `Gemini detected primary intent as "${routerResponse.primary_intent}". Delegating to specialized agents.`;
+                
+                // Scroll to Sector 2
+                document.getElementById('sector2').scrollIntoView({ behavior: 'smooth' });
+
+                // Highlight Step 1 in Flow
+                document.getElementById('step1').classList.remove('opacity-50');
+                
+                // Simulate retrieval delay (Step 2)
+                await new Promise(r => setTimeout(r, 1000));
+                document.getElementById('step2').classList.remove('opacity-50');
+
+                // 2. SYNTHESIS CALL (Final Answer)
+                statusText.innerText = "Synthesizing Answer...";
+                const synthesisResponse = await callGeminiSynthesis(query, routerResponse.primary_intent);
+
+                // Highlight Step 3
+                document.getElementById('step3').classList.remove('opacity-50');
+                
+                // Show Output
+                const outputDiv = document.getElementById('aiOutput');
+                outputDiv.innerText = "";
+                typeWriter(outputDiv, synthesisResponse);
+
+                // Scroll to Sector 4
+                document.getElementById('sector4').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error("Gemini Error:", error);
+                statusText.innerText = "Error: " + error.message;
+            } finally {
+                btnText.innerText = "Inject Query";
+                btnLoader.classList.add('hidden');
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        // --- GEMINI API CALLS ---
+        async function callGeminiRouter(userQuery) {
+            const systemPrompt = `You are a Router Agent for a Formula 1 engineering system. 
+            Classify the user's query into these categories: "Regulation & Rules", "Historical Data", "Strategy Analysis", "General". 
+            Return a JSON object with: 
+            1. "primary_intent": string
+            2. "confidence_scores": array of 4 integers summing to 100 (order: Regulation, Historical, Strategy, General).
+            
+            Query: "${userQuery}"`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            });
+
+            const data = await response.json();
+            return JSON.parse(data.candidates[0].content.parts[0].text);
+        }
+
+        async function callGeminiSynthesis(userQuery, intent) {
+            const systemPrompt = `You are an expert F1 Race Engineer AI. 
+            The user has asked a question classified as "${intent}".
+            Provide a concise, technical, and authoritative answer. Use F1 terminology (e.g., "Box box", "Delta", "Tyre degradation").
+            Keep it under 3 sentences.
+            
+            Query: "${userQuery}"`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
+
+        // --- CHART UPDATER ---
+        function updateIntentChart(data) {
+            if (intentChartInstance) {
+                intentChartInstance.data.datasets[0].data = data.confidence_scores;
+                intentChartInstance.update();
+            }
+        }
+
+        // --- TYPEWRITER EFFECT ---
+        function typeWriter(element, text, i = 0) {
+            if (i < text.length) {
+                element.innerHTML += text.charAt(i);
+                i++;
+                setTimeout(() => typeWriter(element, text, i), 20);
+            }
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.fade-in-section').forEach(section => {
+                observer.observe(section);
+            });
+
+            // Init Intent Chart (Empty/Default)
+            const ctxIntent = document.getElementById('intentChart').getContext('2d');
+            const rawIntentLabels = ["Regulation & Rules", "Historical Data", "Strategy Analysis", "General Conversation"];
+            const processedIntentLabels = rawIntentLabels.map(l => formatLabel(l, 16));
+
+            intentChartInstance = new Chart(ctxIntent, {
+                type: 'bar',
+                data: {
+                    labels: processedIntentLabels,
+                    datasets: [{
+                        label: 'Router Confidence Score (%)',
+                        data: [25, 25, 25, 25], 
+                        backgroundColor: [
+                            'rgba(75, 85, 99, 0.5)', 
+                            'rgba(252, 209, 22, 0.8)', 
+                            'rgba(255, 24, 1, 0.5)',
+                            'rgba(75, 85, 99, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 85, 99, 1)', 
+                            'rgba(252, 209, 22, 1)', 
+                            'rgba(255, 24, 1, 1)',
+                            'rgba(75, 85, 99, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: commonTooltipOptions,
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9CA3AF' }
+                        },
+                        x: {
+                            ticks: { color: '#D1D5DB' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // --- PLOTLY 3D (Static Visual) ---
+            const x_reg = Array.from({length: 50}, () => Math.random() * 2 + 1);
+            const y_reg = Array.from({length: 50}, () => Math.random() * 2 + 1);
+            const z_reg = Array.from({length: 50}, () => Math.random() * 2 + 1);
+            const x_query = [1.5]; const y_query = [1.5]; const z_query = [1.5];
+            const x_irr = Array.from({length: 30}, () => Math.random() * 2 - 3);
+            const y_irr = Array.from({length: 30}, () => Math.random() * 2 - 3);
+            const z_irr = Array.from({length: 30}, () => Math.random() * 2 - 3);
+
+            const trace1 = { x: x_reg, y: y_reg, z: z_reg, mode: 'markers', type: 'scatter3d', name: 'FIA Regulations', marker: { size: 3, color: '#3B82F6', opacity: 0.8 } };
+            const trace2 = { x: x_query, y: y_query, z: z_query, mode: 'markers', type: 'scatter3d', name: 'User Query', marker: { size: 10, color: '#FF1801', symbol: 'diamond', opacity: 1 } };
+            const trace3 = { x: x_irr, y: y_irr, z: z_irr, mode: 'markers', type: 'scatter3d', name: 'Noise', marker: { size: 2, color: '#4B5563', opacity: 0.3 } };
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 0, r: 0, b: 0, t: 0 },
+                scene: {
+                    xaxis: { title: '', showgrid: true, gridcolor: '#374151', zeroline: false, showticklabels: false },
+                    yaxis: { title: '', showgrid: true, gridcolor: '#374151', zeroline: false, showticklabels: false },
+                    zaxis: { title: '', showgrid: true, gridcolor: '#374151', zeroline: false, showticklabels: false },
+                    bgcolor: 'rgba(0,0,0,0)'
+                },
+                showlegend: false
+            };
+            Plotly.newPlot('vectorPlot', [trace1, trace2, trace3], layout, {displayModeBar: false});
+        });
+    </script>
+</body>
+</html>
