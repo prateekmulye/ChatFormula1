@@ -4,13 +4,22 @@ import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from ..config.logging import get_logger
-from ..exceptions import (AgentError, AuthenticationError, ChatFormula1Error,
-                          ConfigurationError, DataIngestionError, LLMError,
-                          RateLimitError, SearchAPIError, TimeoutError,
-                          ValidationError, VectorStoreError)
+from ..exceptions import (
+    AgentError,
+    AuthenticationError,
+    ChatFormula1Error,
+    ConfigurationError,
+    DataIngestionError,
+    LLMError,
+    RateLimitError,
+    SearchAPIError,
+    TimeoutError,
+    ValidationError,
+    VectorStoreError,
+)
 
 logger = get_logger(__name__)
 
@@ -59,7 +68,7 @@ class ErrorMetrics:
         error: Exception,
         category: ErrorCategory,
         severity: ErrorSeverity,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """Record an error occurrence.
 
@@ -89,7 +98,7 @@ class ErrorMetrics:
         if len(self._recent_errors) > self._max_recent_errors:
             self._recent_errors = self._recent_errors[-self._max_recent_errors :]
 
-    def get_error_count(self, error_type: Optional[str] = None) -> int:
+    def get_error_count(self, error_type: str | None = None) -> int:
         """Get total error count or count for specific error type.
 
         Args:
@@ -230,7 +239,7 @@ def determine_severity(error: Exception, category: ErrorCategory) -> ErrorSeveri
 
 def log_error_with_context(
     error: Exception,
-    context: Optional[dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
     include_traceback: bool = True,
 ) -> None:
     """Log error with comprehensive context and categorization.
