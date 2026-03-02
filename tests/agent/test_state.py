@@ -1,4 +1,3 @@
-import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agent.state import add_messages
