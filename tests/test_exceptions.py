@@ -2,9 +2,15 @@
 
 import pytest
 
-from src.exceptions import (AgentError, ChatFormula1Error, ConfigurationError,
-                            LLMError, RateLimitError, SearchAPIError,
-                            VectorStoreError)
+from src.exceptions import (
+    AgentError,
+    ChatFormula1Error,
+    ConfigurationError,
+    LLMError,
+    RateLimitError,
+    SearchAPIError,
+    VectorStoreError,
+)
 
 
 @pytest.mark.unit
