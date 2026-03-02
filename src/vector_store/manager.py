@@ -1,18 +1,19 @@
 """Vector store manager for Pinecone integration using langchain-pinecone."""
 
 import asyncio
-import hashlib
-import json
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_exponential)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from src.config.settings import Settings
 from src.exceptions import VectorStoreError
@@ -80,7 +81,7 @@ class VectorStoreManager:
             raise VectorStoreError(f"Failed to initialize embeddings: {e}") from e
 
         self.index_name = config.pinecone_index_name
-        self._vector_store: Optional[PineconeVectorStore] = None
+        self._vector_store: PineconeVectorStore | None = None
 
         # Use centralized cache manager for better performance
         from src.utils.cache import get_cache_manager
@@ -244,7 +245,7 @@ class VectorStoreManager:
         wait=wait_exponential(multiplier=1, min=1, max=10),
         reraise=True,
     )
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform health check on vector store.
 
         Returns:
@@ -294,7 +295,7 @@ class VectorStoreManager:
                 "error": error_msg,
             }
 
-    async def get_index_stats(self) -> Dict[str, Any]:
+    async def get_index_stats(self) -> dict[str, Any]:
         """Get detailed statistics about the Pinecone index.
 
         Returns:
@@ -323,11 +324,11 @@ class VectorStoreManager:
 
     async def add_documents(
         self,
-        documents: List[Document],
+        documents: list[Document],
         batch_size: int = OPTIMAL_UPSERT_BATCH_SIZE,
         show_progress: bool = True,
         parallel: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """Embed and add documents to vector store with optimized batch processing.
 
         Uses OpenAIEmbeddings for embedding generation and PineconeVectorStore's
@@ -352,7 +353,7 @@ class VectorStoreManager:
 
         try:
             total_docs = len(documents)
-            all_ids: List[str] = []
+            all_ids: list[str] = []
 
             self.logger.info(
                 "starting_document_ingestion",
@@ -388,9 +389,9 @@ class VectorStoreManager:
 
     async def _process_batches_sequential(
         self,
-        batches: List[List[Document]],
+        batches: list[list[Document]],
         show_progress: bool,
-    ) -> List[str]:
+    ) -> list[str]:
         """Process document batches sequentially.
 
         Args:
@@ -400,7 +401,7 @@ class VectorStoreManager:
         Returns:
             List of document IDs
         """
-        all_ids: List[str] = []
+        all_ids: list[str] = []
         total_batches = len(batches)
 
         for batch_num, batch in enumerate(batches, 1):
@@ -432,9 +433,9 @@ class VectorStoreManager:
 
     async def _process_batches_parallel(
         self,
-        batches: List[List[Document]],
+        batches: list[list[Document]],
         show_progress: bool,
-    ) -> List[str]:
+    ) -> list[str]:
         """Process document batches in parallel with limited concurrency.
 
         Args:
@@ -444,13 +445,13 @@ class VectorStoreManager:
         Returns:
             List of document IDs
         """
-        all_ids: List[str] = []
+        all_ids: list[str] = []
         total_batches = len(batches)
 
         # Create semaphore to limit concurrent operations
         semaphore = asyncio.Semaphore(MAX_PARALLEL_BATCHES)
 
-        async def process_batch(batch_num: int, batch: List[Document]) -> List[str]:
+        async def process_batch(batch_num: int, batch: list[Document]) -> list[str]:
             async with semaphore:
                 try:
                     ids = await asyncio.to_thread(
@@ -497,10 +498,10 @@ class VectorStoreManager:
     )
     async def add_texts(
         self,
-        texts: List[str],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
+        texts: list[str],
+        metadatas: list[dict[str, Any]] | None = None,
         batch_size: int = 100,
-    ) -> List[str]:
+    ) -> list[str]:
         """Embed and add raw texts to vector store.
 
         Convenience method for adding texts without creating Document objects.
@@ -527,7 +528,7 @@ class VectorStoreManager:
 
         try:
             total_texts = len(texts)
-            all_ids: List[str] = []
+            all_ids: list[str] = []
 
             self.logger.info(
                 "starting_text_ingestion",
@@ -578,7 +579,7 @@ class VectorStoreManager:
             self.logger.error("text_ingestion_failed", error=str(e))
             raise VectorStoreError(f"Failed to add texts: {e}") from e
 
-    async def embed_query(self, query: str) -> List[float]:
+    async def embed_query(self, query: str) -> list[float]:
         """Generate embedding for a query string.
 
         Uses OpenAIEmbeddings to generate vector representation.
@@ -610,7 +611,7 @@ class VectorStoreManager:
             self.logger.error("query_embedding_failed", error=str(e))
             raise VectorStoreError(f"Failed to embed query: {e}") from e
 
-    async def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple documents.
 
         Uses OpenAIEmbeddings to generate vector representations.
@@ -642,7 +643,7 @@ class VectorStoreManager:
             self.logger.error("document_embedding_failed", error=str(e))
             raise VectorStoreError(f"Failed to embed documents: {e}") from e
 
-    def _get_performance_stats(self) -> Dict[str, Any]:
+    def _get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics for vector store operations.
 
         Returns:
@@ -672,9 +673,9 @@ class VectorStoreManager:
         self,
         query: str,
         k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         use_cache: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Perform semantic similarity search with optimized caching.
 
         Uses PineconeVectorStore's similarity_search method with optional
@@ -768,8 +769,8 @@ class VectorStoreManager:
         self,
         query: str,
         k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Tuple[Document, float]]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[tuple[Document, float]]:
         """Perform semantic similarity search with relevance scores.
 
         Uses PineconeVectorStore's similarity_search_with_score method.
@@ -828,8 +829,8 @@ class VectorStoreManager:
         k: int = 5,
         fetch_k: int = 20,
         lambda_mult: float = 0.5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[Document]:
         """Perform Maximum Marginal Relevance (MMR) search.
 
         MMR balances relevance with diversity to avoid redundant results.
@@ -879,9 +880,9 @@ class VectorStoreManager:
 
     async def search_by_metadata(
         self,
-        filters: Dict[str, Any],
+        filters: dict[str, Any],
         k: int = 10,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Search documents by metadata filters only (no semantic search).
 
         Useful for retrieving documents by specific attributes like year,
@@ -937,7 +938,7 @@ class VectorStoreManager:
         cleared = self._cache_manager.vector_cache.clear()
         self.logger.info("vector_cache_cleared", entries_removed=cleared)
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics for vector store.
 
         Returns:
