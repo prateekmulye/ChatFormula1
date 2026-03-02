@@ -53,13 +53,18 @@ class TestAPIEndpoints:
 
     def test_cors_headers(self, client: TestClient):
         """Test CORS headers are present."""
-        response = client.options("/health")
+        response = client.options(
+            "/health",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
 
         # Should have CORS headers
-        assert (
-            "access-control-allow-origin" in response.headers
-            or response.status_code == 200
-        )
+        assert response.status_code == 200
+        assert "access-control-allow-origin" in response.headers
+        assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
 
 
 @pytest.mark.integration
