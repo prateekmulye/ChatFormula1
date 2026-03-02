@@ -21,10 +21,15 @@ from src.agent.state import create_initial_state
 from src.config.settings import get_settings
 from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
-from src.ui.components import (apply_f1_theme, render_about_modal,
-                               render_error_message,
-                               render_input_validation_error, render_message,
-                               render_settings_panel, render_welcome_screen)
+from src.ui.components import (
+    apply_f1_theme,
+    render_about_modal,
+    render_error_message,
+    render_input_validation_error,
+    render_message,
+    render_settings_panel,
+    render_welcome_screen,
+)
 from src.vector_store.manager import VectorStoreManager
 
 logger = structlog.get_logger(__name__)
@@ -243,8 +248,7 @@ def render_sidebar() -> None:
 
         # Help section
         with st.expander("❓ Help & Tips"):
-            st.markdown(
-                """
+            st.markdown("""
             **What can I ask?**
             - Current F1 standings and results
             - Historical statistics and records
@@ -257,13 +261,11 @@ def render_sidebar() -> None:
             - Mention years, drivers, or races for better context
             - Ask follow-up questions naturally
             - Use the feedback buttons to help improve responses
-            """
-            )
+            """)
 
         # About section
         with st.expander("ℹ️ About"):
-            st.markdown(
-                """
+            st.markdown("""
             **ChatFormula1** is an AI-powered Formula 1 expert assistant
             that combines:
             - Real-time F1 data and news
@@ -280,8 +282,7 @@ def render_sidebar() -> None:
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
-            """
-            )
+            """)
 
 
 def render_header() -> None:

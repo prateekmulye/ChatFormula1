@@ -668,8 +668,7 @@ class TestAgentInitializationAndProcessing:
 
     def test_message_types_unchanged(self):
         """Test that message types are still compatible."""
-        from langchain_core.messages import (AIMessage, HumanMessage,
-                                             SystemMessage)
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         # Create messages
         human_msg = HumanMessage(content="Test query")

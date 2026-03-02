@@ -7,9 +7,12 @@ and search results with user queries to generate informed responses.
 from typing import List, Optional
 
 from langchain_core.messages import SystemMessage
-from langchain_core.prompts import (ChatPromptTemplate,
-                                    HumanMessagePromptTemplate,
-                                    MessagesPlaceholder, PromptTemplate)
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    PromptTemplate,
+)
 
 # RAG prompt for combining vector context with queries
 RAG_CONTEXT_TEMPLATE = """You are ChatFormula1, an expert Formula 1 analyst. Use the provided context to answer the user's question accurately.
@@ -142,15 +145,13 @@ CONVERSATIONAL_RAG_PROMPT = ChatPromptTemplate.from_messages(
     [
         SystemMessage(content="You are ChatFormula1, an expert Formula 1 analyst."),
         MessagesPlaceholder(variable_name="chat_history", optional=True),
-        HumanMessagePromptTemplate.from_template(
-            """**Retrieved Context:**
+        HumanMessagePromptTemplate.from_template("""**Retrieved Context:**
 {context}
 
 **Current Question:**
 {query}
 
-Use the context above and our conversation history to answer the question."""
-        ),
+Use the context above and our conversation history to answer the question."""),
     ]
 )
 
