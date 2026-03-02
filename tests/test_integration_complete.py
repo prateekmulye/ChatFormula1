@@ -60,11 +60,8 @@ async def test_tools_initialization(
     initialize_tools(mock_settings, mock_vector_store, mock_tavily_client)
 
     # Import tools to verify they're accessible
-    from src.tools.f1_tools import (
-        _tavily_client,
-        _vector_store_manager,
-        search_current_f1_data,
-    )
+    from src.tools.f1_tools import (_tavily_client, _vector_store_manager,
+                                    search_current_f1_data)
 
     assert _tavily_client is not None
     assert _vector_store_manager is not None

@@ -7,7 +7,8 @@ capabilities, and behavioral guardrails.
 from typing import Optional
 
 from langchain_core.messages import SystemMessage
-from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
+from langchain_core.prompts import (ChatPromptTemplate,
+                                    SystemMessagePromptTemplate)
 
 # Core F1 Expert System Prompt
 F1_EXPERT_SYSTEM_PROMPT = """You are ChatFormula1, an expert Formula 1 analyst and historian with comprehensive knowledge of:

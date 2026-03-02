@@ -21,15 +21,10 @@ from src.agent.state import create_initial_state
 from src.config.settings import get_settings
 from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
-from src.ui.components import (
-    apply_f1_theme,
-    render_about_modal,
-    render_error_message,
-    render_input_validation_error,
-    render_message,
-    render_settings_panel,
-    render_welcome_screen,
-)
+from src.ui.components import (apply_f1_theme, render_about_modal,
+                               render_error_message,
+                               render_input_validation_error, render_message,
+                               render_settings_panel, render_welcome_screen)
 from src.vector_store.manager import VectorStoreManager
 
 logger = structlog.get_logger(__name__)

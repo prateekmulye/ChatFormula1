@@ -9,12 +9,8 @@ from langchain_core.documents import Document
 
 from src.config.settings import Settings, get_settings
 from src.exceptions import ChatFormula1Error
-from src.ingestion.data_loader import (
-    DataLoader,
-    DriverSchema,
-    RaceResultSchema,
-    RaceSchema,
-)
+from src.ingestion.data_loader import (DataLoader, DriverSchema,
+                                       RaceResultSchema, RaceSchema)
 from src.ingestion.document_processor import DocumentProcessor
 from src.ingestion.metadata_enricher import MetadataEnricher
 from src.vector_store.manager import VectorStoreManager

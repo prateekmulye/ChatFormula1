@@ -3,14 +3,9 @@
 import pytest
 
 from src.exceptions import LLMError, SearchAPIError, VectorStoreError
-from src.utils.fallback import (
-    CachedResponse,
-    FallbackChain,
-    ResponseCache,
-    ServiceMode,
-    get_degraded_mode_message,
-    get_response_cache,
-)
+from src.utils.fallback import (CachedResponse, FallbackChain, ResponseCache,
+                                ServiceMode, get_degraded_mode_message,
+                                get_response_cache)
 
 
 @pytest.mark.unit

@@ -10,7 +10,8 @@ from datetime import datetime
 from typing import Any, Optional
 
 import structlog
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import (AIMessage, BaseMessage, HumanMessage,
+                                     SystemMessage)
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 

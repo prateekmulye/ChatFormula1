@@ -4,16 +4,14 @@ import pytest
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 
-from src.prompts.system_prompts import (
-    CONCISE_SYSTEM_PROMPT,
-    DETAILED_SYSTEM_PROMPT,
-    F1_EXPERT_SYSTEM_PROMPT,
-    OFF_TOPIC_GUARDRAIL_PROMPT,
-    PREDICTION_SYSTEM_PROMPT,
-    create_role_based_system_prompt,
-    create_system_prompt,
-    validate_prompt_safety,
-)
+from src.prompts.system_prompts import (CONCISE_SYSTEM_PROMPT,
+                                        DETAILED_SYSTEM_PROMPT,
+                                        F1_EXPERT_SYSTEM_PROMPT,
+                                        OFF_TOPIC_GUARDRAIL_PROMPT,
+                                        PREDICTION_SYSTEM_PROMPT,
+                                        create_role_based_system_prompt,
+                                        create_system_prompt,
+                                        validate_prompt_safety)
 
 
 @pytest.mark.unit

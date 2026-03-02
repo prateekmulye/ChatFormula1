@@ -12,7 +12,8 @@ from typing import Optional
 import structlog
 from fastapi import HTTPException, Request, Security, status
 from fastapi.responses import JSONResponse
-from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import (APIKeyHeader, HTTPAuthorizationCredentials,
+                              HTTPBearer)
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
