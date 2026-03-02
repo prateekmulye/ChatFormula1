@@ -6,9 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from src.ingestion.data_loader import (DataLoader, DataLoadError,
-                                       DataValidationError, DriverSchema,
-                                       RaceResultSchema, RaceSchema)
+from src.ingestion.data_loader import (
+    DataLoader,
+    DataLoadError,
+    DataValidationError,
+    DriverSchema,
+    RaceResultSchema,
+    RaceSchema,
+)
 
 
 @pytest.mark.unit
