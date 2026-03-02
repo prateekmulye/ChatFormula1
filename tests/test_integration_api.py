@@ -64,7 +64,9 @@ class TestAPIEndpoints:
         # Should have CORS headers
         assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
-        assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+        assert (
+            response.headers["access-control-allow-origin"] == "http://localhost:3000"
+        )
 
 
 @pytest.mark.integration
