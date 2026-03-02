@@ -48,15 +48,16 @@ class TestGetOrCreateSession:
         # Verify it's now stored
         assert memory_manager.get_session(session_id) is new_session
 
-    def test_get_or_create_session_does_not_exist_with_system_message(self, memory_manager):
+    def test_get_or_create_session_does_not_exist_with_system_message(
+        self, memory_manager
+    ):
         """Test creating a new session with a system message."""
         session_id = "test_session_new_with_sys_msg"
         sys_msg = SystemMessage(content="You are a helpful assistant.")
 
         # Get or create it
         new_session = memory_manager.get_or_create_session(
-            session_id=session_id,
-            system_message=sys_msg
+            session_id=session_id, system_message=sys_msg
         )
 
         # Verify it was created and has the system message
