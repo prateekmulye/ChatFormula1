@@ -5,8 +5,7 @@ This module contains tests for input validation, rate limiting, and authenticati
 
 import pytest
 
-from src.security.input_validation import (InputValidator, sanitize_query,
-                                           validate_query)
+from src.security.input_validation import InputValidator, sanitize_query, validate_query
 from src.security.rate_limiting import RateLimiter, TokenBucket
 
 
