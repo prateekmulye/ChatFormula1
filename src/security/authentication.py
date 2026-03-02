@@ -4,6 +4,7 @@ This module provides authentication mechanisms including API key validation
 and optional JWT token support.
 """
 
+import bcrypt
 import hashlib
 import secrets
 from datetime import datetime, timedelta
@@ -61,14 +62,17 @@ class APIKeyManager:
         Returns:
             Tuple of (raw_key, api_key_model)
         """
-        # Generate random key
-        raw_key = f"f1s_{secrets.token_urlsafe(32)}"
-
-        # Hash the key for storage
-        key_hash = self._hash_key(raw_key)
+        # Generate random key secret
+        secret = secrets.token_hex(32)
 
         # Generate key ID
-        key_id = secrets.token_urlsafe(16)
+        key_id = secrets.token_hex(16)
+
+        # Construct the raw API key
+        raw_key = f"f1s_{key_id}_{secret}"
+
+        # Hash the secret for storage
+        key_hash = self._hash_key(secret)
 
         # Calculate expiration
         expires_at = None
@@ -86,7 +90,7 @@ class APIKeyManager:
         )
 
         # Store key
-        self.keys[key_hash] = api_key
+        self.keys[key_id] = api_key
 
         logger.info(
             "api_key_generated",
@@ -107,14 +111,33 @@ class APIKeyManager:
         Returns:
             APIKey model if valid, None otherwise
         """
-        # Hash the provided key
-        key_hash = self._hash_key(raw_key)
+        if not raw_key.startswith("f1s_"):
+            logger.warning("api_key_invalid_format")
+            return None
 
-        # Look up key
-        api_key = self.keys.get(key_hash)
+        parts = raw_key.split("_")
 
-        if not api_key:
-            logger.warning("api_key_not_found")
+        if len(parts) >= 3:
+            # Reconstruct the prefix, key_id, and secret safely
+            # Since token_urlsafe can contain '_', token_hex is safer. Now that we use hex, split("_") will always yield 3 parts.
+            prefix = parts[0]
+            key_id = parts[1]
+            secret = parts[2]
+
+            # Look up key by ID
+            api_key = self.keys.get(key_id)
+
+            if not api_key:
+                logger.warning("api_key_not_found")
+                return None
+
+            # Verify secret against stored hash
+            if not bcrypt.checkpw(secret.encode(), api_key.key_hash.encode()):
+                logger.warning("api_key_invalid_secret", key_id=key_id)
+                return None
+        else:
+            # Fallback for invalid formats
+            logger.warning("api_key_invalid_format")
             return None
 
         # Check if key is active
@@ -139,11 +162,11 @@ class APIKeyManager:
         Returns:
             True if key was revoked, False if not found
         """
-        for key_hash, api_key in self.keys.items():
-            if api_key.key_id == key_id:
-                api_key.is_active = False
-                logger.info("api_key_revoked", key_id=key_id)
-                return True
+        api_key = self.keys.get(key_id)
+        if api_key:
+            api_key.is_active = False
+            logger.info("api_key_revoked", key_id=key_id)
+            return True
 
         logger.warning("api_key_not_found_for_revocation", key_id=key_id)
         return False
@@ -158,11 +181,7 @@ class APIKeyManager:
             Tuple of (new_raw_key, new_api_key) if successful, None otherwise
         """
         # Find existing key
-        old_key = None
-        for key_hash, api_key in self.keys.items():
-            if api_key.key_id == key_id:
-                old_key = api_key
-                break
+        old_key = self.keys.get(key_id)
 
         if not old_key:
             logger.warning("api_key_not_found_for_rotation", key_id=key_id)
@@ -170,7 +189,7 @@ class APIKeyManager:
 
         # Generate new key with same settings
         new_raw_key, new_api_key = self.generate_key(
-            name=f"{old_key.name} (rotated)",
+            name=old_key.name.replace(" (rotated)", "") + " (rotated)",
             scopes=old_key.scopes,
             expires_in_days=None,  # Reset expiration
             rate_limit_multiplier=old_key.rate_limit_multiplier,
@@ -212,7 +231,7 @@ class APIKeyManager:
         Returns:
             Hashed key
         """
-        return hashlib.sha256(raw_key.encode()).hexdigest()
+        return bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode("utf-8")
 
 
 # Global API key manager
