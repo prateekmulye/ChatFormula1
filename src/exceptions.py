@@ -1,6 +1,6 @@
 """Base exception classes and error handling framework."""
 
-from typing import Any
+from typing import Any, Optional
 
 
 class ChatFormula1Error(Exception):
@@ -15,8 +15,8 @@ class ChatFormula1Error(Exception):
     def __init__(
         self,
         message: str,
-        details: dict[str, Any] | None = None,
-        original_error: Exception | None = None,
+        details: Optional[dict[str, Any]] = None,
+        original_error: Optional[Exception] = None,
     ) -> None:
         """Initialize the exception.
 
@@ -147,9 +147,9 @@ class RateLimitError(ChatFormula1Error):
     def __init__(
         self,
         message: str,
-        retry_after: int | None = None,
-        details: dict[str, Any] | None = None,
-        original_error: Exception | None = None,
+        retry_after: Optional[int] = None,
+        details: Optional[dict[str, Any]] = None,
+        original_error: Optional[Exception] = None,
     ) -> None:
         """Initialize the rate limit error.
 
