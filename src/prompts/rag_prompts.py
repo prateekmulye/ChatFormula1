@@ -4,12 +4,14 @@ This module contains prompts for combining retrieved context from vector stores
 and search results with user queries to generate informed responses.
 """
 
-from typing import List, Optional
 
 from langchain_core.messages import SystemMessage
-from langchain_core.prompts import (ChatPromptTemplate,
-                                    HumanMessagePromptTemplate,
-                                    MessagesPlaceholder, PromptTemplate)
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    PromptTemplate,
+)
 
 # RAG prompt for combining vector context with queries
 RAG_CONTEXT_TEMPLATE = """You are ChatFormula1, an expert Formula 1 analyst. Use the provided context to answer the user's question accurately.
@@ -155,7 +157,7 @@ Use the context above and our conversation history to answer the question."""
 )
 
 
-def format_vector_context(documents: List[dict]) -> str:
+def format_vector_context(documents: list[dict]) -> str:
     """Format vector store documents into context string.
 
     Args:
@@ -185,7 +187,7 @@ def format_vector_context(documents: List[dict]) -> str:
     return "\n---\n".join(context_parts)
 
 
-def format_search_context(search_results: List[dict]) -> str:
+def format_search_context(search_results: list[dict]) -> str:
     """Format search results into context string.
 
     Args:
@@ -215,7 +217,7 @@ def format_search_context(search_results: List[dict]) -> str:
     return "\n---\n".join(context_parts)
 
 
-def format_conversation_history(messages: List[dict], max_messages: int = 10) -> str:
+def format_conversation_history(messages: list[dict], max_messages: int = 10) -> str:
     """Format conversation history for prompt inclusion.
 
     Args:
@@ -259,7 +261,7 @@ def create_rag_prompt_with_citations(
     vector_context: str,
     search_context: str,
     query: str,
-    chat_history: Optional[str] = None,
+    chat_history: str | None = None,
 ) -> str:
     """Create a complete RAG prompt with all context and citation requirements.
 

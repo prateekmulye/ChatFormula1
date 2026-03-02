@@ -3,12 +3,10 @@
 Tests the integration of UI, agent, tools, and caching.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -60,8 +58,11 @@ async def test_tools_initialization(
     initialize_tools(mock_settings, mock_vector_store, mock_tavily_client)
 
     # Import tools to verify they're accessible
-    from src.tools.f1_tools import (_tavily_client, _vector_store_manager,
-                                    search_current_f1_data)
+    from src.tools.f1_tools import (
+        _tavily_client,
+        _vector_store_manager,
+        search_current_f1_data,
+    )
 
     assert _tavily_client is not None
     assert _vector_store_manager is not None
