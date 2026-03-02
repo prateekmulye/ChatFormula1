@@ -300,15 +300,22 @@ class DocumentProcessor:
         Returns:
             List of unique documents
         """
+        # Local caching for performance optimization
+        seen_hashes = self._seen_hashes
+        hash_doc = self._hash_document
+
         unique_docs: List[Document] = []
+        unique_docs_append = unique_docs.append
+        seen_hashes_add = seen_hashes.add
+
         duplicates_found = 0
 
         for doc in documents:
-            doc_hash = self._hash_document(doc)
+            doc_hash = hash_doc(doc)
 
-            if doc_hash not in self._seen_hashes:
-                self._seen_hashes.add(doc_hash)
-                unique_docs.append(doc)
+            if doc_hash not in seen_hashes:
+                seen_hashes_add(doc_hash)
+                unique_docs_append(doc)
             else:
                 duplicates_found += 1
 
