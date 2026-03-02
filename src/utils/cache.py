@@ -66,7 +66,7 @@ class TTLCache:
             "kwargs": kwargs,
         }
         cache_str = json.dumps(cache_data, sort_keys=True, default=str)
-        return hashlib.md5(cache_str.encode()).hexdigest()
+        return hashlib.sha256(cache_str.encode()).hexdigest()
 
     def _is_expired(self, expiry_time: float) -> bool:
         """Check if an entry has expired.
@@ -318,7 +318,7 @@ class CacheManager:
             Cache key string
         """
         # Use hash of context to keep key size manageable
-        context_hash = hashlib.md5(context.encode()).hexdigest()
+        context_hash = hashlib.sha256(context.encode()).hexdigest()
 
         return self.llm_cache._generate_key(
             "llm",
