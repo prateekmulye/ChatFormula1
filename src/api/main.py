@@ -332,7 +332,14 @@ def create_app() -> FastAPI:
         )
 
     # Add security middleware
-    from src.security.middleware import SecurityMiddleware
+    from src.security.middleware import InputValidationMiddleware, SecurityMiddleware
+
+    # Add InputValidationMiddleware for POST requests
+    if config.enable_input_validation:
+        app.add_middleware(
+            InputValidationMiddleware,
+            strict_mode=config.strict_input_validation,
+        )
 
     app.add_middleware(
         SecurityMiddleware,
