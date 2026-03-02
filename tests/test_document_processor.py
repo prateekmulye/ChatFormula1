@@ -4,8 +4,7 @@ import pytest
 from langchain_core.documents import Document
 
 from src.config.settings import Settings
-from src.ingestion.document_processor import (DocumentProcessingError,
-                                              DocumentProcessor)
+from src.ingestion.document_processor import DocumentProcessingError, DocumentProcessor
 
 
 @pytest.mark.unit
