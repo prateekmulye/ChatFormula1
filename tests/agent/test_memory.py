@@ -1,8 +1,6 @@
 """Tests for the memory manager."""
 
-from unittest.mock import Mock
 
-import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
 from src.agent.memory import ConversationMemoryManager, create_memory_manager
