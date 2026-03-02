@@ -4,17 +4,21 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from collections.abc import Callable
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Type, TypeVar
+from typing import Any, TypeVar
 
-from tenacity import (after_log, before_sleep_log, retry,
-                      retry_if_exception_type, stop_after_attempt,
-                      wait_exponential)
+from tenacity import (
+    after_log,
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from ..config.logging import get_logger
-from ..exceptions import RateLimitError, TimeoutError
 
 logger = get_logger(__name__)
 
@@ -41,7 +45,7 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: Type[Exception] = Exception,
+        expected_exception: type[Exception] = Exception,
     ) -> None:
         """Initialize circuit breaker.
 
@@ -212,7 +216,7 @@ def retry_with_backoff(
     initial_delay: float = 1.0,
     max_delay: float = 60.0,
     exponential_base: int = 2,
-    exceptions: tuple[Type[Exception], ...] = (Exception,),
+    exceptions: tuple[type[Exception], ...] = (Exception,),
     service_name: str | None = None,
     use_circuit_breaker: bool = False,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:

@@ -7,12 +7,11 @@ This module provides utilities for tracking application metrics including:
 - User satisfaction
 """
 
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Lock
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -27,7 +26,7 @@ class LatencyMetric:
     duration_ms: float
     timestamp: datetime
     success: bool
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -41,7 +40,7 @@ class TokenUsageMetric:
     estimated_cost_usd: float
     timestamp: datetime
     operation: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -52,8 +51,8 @@ class UserFeedbackMetric:
     message_id: str
     rating: int  # 1 (thumbs down) or 5 (thumbs up)
     timestamp: datetime
-    feedback_text: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    feedback_text: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class MetricsCollector:
@@ -69,21 +68,21 @@ class MetricsCollector:
         self._lock = Lock()
 
         # Latency metrics
-        self._latency_metrics: List[LatencyMetric] = []
+        self._latency_metrics: list[LatencyMetric] = []
 
         # Token usage metrics
-        self._token_metrics: List[TokenUsageMetric] = []
+        self._token_metrics: list[TokenUsageMetric] = []
 
         # User feedback metrics
-        self._feedback_metrics: List[UserFeedbackMetric] = []
+        self._feedback_metrics: list[UserFeedbackMetric] = []
 
         # API call counters
-        self._api_calls: Dict[str, Dict[str, int]] = defaultdict(
+        self._api_calls: dict[str, dict[str, int]] = defaultdict(
             lambda: {"success": 0, "failure": 0}
         )
 
         # Operation counters
-        self._operation_counts: Dict[str, int] = defaultdict(int)
+        self._operation_counts: dict[str, int] = defaultdict(int)
 
         logger.info("metrics_collector_initialized")
 
@@ -199,7 +198,7 @@ class MetricsCollector:
         session_id: str,
         message_id: str,
         rating: int,
-        feedback_text: Optional[str] = None,
+        feedback_text: str | None = None,
         **metadata: Any,
     ) -> None:
         """Record user satisfaction feedback.
@@ -241,8 +240,8 @@ class MetricsCollector:
 
     def get_latency_stats(
         self,
-        operation: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        operation: str | None = None,
+    ) -> dict[str, Any]:
         """Get latency statistics.
 
         Args:
@@ -281,7 +280,7 @@ class MetricsCollector:
                 "success_rate": round(success_count / count, 4),
             }
 
-    def get_token_usage_stats(self) -> Dict[str, Any]:
+    def get_token_usage_stats(self) -> dict[str, Any]:
         """Get token usage and cost statistics.
 
         Returns:
@@ -299,7 +298,7 @@ class MetricsCollector:
             total_cost = sum(m.estimated_cost_usd for m in self._token_metrics)
 
             # Group by model
-            by_model: Dict[str, Dict[str, Any]] = defaultdict(
+            by_model: dict[str, dict[str, Any]] = defaultdict(
                 lambda: {
                     "requests": 0,
                     "total_tokens": 0,
@@ -326,7 +325,7 @@ class MetricsCollector:
                 },
             }
 
-    def get_api_success_rates(self) -> Dict[str, Any]:
+    def get_api_success_rates(self) -> dict[str, Any]:
         """Get API call success rates.
 
         Returns:
@@ -348,7 +347,7 @@ class MetricsCollector:
 
             return result
 
-    def get_user_satisfaction_stats(self) -> Dict[str, Any]:
+    def get_user_satisfaction_stats(self) -> dict[str, Any]:
         """Get user satisfaction statistics.
 
         Returns:
@@ -371,7 +370,7 @@ class MetricsCollector:
                 "satisfaction_rate": round(positive / total, 4),
             }
 
-    def get_all_metrics(self) -> Dict[str, Any]:
+    def get_all_metrics(self) -> dict[str, Any]:
         """Get all metrics in a single dictionary.
 
         Returns:
@@ -446,7 +445,7 @@ class MetricsCollector:
 
 
 # Global metrics collector instance
-_metrics_collector: Optional[MetricsCollector] = None
+_metrics_collector: MetricsCollector | None = None
 
 
 def get_metrics_collector() -> MetricsCollector:

@@ -4,8 +4,7 @@ import pytest
 from langchain_core.documents import Document
 
 from src.config.settings import Settings
-from src.ingestion.document_processor import (DocumentProcessingError,
-                                              DocumentProcessor)
+from src.ingestion.document_processor import DocumentProcessingError, DocumentProcessor
 
 
 @pytest.mark.unit
@@ -67,7 +66,7 @@ class TestDocumentProcessor:
 
         # Create a long document that will be chunked
         long_text = " ".join(
-            ["This is sentence number {}.".format(i) for i in range(100)]
+            [f"This is sentence number {i}." for i in range(100)]
         )
         docs = [Document(page_content=long_text, metadata={"source": "test"})]
 
@@ -247,7 +246,7 @@ class TestDocumentProcessor:
         processor = DocumentProcessor(test_settings)
 
         # Create long text that will be chunked
-        long_text = " ".join(["Sentence {}.".format(i) for i in range(200)])
+        long_text = " ".join([f"Sentence {i}." for i in range(200)])
         texts = [long_text]
 
         docs = processor.process_text_documents(texts, chunk=True)
