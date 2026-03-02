@@ -7,8 +7,11 @@ specialized tasks requiring structured outputs or specific reasoning patterns.
 from typing import Any, Dict, List, Optional
 
 from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
-from langchain_core.prompts import (ChatPromptTemplate, FewShotPromptTemplate,
-                                    PromptTemplate)
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    FewShotPromptTemplate,
+    PromptTemplate,
+)
 from pydantic import BaseModel, Field
 
 # ============================================================================
