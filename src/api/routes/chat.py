@@ -5,13 +5,12 @@ streaming responses, and conversation management.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
-from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel, Field, field_validator
 
 from src.config.settings import get_settings
@@ -27,14 +26,14 @@ class ChatMessage(BaseModel):
 
     role: str = Field(..., description="Message role: 'user' or 'assistant'")
     content: str = Field(..., description="Message content")
-    timestamp: Optional[str] = Field(None, description="Message timestamp")
+    timestamp: str | None = Field(None, description="Message timestamp")
 
 
 class ChatRequest(BaseModel):
     """Chat request model."""
 
     message: str = Field(..., description="User message", min_length=1, max_length=2000)
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Session ID for conversation continuity"
     )
     stream: bool = Field(default=False, description="Enable streaming response")
@@ -80,23 +79,7 @@ class SessionClearResponse(BaseModel):
     message: str = Field(..., description="Confirmation message")
 
 
-# In-memory session storage (replace with Redis in production)
-session_storage: dict[str, MemorySaver] = {}
-
-
-def get_or_create_session(session_id: str) -> MemorySaver:
-    """Get existing session or create new one.
-
-    Args:
-        session_id: Session identifier
-
-    Returns:
-        MemorySaver instance for the session
-    """
-    if session_id not in session_storage:
-        session_storage[session_id] = MemorySaver()
-        logger.info("session_created", session_id=session_id)
-    return session_storage[session_id]
+# Global session storage checkpointer comes directly from agent_graph.compiled_graph.checkpointer
 
 
 @router.post(
@@ -133,11 +116,10 @@ async def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     # Generate session ID if not provided
     session_id = request.session_id or f"session_{http_request.state.request_id}"
 
-    # Get or create session checkpointer
-    checkpointer = get_or_create_session(session_id)
-
-    # Recompile graph with session checkpointer
-    compiled_graph = agent_graph.graph.compile(checkpointer=checkpointer)
+    # Use pre-compiled graph to avoid per-request compilation overhead
+    compiled_graph = agent_graph.compiled_graph
+    # Use pre-compiled graph to avoid per-request compilation overhead
+    compiled_graph = agent_graph.compiled_graph
 
     logger.info(
         "processing_chat_message",
@@ -199,7 +181,7 @@ async def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process message: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -235,11 +217,8 @@ async def chat_stream(request: ChatRequest, http_request: Request) -> StreamingR
     # Generate session ID if not provided
     session_id = request.session_id or f"session_{http_request.state.request_id}"
 
-    # Get or create session checkpointer
-    checkpointer = get_or_create_session(session_id)
-
-    # Recompile graph with session checkpointer
-    compiled_graph = agent_graph.graph.compile(checkpointer=checkpointer)
+    # Use pre-compiled graph to avoid per-request compilation overhead
+    compiled_graph = agent_graph.compiled_graph
 
     logger.info(
         "processing_chat_stream",
@@ -247,7 +226,7 @@ async def chat_stream(request: ChatRequest, http_request: Request) -> StreamingR
         message_length=len(request.message),
     )
 
-    async def event_generator():
+    async def event_generator():  # noqa: ANN202
         """Generate Server-Sent Events for streaming response."""
         try:
             # Prepare initial state
@@ -349,19 +328,29 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
     """
     logger.info("retrieving_conversation_history", session_id=session_id)
 
-    # Check if session exists
-    if session_id not in session_storage:
+    from src.api.main import app_state
+
+    # Get agent graph
+    agent_graph = app_state.get("agent_graph")
+    if not agent_graph:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Agent is not initialized.",
         )
 
-    checkpointer = session_storage[session_id]
+    checkpointer = agent_graph.compiled_graph.checkpointer
 
     try:
         # Get checkpoint data
         config = {"configurable": {"thread_id": session_id}}
         checkpoint = checkpointer.get(config)
+
+        # Check if session exists
+        if not checkpoint:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Session {session_id} not found",
+            )
 
         messages = []
         if checkpoint:
@@ -371,7 +360,7 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
 
             # Convert to ChatMessage format
             for msg in state_messages:
-                if isinstance(msg, (HumanMessage, AIMessage)):
+                if isinstance(msg, HumanMessage | AIMessage):
                     messages.append(
                         ChatMessage(
                             role=(
@@ -403,7 +392,7 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve conversation history: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete(
@@ -427,8 +416,20 @@ async def clear_session(session_id: str) -> SessionClearResponse:
     """
     logger.info("clearing_session", session_id=session_id)
 
-    # Check if session exists
-    if session_id not in session_storage:
+    from src.api.main import app_state
+
+    # Get agent graph
+    agent_graph = app_state.get("agent_graph")
+    if not agent_graph:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Agent is not initialized.",
+        )
+
+    checkpointer = agent_graph.compiled_graph.checkpointer
+
+    # In LangGraph MemorySaver, thread_id is used as the key in the storage dict
+    if session_id not in checkpointer.storage:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Session {session_id} not found",
@@ -436,7 +437,7 @@ async def clear_session(session_id: str) -> SessionClearResponse:
 
     try:
         # Remove session from storage
-        del session_storage[session_id]
+        del checkpointer.storage[session_id]
 
         logger.info("session_cleared", session_id=session_id)
 
@@ -455,7 +456,7 @@ async def clear_session(session_id: str) -> SessionClearResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear session: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
@@ -472,12 +473,21 @@ async def list_sessions() -> dict[str, Any]:
     """
     logger.info("listing_sessions")
 
+    from src.api.main import app_state
+
+    agent_graph = app_state.get("agent_graph")
+
+    if not agent_graph:
+        return {"sessions": [], "total_count": 0}
+
+    checkpointer = agent_graph.compiled_graph.checkpointer
+
     sessions = [
         {
             "session_id": session_id,
             "created": True,  # Could add timestamp tracking
         }
-        for session_id in session_storage.keys()
+        for session_id in checkpointer.storage.keys()
     ]
 
     return {
