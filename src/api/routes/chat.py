@@ -5,13 +5,12 @@ streaming responses, and conversation management.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
-from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel, Field, field_validator
 
 from src.config.settings import get_settings
@@ -27,14 +26,14 @@ class ChatMessage(BaseModel):
 
     role: str = Field(..., description="Message role: 'user' or 'assistant'")
     content: str = Field(..., description="Message content")
-    timestamp: Optional[str] = Field(None, description="Message timestamp")
+    timestamp: str | None = Field(None, description="Message timestamp")
 
 
 class ChatRequest(BaseModel):
     """Chat request model."""
 
     message: str = Field(..., description="User message", min_length=1, max_length=2000)
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Session ID for conversation continuity"
     )
     stream: bool = Field(default=False, description="Enable streaming response")
@@ -182,7 +181,7 @@ async def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process message: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -218,11 +217,8 @@ async def chat_stream(request: ChatRequest, http_request: Request) -> StreamingR
     # Generate session ID if not provided
     session_id = request.session_id or f"session_{http_request.state.request_id}"
 
-    # Get or create session checkpointer
-    checkpointer = get_or_create_session(session_id)
-
-    # Recompile graph with session checkpointer
-    compiled_graph = agent_graph.graph.compile(checkpointer=checkpointer)
+    # Use pre-compiled graph to avoid per-request compilation overhead
+    compiled_graph = agent_graph.compiled_graph
 
     logger.info(
         "processing_chat_stream",
@@ -230,7 +226,7 @@ async def chat_stream(request: ChatRequest, http_request: Request) -> StreamingR
         message_length=len(request.message),
     )
 
-    async def event_generator():
+    async def event_generator():  # noqa: ANN202
         """Generate Server-Sent Events for streaming response."""
         try:
             # Prepare initial state
@@ -364,7 +360,7 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
 
             # Convert to ChatMessage format
             for msg in state_messages:
-                if isinstance(msg, (HumanMessage, AIMessage)):
+                if isinstance(msg, HumanMessage | AIMessage):
                     messages.append(
                         ChatMessage(
                             role=(
@@ -396,7 +392,7 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve conversation history: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete(
@@ -460,7 +456,7 @@ async def clear_session(session_id: str) -> SessionClearResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear session: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
