@@ -717,7 +717,7 @@ class TestRenderAboutModal:
     @patch("src.ui.components.st")
     @patch("src.ui.components.logger")
     def test_render_about_modal_includes_creator_name(self, mock_logger, mock_st):
-        """Test that about modal includes creator name 'P1.ai Team'."""
+        """Test that about modal includes creator name 'P1.ai (Prateek Mulye)'."""
         render_about_modal = components.render_about_modal
 
         # Setup mock
@@ -751,7 +751,7 @@ class TestRenderAboutModal:
 
         # Verify creator name is present
         combined_content = " ".join(markdown_calls)
-        assert "P1.ai Team" in combined_content
+        assert "P1.ai (Prateek Mulye)" in combined_content
 
     @patch("src.ui.components.st")
     @patch("src.ui.components.logger")
@@ -836,6 +836,6 @@ class TestRenderAboutModal:
 
         # Verify fallback content includes creator info
         combined_content = " ".join(markdown_calls)
-        assert "P1.ai Team" in combined_content
+        assert "P1.ai (Prateek Mulye)" in combined_content
         assert "linkedin.com/in/prateekmulye" in combined_content
         assert "github.com/prateekmulye" in combined_content

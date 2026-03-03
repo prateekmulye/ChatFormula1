@@ -331,7 +331,7 @@ The API includes the following security headers:
 
 ## Vulnerability Reporting
 
-If you discover a security vulnerability, please email security@chatp1.com (or your configured security contact) with:
+If you discover a security vulnerability, please email security@ChatP1.ai (or your configured security contact) with:
 
 1. Description of the vulnerability
 2. Steps to reproduce

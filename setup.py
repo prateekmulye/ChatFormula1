@@ -13,7 +13,7 @@ from setuptools import find_packages, setup
 setup(
     name="chatp1",
     version="0.1.0",
-    author="P1.ai Team",
+    author="Prateek Mulye",
     description="AI-powered Formula 1 expert chatbot",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

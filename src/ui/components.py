@@ -1265,7 +1265,7 @@ def render_about_modal() -> None:
     This component displays a modal dialog containing:
     - Project description
     - Features list
-    - Creator information with name "P1.ai Team"
+    - Creator information with name "Prateek Mulye"
     - LinkedIn and GitHub links using st.link_button()
     - F1 theme colors and centered content
     - Error handling with fallback to simple text display
@@ -1290,22 +1290,28 @@ def render_about_modal() -> None:
             comprehensive answers about Formula 1 racing.
             """)
 
+            # Platform link
+            st.markdown("### 🚀 Official Platform")
+            st.markdown(
+                "Visit the full-scale professional platform at [ChatP1.ai](https://ChatP1.ai)"
+            )
+
             # Features list
-            st.markdown("### ✨ Features")
+            st.markdown("### ✨ Demo Features")
             st.markdown("""
             - **Real-time F1 Data**: Current standings, race results, and live updates
             - **Historical Statistics**: Comprehensive F1 records and historical data
-            - **Data-driven Predictions**: AI-powered race and championship predictions
-            - **RAG-powered Knowledge**: Retrieval-Augmented Generation for accurate responses
-            - **Natural Conversations**: Chat naturally about any F1 topic
+            - **2026+ Era Focus**: Optimized for the upcoming regulatory changes
+            - **RAG Architecture**: Retrieval-Augmented Generation for grounded responses
+            - **Portfolio Piece**: Showcasing high-performance AI agent architecture
             """)
 
             st.divider()
 
             # Creator information
-            st.markdown("### 👨‍💻 Created By")
-            st.markdown("**P1.ai Team**")
-            st.markdown("*AI Engineer & Formula 1 Enthusiast*")
+            st.markdown("### 👨‍💻 Architected By")
+            st.markdown("**P1.ai (Prateek Mulye)**")
+            st.markdown("*AI Engineer & Formula 1 Historian*")
 
             # Social links in two columns
             col1, col2 = st.columns(2)
@@ -1357,9 +1363,9 @@ def render_about_modal() -> None:
         An AI-powered Formula 1 expert assistant combining real-time data, 
         historical knowledge, and advanced language models.
         
-        **Created by:** P1.ai Team
+        **Created by:** P1.ai (Prateek Mulye)
         
-        **Connect:**
+        **Creator:**
         - LinkedIn: https://www.linkedin.com/in/prateekmulye/
         - GitHub: https://github.com/prateekmulye
         

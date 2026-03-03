@@ -4,6 +4,7 @@ This module implements the main agent graph that orchestrates the RAG pipeline,
 including query analysis, routing, retrieval, context ranking, and generation.
 """
 
+import asyncio
 from typing import Any, Literal
 
 import structlog

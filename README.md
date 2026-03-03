@@ -1,12 +1,25 @@
-# 🏎️ Chat P1
+# 🏎️ Chat P1 (Demo Edition)
 
-An AI-powered Formula 1 chatbot that provides real-time race information, predictions, and insights using advanced RAG (Retrieval-Augmented Generation) architecture.
+An AI-powered Formula 1 expert system architected for the 2026+ regulations era. This project serves as a technical portfolio piece showcasing a state-of-the-art RAG (Retrieval-Augmented Generation) architecture for high-performance AI agents.
 
-## 🚀 Live Demo
+## 🚀 Demo & Portfolio
 
-**Try it now**: [https://chatp1.com](https://chatp1.com)
+**Live Demo**: [https://ChatFormula1.com](https://ChatFormula1.com)
+*(Hosted version of this portfolio repository)*
+
+**Official Platform**: [https://ChatP1.ai](https://ChatP1.ai)
+*(The full-scale F1 analysis platform)*
 
 *Note: First load may take 30 seconds as the free tier wakes up.*
+
+---
+
+## 📖 Portfolio Overview
+
+This repository demonstrates a non-proprietary, feature-rich version of the Chat P1 engine. It is designed to be:
+- **Intelligent**: Leveraging advanced prompt engineering and multi-step reasoning.
+- **Optimized**: Performance-tuned retrieval and context window management.
+- **Production-Ready**: Built with observability, security guardrails, and robust error handling.
 
 ---
 
@@ -265,7 +278,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **GitHub**: [Current Projects 🧠 🚧](https://github.com/prateekmulye)
 - **LinkedIn**: [Say Hi! 🤝](https://www.linkedin.com/in/prateekmulye/)
-- **Email**: prateek@chatp1.com
+- **Email**: prateek@ChatP1.ai
 
 ---
 

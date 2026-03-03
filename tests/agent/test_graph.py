@@ -121,3 +121,10 @@ class TestRouteDecision:
 
         result = agent_graph.route_decision(state)
         assert result == "direct"
+
+
+if __name__ == "__main__":
+    # Run pytest on this file
+    import sys
+
+    sys.exit(pytest.main([__file__] + sys.argv[1:]))

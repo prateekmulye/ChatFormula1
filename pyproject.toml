@@ -2,7 +2,7 @@
 name = "chatp1"
 version = "0.1.0"
 description = "AI-powered Formula 1 expert chatbot with RAG architecture"
-authors = ["P1.ai Team <prateekmulye@gmail.com>"]
+authors = ["Prateek Mulye <prateekmulye@gmail.com>"]
 readme = "README.md"
 license = "MIT"
 packages = [{include = "src"}]

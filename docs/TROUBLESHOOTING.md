@@ -644,7 +644,7 @@ If issues persist:
 1. Check [GitHub Issues](https://github.com/your-repo/issues)
 2. Review [Documentation](./README.md)
 3. Join [Discord Community](https://discord.gg/your-server)
-4. Email support: support@chatp1.com
+4. Email support: support@ChatP1.ai
 
 Include:
 - Error messages

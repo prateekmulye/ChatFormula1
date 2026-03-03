@@ -277,9 +277,9 @@ def render_sidebar() -> None:
             
             ---
             
-            **Created by:** P1.ai Team
+            **Created by:** Prateek Mulye
             
-            **Connect:**
+            **Creator:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
             """)

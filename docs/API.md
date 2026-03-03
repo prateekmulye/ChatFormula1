@@ -65,7 +65,7 @@ http://localhost:8000
 
 ### Production
 ```
-https://api.chatp1.com
+https://api.ChatP1.ai
 ```
 
 ### API Documentation
@@ -888,9 +888,9 @@ WebSocket support for real-time bidirectional communication is planned for a fut
 ## Support
 
 For API support:
-- **Documentation**: https://docs.chatp1.com
+- **Documentation**: https://docs.ChatP1.ai
 - **Issues**: https://github.com/chatp1/agent/issues
-- **Email**: api-support@chatp1.com
+- **Email**: api-support@ChatP1.ai
 
 ---
 
