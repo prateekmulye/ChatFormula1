@@ -1,10 +1,7 @@
 """Unit tests for UI components and F1 theme."""
 
-import sys
 from importlib import import_module
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Import components module directly without going through __init__.py
 components = import_module("src.ui.components")
@@ -417,7 +414,7 @@ class TestRenderWelcomeScreen:
         combined_content = " ".join(markdown_calls)
 
         # Check for hero section elements
-        assert "🏎️ ChatFormula1" in combined_content
+        assert "🏎️ Chat P1" in combined_content
         assert "Your AI-powered Formula 1 expert assistant" in combined_content
         assert "welcome-hero" in combined_content
 
@@ -675,7 +672,7 @@ class TestRenderAboutModal:
 
         # Verify project description is present
         combined_content = " ".join(markdown_calls)
-        assert "ChatFormula1" in combined_content
+        assert "Chat P1" in combined_content
         assert "AI-powered" in combined_content or "Formula 1" in combined_content
 
     @patch("src.ui.components.st")
@@ -720,7 +717,7 @@ class TestRenderAboutModal:
     @patch("src.ui.components.st")
     @patch("src.ui.components.logger")
     def test_render_about_modal_includes_creator_name(self, mock_logger, mock_st):
-        """Test that about modal includes creator name 'Prateek Mulye'."""
+        """Test that about modal includes creator name 'P1.ai Team'."""
         render_about_modal = components.render_about_modal
 
         # Setup mock
@@ -754,7 +751,7 @@ class TestRenderAboutModal:
 
         # Verify creator name is present
         combined_content = " ".join(markdown_calls)
-        assert "Prateek Mulye" in combined_content
+        assert "P1.ai Team" in combined_content
 
     @patch("src.ui.components.st")
     @patch("src.ui.components.logger")
@@ -839,6 +836,6 @@ class TestRenderAboutModal:
 
         # Verify fallback content includes creator info
         combined_content = " ".join(markdown_calls)
-        assert "Prateek Mulye" in combined_content
+        assert "P1.ai Team" in combined_content
         assert "linkedin.com/in/prateekmulye" in combined_content
         assert "github.com/prateekmulye" in combined_content

@@ -1,10 +1,10 @@
-# Render Blueprint for ChatFormula1
+# Render Blueprint for Chat P1
 # Deploy with: render.yaml in repository root
 
 services:
   # Streamlit UI Service
   - type: web
-    name: chatformula1-ui
+    name: chatp1-ui
     runtime: python
     region: oregon
     plan: free

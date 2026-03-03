@@ -4,23 +4,23 @@ import csv
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import structlog
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from src.exceptions import ChatFormula1Error
+from src.exceptions import ChatP1Error
 
 logger = structlog.get_logger(__name__)
 
 
-class DataLoadError(ChatFormula1Error):
+class DataLoadError(ChatP1Error):
     """Exception raised when data loading fails."""
 
     pass
 
 
-class DataValidationError(ChatFormula1Error):
+class DataValidationError(ChatP1Error):
     """Exception raised when data validation fails."""
 
     pass
@@ -29,8 +29,8 @@ class DataValidationError(ChatFormula1Error):
 class F1DataSchema(BaseModel):
     """Base schema for F1 data validation."""
 
-    source_file: Optional[str] = Field(None, description="Source file path")
-    loaded_at: Optional[datetime] = Field(
+    source_file: str | None = Field(None, description="Source file path")
+    loaded_at: datetime | None = Field(
         default_factory=datetime.now, description="Timestamp when data was loaded"
     )
 
@@ -44,13 +44,13 @@ class RaceResultSchema(F1DataSchema):
     season: int = Field(..., ge=1950, le=2100, description="Season year")
     round: int = Field(..., ge=1, description="Round number")
     circuit_id: str = Field(..., description="Circuit identifier")
-    quali_pos: Optional[int] = Field(None, description="Qualifying position")
-    grid_pos: Optional[int] = Field(None, description="Grid position")
-    finish_position: Optional[int] = Field(None, description="Finish position")
-    points: Optional[float] = Field(None, ge=0, description="Points scored")
-    points_scored: Optional[int] = Field(None, description="Points scored flag")
-    podium_finish: Optional[int] = Field(None, description="Podium finish flag")
-    top_10_finish: Optional[int] = Field(None, description="Top 10 finish flag")
+    quali_pos: int | None = Field(None, description="Qualifying position")
+    grid_pos: int | None = Field(None, description="Grid position")
+    finish_position: int | None = Field(None, description="Finish position")
+    points: float | None = Field(None, ge=0, description="Points scored")
+    points_scored: int | None = Field(None, description="Points scored flag")
+    podium_finish: int | None = Field(None, description="Podium finish flag")
+    top_10_finish: int | None = Field(None, description="Top 10 finish flag")
 
     @field_validator("race_id", "driver_id", "constructor_id", "circuit_id")
     @classmethod
@@ -66,10 +66,10 @@ class DriverSchema(F1DataSchema):
 
     id: str = Field(..., description="Driver identifier")
     code: str = Field(..., description="Driver code (3 letters)")
-    number: Optional[int] = Field(None, description="Driver number")
+    number: int | None = Field(None, description="Driver number")
     name: str = Field(..., description="Driver full name")
-    constructor: Optional[str] = Field(None, description="Current constructor")
-    nationality: Optional[str] = Field(None, description="Driver nationality")
+    constructor: str | None = Field(None, description="Current constructor")
+    nationality: str | None = Field(None, description="Driver nationality")
 
     @field_validator("code")
     @classmethod
@@ -85,11 +85,11 @@ class RaceSchema(F1DataSchema):
 
     id: str = Field(..., description="Race identifier")
     name: str = Field(..., description="Race name")
-    circuit: Optional[str] = Field(None, description="Circuit name")
-    country: Optional[str] = Field(None, description="Country")
-    date: Optional[str] = Field(None, description="Race date")
-    season: Optional[int] = Field(None, description="Season year")
-    round: Optional[int] = Field(None, description="Round number")
+    circuit: str | None = Field(None, description="Circuit name")
+    country: str | None = Field(None, description="Country")
+    date: str | None = Field(None, description="Race date")
+    season: int | None = Field(None, description="Season year")
+    round: int | None = Field(None, description="Round number")
 
 
 class DataLoader:
@@ -101,7 +101,7 @@ class DataLoader:
     - Incremental loading with state tracking
     """
 
-    def __init__(self, data_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, data_dir: str | Path | None = None):
         """Initialize DataLoader.
 
         Args:
@@ -109,18 +109,18 @@ class DataLoader:
         """
         self.data_dir = Path(data_dir) if data_dir else Path("data")
         self.logger = logger.bind(component="data_loader")
-        self._load_state: Dict[str, datetime] = {}
+        self._load_state: dict[str, datetime] = {}
 
         if not self.data_dir.exists():
             self.logger.warning("data_directory_not_found", data_dir=str(self.data_dir))
 
     def load_csv(
         self,
-        file_path: Union[str, Path],
-        schema: Optional[type[BaseModel]] = None,
+        file_path: str | Path,
+        schema: type[BaseModel] | None = None,
         validate: bool = True,
         encoding: str = "utf-8",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Load data from CSV file with optional validation.
 
         Args:
@@ -141,9 +141,9 @@ class DataLoader:
         try:
             self.logger.info("loading_csv", file_path=str(file_path), validate=validate)
 
-            data: List[Dict[str, Any]] = []
+            data: list[dict[str, Any]] = []
 
-            with open(file_path, "r", encoding=encoding) as f:
+            with open(file_path, encoding=encoding) as f:
                 reader = csv.DictReader(f)
 
                 for row_num, row in enumerate(
@@ -192,11 +192,11 @@ class DataLoader:
 
     def load_json(
         self,
-        file_path: Union[str, Path],
-        schema: Optional[type[BaseModel]] = None,
+        file_path: str | Path,
+        schema: type[BaseModel] | None = None,
         validate: bool = True,
         encoding: str = "utf-8",
-    ) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    ) -> list[dict[str, Any]] | dict[str, Any]:
         """Load data from JSON file with optional validation.
 
         Args:
@@ -219,7 +219,7 @@ class DataLoader:
                 "loading_json", file_path=str(file_path), validate=validate
             )
 
-            with open(file_path, "r", encoding=encoding) as f:
+            with open(file_path, encoding=encoding) as f:
                 data = json.load(f)
 
             # Validate if schema provided
@@ -279,11 +279,11 @@ class DataLoader:
 
     def load_multiple(
         self,
-        file_patterns: List[str],
+        file_patterns: list[str],
         file_type: str = "auto",
-        schema: Optional[type[BaseModel]] = None,
+        schema: type[BaseModel] | None = None,
         validate: bool = True,
-    ) -> Dict[str, Union[List[Dict[str, Any]], Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]] | dict[str, Any]]:
         """Load multiple files matching patterns.
 
         Args:
@@ -298,7 +298,7 @@ class DataLoader:
         Raises:
             DataLoadError: If any file fails to load
         """
-        results: Dict[str, Union[List[Dict[str, Any]], Dict[str, Any]]] = {}
+        results: dict[str, list[dict[str, Any]] | dict[str, Any]] = {}
 
         for pattern in file_patterns:
             # Resolve pattern to actual files
@@ -348,7 +348,7 @@ class DataLoader:
 
         return results
 
-    def needs_reload(self, file_path: Union[str, Path]) -> bool:
+    def needs_reload(self, file_path: str | Path) -> bool:
         """Check if file needs to be reloaded based on modification time.
 
         Args:
@@ -372,11 +372,11 @@ class DataLoader:
 
     def load_incremental(
         self,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         file_type: str = "auto",
-        schema: Optional[type[BaseModel]] = None,
+        schema: type[BaseModel] | None = None,
         validate: bool = True,
-    ) -> Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | dict[str, Any] | None:
         """Load file only if it has been modified since last load.
 
         Args:
@@ -410,7 +410,7 @@ class DataLoader:
         else:
             raise DataLoadError(f"Unsupported file type: {detected_type}")
 
-    def _resolve_path(self, file_path: Union[str, Path]) -> Path:
+    def _resolve_path(self, file_path: str | Path) -> Path:
         """Resolve file path relative to data directory.
 
         Args:
@@ -434,7 +434,7 @@ class DataLoader:
         """
         self._load_state[str(file_path)] = datetime.now()
 
-    def get_load_state(self) -> Dict[str, datetime]:
+    def get_load_state(self) -> dict[str, datetime]:
         """Get current load state for all files.
 
         Returns:

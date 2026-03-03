@@ -1,4 +1,4 @@
-# ChatFormula1 UI Quick Start Guide
+# Chat P1 UI Quick Start Guide
 
 ## Installation
 
@@ -159,4 +159,4 @@ MAX_CONVERSATION_HISTORY=10       # 1-50
 6. ✅ Test error handling (invalid queries)
 7. ✅ Try conversation continuity (follow-ups)
 
-Enjoy using ChatFormula1! 🏎️
+Enjoy using Chat P1! 🏎️

@@ -2,8 +2,6 @@
 
 import asyncio
 import sys
-from pathlib import Path
-from typing import Optional
 
 import click
 import structlog
@@ -30,7 +28,7 @@ logger = structlog.get_logger(__name__)
 )
 @click.pass_context
 def cli(ctx: click.Context, log_level: str, data_dir: str) -> None:
-    """ChatFormula1 Data Ingestion CLI.
+    """Chat P1 Data Ingestion CLI.
 
     Ingest F1 data into Pinecone vector store for RAG pipeline.
     """
@@ -91,7 +89,7 @@ def ingest_all(
     """
     data_dir = ctx.obj["data_dir"]
 
-    click.echo("🏎️  ChatFormula1 Data Ingestion")
+    click.echo("🏎️  Chat P1 Data Ingestion")
     click.echo("=" * 50)
     click.echo(f"Data directory: {data_dir}")
     click.echo(f"Race results: {race_results}")
@@ -166,7 +164,7 @@ def ingest_incremental(
     """
     data_dir = ctx.obj["data_dir"]
 
-    click.echo("🏎️  ChatFormula1 Incremental Ingestion")
+    click.echo("🏎️  Chat P1 Incremental Ingestion")
     click.echo("=" * 50)
     click.echo(f"Data directory: {data_dir}")
     click.echo(f"Files to check: {len(files)}")
@@ -244,7 +242,7 @@ def ingest_file(
     """
     data_dir = ctx.obj["data_dir"]
 
-    click.echo("🏎️  ChatFormula1 Single File Ingestion")
+    click.echo("🏎️  Chat P1 Single File Ingestion")
     click.echo("=" * 50)
     click.echo(f"Data directory: {data_dir}")
     click.echo(f"File: {file}")
@@ -306,7 +304,7 @@ def check_config(ctx: click.Context) -> None:
     Validates that all required API keys are set and the vector
     store is accessible.
     """
-    click.echo("🏎️  ChatFormula1 Configuration Check")
+    click.echo("🏎️  Chat P1 Configuration Check")
     click.echo("=" * 50)
 
     async def run_check() -> None:

@@ -1,6 +1,6 @@
-# ChatFormula1 Agent - Architecture Documentation
+# Chat P1 Agent - Architecture Documentation
 
-This document provides a comprehensive overview of the ChatFormula1 Agent architecture, including system design, component interactions, and data flow.
+This document provides a comprehensive overview of the Chat P1 Agent architecture, including system design, component interactions, and data flow.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This document provides a comprehensive overview of the ChatFormula1 Agent archit
 
 ## System Overview
 
-ChatFormula1 Agent is a conversational AI system built using RAG (Retrieval-Augmented Generation) architecture. It combines real-time F1 data retrieval, semantic search over historical knowledge, and large language models to provide expert-level Formula 1 insights.
+Chat P1 Agent is a conversational AI system built using RAG (Retrieval-Augmented Generation) architecture. It combines real-time F1 data retrieval, semantic search over historical knowledge, and large language models to provide expert-level Formula 1 insights.
 
 ### Key Features
 

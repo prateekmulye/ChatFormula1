@@ -66,7 +66,7 @@ Add the following secrets:
 
 2. **`RENDER_URL`**
    - Your application URL
-   - Example: `https://chatformula1-ui.onrender.com`
+   - Example: `https://chatp1-ui.onrender.com`
 
 #### Optional (for full CI/CD)
 
@@ -91,7 +91,7 @@ Add the following secrets:
 ### Step 2: Get Render Deploy Hook
 
 1. Go to Render Dashboard: https://dashboard.render.com
-2. Select your service (e.g., `chatformula1-ui`)
+2. Select your service (e.g., `chatp1-ui`)
 3. Go to **Settings** tab
 4. Scroll to **Deploy Hook**
 5. Click **Create Deploy Hook**
@@ -100,7 +100,7 @@ Add the following secrets:
 
 ### Step 3: Add Your Application URL
 
-1. Copy your Render URL (e.g., `https://chatformula1-ui.onrender.com`)
+1. Copy your Render URL (e.g., `https://chatp1-ui.onrender.com`)
 2. Add to GitHub Secrets as `RENDER_URL`
 
 ### Step 4: Enable GitHub Actions

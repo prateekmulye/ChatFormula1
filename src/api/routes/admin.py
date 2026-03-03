@@ -1,10 +1,10 @@
-"""Admin and utility endpoints for ChatFormula1 API.
+"""Admin and utility endpoints for Chat P1 API.
 
 This module provides administrative endpoints for data ingestion, statistics,
 and configuration validation.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
@@ -34,8 +34,8 @@ class VectorStoreStatsResponse(BaseModel):
 
     index_name: str = Field(..., description="Pinecone index name")
     dimension: int = Field(..., description="Vector dimension")
-    total_vectors: Optional[int] = Field(None, description="Total vector count")
-    namespaces: Optional[list[str]] = Field(None, description="Available namespaces")
+    total_vectors: int | None = Field(None, description="Total vector count")
+    namespaces: list[str] | None = Field(None, description="Available namespaces")
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
@@ -540,98 +540,94 @@ async def get_prometheus_metrics():
     lines = []
 
     # Add metadata
-    lines.append("# HELP chatformula1_info Application information")
-    lines.append("# TYPE chatformula1_info gauge")
+    lines.append("# HELP chatp1_info Application information")
+    lines.append("# TYPE chatp1_info gauge")
     config = get_settings()
-    lines.append(
-        f'chatformula1_info{{version="0.1.0",environment="{config.environment}"}} 1'
-    )
+    lines.append(f'chatp1_info{{version="0.1.0",environment="{config.environment}"}} 1')
     lines.append("")
 
     # Latency metrics
     latency_stats = metrics_collector.get_latency_stats()
     if latency_stats.get("count", 0) > 0:
-        lines.append("# HELP chatformula1_latency_seconds Operation latency in seconds")
-        lines.append("# TYPE chatformula1_latency_seconds summary")
+        lines.append("# HELP chatp1_latency_seconds Operation latency in seconds")
+        lines.append("# TYPE chatp1_latency_seconds summary")
         lines.append(
-            f'chatformula1_latency_seconds{{quantile="0.5"}} {latency_stats["p50_ms"] / 1000}'
+            f'chatp1_latency_seconds{{quantile="0.5"}} {latency_stats["p50_ms"] / 1000}'
         )
         lines.append(
-            f'chatformula1_latency_seconds{{quantile="0.95"}} {latency_stats["p95_ms"] / 1000}'
+            f'chatp1_latency_seconds{{quantile="0.95"}} {latency_stats["p95_ms"] / 1000}'
         )
         lines.append(
-            f'chatformula1_latency_seconds{{quantile="0.99"}} {latency_stats["p99_ms"] / 1000}'
+            f'chatp1_latency_seconds{{quantile="0.99"}} {latency_stats["p99_ms"] / 1000}'
         )
-        lines.append(
-            f'chatformula1_latency_seconds_sum {latency_stats["mean_ms"] / 1000}'
-        )
-        lines.append(f'chatformula1_latency_seconds_count {latency_stats["count"]}')
+        lines.append(f'chatp1_latency_seconds_sum {latency_stats["mean_ms"] / 1000}')
+        lines.append(f'chatp1_latency_seconds_count {latency_stats["count"]}')
         lines.append("")
 
     # API success rates
     api_stats = metrics_collector.get_api_success_rates()
     if api_stats:
         lines.append(
-            "# HELP chatformula1_api_calls_total Total API calls by service and status"
+            "# HELP chatp1_api_calls_total Total API calls by service and status"
         )
-        lines.append("# TYPE chatformula1_api_calls_total counter")
+        lines.append("# TYPE chatp1_api_calls_total counter")
         for service, stats in api_stats.items():
             lines.append(
-                f'chatformula1_api_calls_total{{service="{service}",status="success"}} {stats["successful"]}'
+                f'chatp1_api_calls_total{{service="{service}",status="success"}} {stats["successful"]}'
             )
             lines.append(
-                f'chatformula1_api_calls_total{{service="{service}",status="failure"}} {stats["failed"]}'
+                f'chatp1_api_calls_total{{service="{service}",status="failure"}} {stats["failed"]}'
             )
         lines.append("")
 
-        lines.append("# HELP chatformula1_api_success_rate API success rate by service")
-        lines.append("# TYPE chatformula1_api_success_rate gauge")
+        lines.append("# HELP chatp1_api_success_rate API success rate by service")
+        lines.append("# TYPE chatp1_api_success_rate gauge")
         for service, stats in api_stats.items():
             lines.append(
-                f'chatformula1_api_success_rate{{service="{service}"}} {stats["success_rate"]}'
+                f'chatp1_api_success_rate{{service="{service}"}} {stats["success_rate"]}'
             )
         lines.append("")
 
     # Token usage
     token_stats = metrics_collector.get_token_usage_stats()
     if token_stats.get("total_requests", 0) > 0:
-        lines.append("# HELP chatformula1_tokens_total Total tokens used")
-        lines.append("# TYPE chatformula1_tokens_total counter")
-        lines.append(f'chatformula1_tokens_total {token_stats["total_tokens"]}')
+        lines.append("# HELP chatp1_tokens_total Total tokens used")
+        lines.append("# TYPE chatp1_tokens_total counter")
+        lines.append(f'chatp1_tokens_total {token_stats["total_tokens"]}')
         lines.append("")
 
-        lines.append("# HELP chatformula1_cost_usd_total Total estimated cost in USD")
-        lines.append("# TYPE chatformula1_cost_usd_total counter")
-        lines.append(f'chatformula1_cost_usd_total {token_stats["total_cost_usd"]}')
+        lines.append("# HELP chatp1_cost_usd_total Total estimated cost in USD")
+        lines.append("# TYPE chatp1_cost_usd_total counter")
+        lines.append(f'chatp1_cost_usd_total {token_stats["total_cost_usd"]}')
         lines.append("")
 
         # Per-model metrics
         for model, stats in token_stats.get("by_model", {}).items():
             lines.append(
-                f'chatformula1_tokens_total{{model="{model}"}} {stats["total_tokens"]}'
+                f'chatp1_tokens_total{{model="{model}"}} {stats["total_tokens"]}'
             )
             lines.append(
-                f'chatformula1_cost_usd_total{{model="{model}"}} {stats["cost_usd"]}'
+                f'chatp1_cost_usd_total{{model="{model}"}} {stats["cost_usd"]}'
             )
         lines.append("")
 
     # User satisfaction
     satisfaction_stats = metrics_collector.get_user_satisfaction_stats()
     if satisfaction_stats.get("total_feedback", 0) > 0:
-        lines.append("# HELP chatformula1_user_feedback_total Total user feedback")
-        lines.append("# TYPE chatformula1_user_feedback_total counter")
+        lines.append("# HELP chatp1_user_feedback_total Total user feedback")
+        lines.append("# TYPE chatp1_user_feedback_total counter")
         lines.append(
-            f'chatformula1_user_feedback_total{{rating="positive"}} {satisfaction_stats["positive"]}'
+            f'chatp1_user_feedback_total{{rating="positive"}} {satisfaction_stats["positive"]}'
         )
         lines.append(
-            f'chatformula1_user_feedback_total{{rating="negative"}} {satisfaction_stats["negative"]}'
+            f'chatp1_user_feedback_total{{rating="negative"}} {satisfaction_stats["negative"]}'
         )
         lines.append("")
 
-        lines.append("# HELP chatformula1_satisfaction_rate User satisfaction rate")
-        lines.append("# TYPE chatformula1_satisfaction_rate gauge")
+        lines.append("# HELP chatp1_satisfaction_rate User satisfaction rate")
+        lines.append("# TYPE chatp1_satisfaction_rate gauge")
         lines.append(
-            f'chatformula1_satisfaction_rate {satisfaction_stats["satisfaction_rate"]}'
+            f'chatp1_satisfaction_rate {satisfaction_stats["satisfaction_rate"]}'
         )
         lines.append("")
 
@@ -639,12 +635,10 @@ async def get_prometheus_metrics():
     all_metrics = metrics_collector.get_all_metrics()
     operation_counts = all_metrics.get("operation_counts", {})
     if operation_counts:
-        lines.append("# HELP chatformula1_operations_total Total operations by type")
-        lines.append("# TYPE chatformula1_operations_total counter")
+        lines.append("# HELP chatp1_operations_total Total operations by type")
+        lines.append("# TYPE chatp1_operations_total counter")
         for operation, count in operation_counts.items():
-            lines.append(
-                f'chatformula1_operations_total{{operation="{operation}"}} {count}'
-            )
+            lines.append(f'chatp1_operations_total{{operation="{operation}"}} {count}')
         lines.append("")
 
     prometheus_output = "\n".join(lines)
@@ -692,7 +686,7 @@ async def submit_feedback(
     session_id: str,
     message_id: str,
     rating: int,
-    feedback_text: Optional[str] = None,
+    feedback_text: str | None = None,
 ) -> dict[str, str]:
     """Submit user feedback.
 
@@ -863,8 +857,8 @@ class APIKeyCreateRequest(BaseModel):
     """Request to create a new API key."""
 
     name: str = Field(..., description="Key name/description")
-    scopes: Optional[list[str]] = Field(None, description="Allowed scopes")
-    expires_in_days: Optional[int] = Field(
+    scopes: list[str] | None = Field(None, description="Allowed scopes")
+    expires_in_days: int | None = Field(
         None, ge=1, le=365, description="Days until expiration"
     )
     rate_limit_multiplier: float = Field(
@@ -876,10 +870,10 @@ class APIKeyResponse(BaseModel):
     """API key response."""
 
     key_id: str = Field(..., description="Key ID")
-    key: Optional[str] = Field(None, description="Raw API key (only shown once)")
+    key: str | None = Field(None, description="Raw API key (only shown once)")
     name: str = Field(..., description="Key name")
     created_at: str = Field(..., description="Creation timestamp")
-    expires_at: Optional[str] = Field(None, description="Expiration timestamp")
+    expires_at: str | None = Field(None, description="Expiration timestamp")
     is_active: bool = Field(..., description="Whether key is active")
     scopes: list[str] = Field(..., description="Allowed scopes")
 

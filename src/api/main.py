@@ -1,22 +1,23 @@
-"""FastAPI application for ChatFormula1 agent API.
+"""FastAPI application for Chat P1 agent API.
 
-This module implements the REST API layer for the ChatFormula1 chatbot,
+This module implements the REST API layer for the Chat P1 chatbot,
 providing endpoints for chat interactions, health checks, and admin operations.
 """
 
 import asyncio
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict
+from typing import Any
 
 import structlog
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.config.settings import Settings, get_settings
+from src.config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -47,7 +48,7 @@ async def _process_background_tasks():
                     app_state["task_queue"].get(),
                     timeout=1.0,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # No tasks in queue, continue loop
                 continue
 
@@ -171,7 +172,7 @@ async def submit_background_task(
     return task_id
 
 
-def get_task_status(task_id: str) -> Dict[str, Any]:
+def get_task_status(task_id: str) -> dict[str, Any]:
     """Get the status of a background task.
 
     Args:
@@ -292,7 +293,7 @@ def create_app() -> FastAPI:
 
     # Create FastAPI app with OpenAPI documentation
     app = FastAPI(
-        title="ChatFormula1 API",
+        title="Chat P1 API",
         description=(
             "AI-powered Formula 1 expert chatbot API with RAG architecture. "
             "Provides real-time F1 information, predictions, and insights through "

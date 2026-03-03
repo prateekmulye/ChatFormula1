@@ -1,16 +1,14 @@
-"""System prompt templates for ChatFormula1 agent.
+"""System prompt templates for Chat P1 agent.
 
 This module contains system-level prompts that define the agent's persona,
 capabilities, and behavioral guardrails.
 """
 
-from typing import Optional
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 # Core F1 Expert System Prompt
-F1_EXPERT_SYSTEM_PROMPT = """You are ChatFormula1, an expert Formula 1 analyst and historian with comprehensive knowledge of:
+F1_EXPERT_SYSTEM_PROMPT = """You are Chat P1, an expert Formula 1 analyst and historian with comprehensive knowledge of:
 
 **Core Expertise:**
 - Current and historical F1 statistics, standings, and race results (1950-present)
@@ -74,7 +72,7 @@ Do NOT:
 
 def create_system_prompt(
     include_guardrails: bool = True,
-    additional_context: Optional[str] = None,
+    additional_context: str | None = None,
 ) -> ChatPromptTemplate:
     """Create a system prompt template with F1 expert persona.
 
@@ -146,7 +144,7 @@ def create_role_based_system_prompt(
     return SystemMessage(content=prompt)
 
 
-def validate_prompt_safety(user_input: str) -> tuple[bool, Optional[str]]:
+def validate_prompt_safety(user_input: str) -> tuple[bool, str | None]:
     """Validate user input for prompt injection attempts and off-topic queries.
 
     Args:
@@ -235,7 +233,7 @@ def validate_prompt_safety(user_input: str) -> tuple[bool, Optional[str]]:
 CONCISE_SYSTEM_PROMPT = ChatPromptTemplate.from_messages(
     [
         SystemMessage(
-            content="""You are ChatFormula1, an F1 expert. Provide concise, accurate answers about Formula 1.
+            content="""You are Chat P1, an F1 expert. Provide concise, accurate answers about Formula 1.
     
 Keep responses brief but informative. Cite specific data when relevant. Stay focused on F1 topics only."""
         )

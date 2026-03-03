@@ -23,7 +23,7 @@ class TestSystemPrompts:
     def test_f1_expert_prompt_content(self):
         """Test F1 expert system prompt contains key elements."""
         assert (
-            "ChatFormula1" in F1_EXPERT_SYSTEM_PROMPT
+            "Chat P1" in F1_EXPERT_SYSTEM_PROMPT
             or "F1-Slipstream" in F1_EXPERT_SYSTEM_PROMPT
         )
         assert "Formula 1" in F1_EXPERT_SYSTEM_PROMPT
@@ -50,7 +50,7 @@ class TestSystemPrompts:
         # Format the prompt to check content
         formatted = prompt.format()
 
-        assert "ChatFormula1" in formatted or "F1-Slipstream" in formatted
+        assert "Chat P1" in formatted or "F1-Slipstream" in formatted
         assert "GUARDRAILS" in formatted or "specialized" in formatted.lower()
 
     def test_create_system_prompt_with_additional_context(self):
@@ -88,7 +88,7 @@ class TestSystemPrompts:
 
         formatted = DETAILED_SYSTEM_PROMPT.format()
 
-        assert "ChatFormula1" in formatted or "F1-Slipstream" in formatted
+        assert "Chat P1" in formatted or "F1-Slipstream" in formatted
         assert len(formatted) > 500  # Should be detailed
 
     def test_prediction_system_prompt(self):

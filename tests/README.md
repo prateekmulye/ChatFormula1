@@ -1,6 +1,6 @@
-# ChatFormula1 Tests
+# Chat P1 Tests
 
-This directory contains a streamlined test suite for the ChatFormula1 agent system, focusing on tests that provide clear value in catching bugs and documenting behavior.
+This directory contains a streamlined test suite for the Chat P1 agent system, focusing on tests that provide clear value in catching bugs and documenting behavior.
 
 ## Test Structure
 

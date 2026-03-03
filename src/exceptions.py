@@ -1,10 +1,10 @@
 """Base exception classes and error handling framework."""
 
-from typing import Any, Optional
+from typing import Any
 
 
-class ChatFormula1Error(Exception):
-    """Base exception for all ChatFormula1 application errors.
+class ChatP1Error(Exception):
+    """Base exception for all Chat P1 application errors.
 
     Attributes:
         message: Human-readable error message
@@ -15,8 +15,8 @@ class ChatFormula1Error(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[dict[str, Any]] = None,
-        original_error: Optional[Exception] = None,
+        details: dict[str, Any] | None = None,
+        original_error: Exception | None = None,
     ) -> None:
         """Initialize the exception.
 
@@ -46,7 +46,7 @@ class ChatFormula1Error(Exception):
         )
 
 
-class ConfigurationError(ChatFormula1Error):
+class ConfigurationError(ChatP1Error):
     """Raised when there are configuration-related errors.
 
     Examples:
@@ -58,7 +58,7 @@ class ConfigurationError(ChatFormula1Error):
     pass
 
 
-class VectorStoreError(ChatFormula1Error):
+class VectorStoreError(ChatP1Error):
     """Raised when there are errors related to Pinecone vector store operations.
 
     Examples:
@@ -71,7 +71,7 @@ class VectorStoreError(ChatFormula1Error):
     pass
 
 
-class SearchAPIError(ChatFormula1Error):
+class SearchAPIError(ChatP1Error):
     """Raised when there are errors related to Tavily Search API.
 
     Examples:
@@ -84,7 +84,7 @@ class SearchAPIError(ChatFormula1Error):
     pass
 
 
-class LLMError(ChatFormula1Error):
+class LLMError(ChatP1Error):
     """Raised when there are errors related to OpenAI LLM operations.
 
     Examples:
@@ -98,7 +98,7 @@ class LLMError(ChatFormula1Error):
     pass
 
 
-class AgentError(ChatFormula1Error):
+class AgentError(ChatP1Error):
     """Raised when there are errors in LangGraph agent execution.
 
     Examples:
@@ -111,7 +111,7 @@ class AgentError(ChatFormula1Error):
     pass
 
 
-class DataIngestionError(ChatFormula1Error):
+class DataIngestionError(ChatP1Error):
     """Raised when there are errors during data ingestion pipeline.
 
     Examples:
@@ -124,7 +124,7 @@ class DataIngestionError(ChatFormula1Error):
     pass
 
 
-class ValidationError(ChatFormula1Error):
+class ValidationError(ChatP1Error):
     """Raised when data validation fails.
 
     Examples:
@@ -137,7 +137,7 @@ class ValidationError(ChatFormula1Error):
     pass
 
 
-class RateLimitError(ChatFormula1Error):
+class RateLimitError(ChatP1Error):
     """Raised when API rate limits are exceeded.
 
     Attributes:
@@ -147,9 +147,9 @@ class RateLimitError(ChatFormula1Error):
     def __init__(
         self,
         message: str,
-        retry_after: Optional[int] = None,
-        details: Optional[dict[str, Any]] = None,
-        original_error: Optional[Exception] = None,
+        retry_after: int | None = None,
+        details: dict[str, Any] | None = None,
+        original_error: Exception | None = None,
     ) -> None:
         """Initialize the rate limit error.
 
@@ -163,7 +163,7 @@ class RateLimitError(ChatFormula1Error):
         self.retry_after = retry_after
 
 
-class TimeoutError(ChatFormula1Error):
+class TimeoutError(ChatP1Error):
     """Raised when operations exceed timeout limits.
 
     Examples:
@@ -175,7 +175,7 @@ class TimeoutError(ChatFormula1Error):
     pass
 
 
-class AuthenticationError(ChatFormula1Error):
+class AuthenticationError(ChatP1Error):
     """Raised when authentication fails.
 
     Examples:

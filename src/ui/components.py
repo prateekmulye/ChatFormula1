@@ -1,4 +1,4 @@
-"""Reusable UI components for ChatFormula1 Streamlit app.
+"""Reusable UI components for Chat P1 Streamlit app.
 
 This module provides components for:
 - Message display with role-based styling
@@ -9,7 +9,7 @@ This module provides components for:
 """
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import streamlit as st
 import structlog
@@ -760,8 +760,8 @@ def apply_f1_theme() -> None:
 def render_message(
     role: str,
     content: str,
-    metadata: Optional[dict[str, Any]] = None,
-    message_id: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    message_id: str | None = None,
 ) -> None:
     """Render a chat message with role-based styling.
 
@@ -782,7 +782,7 @@ def render_message(
 
 def render_message_metadata(
     metadata: dict[str, Any],
-    message_id: Optional[str] = None,
+    message_id: str | None = None,
 ) -> None:
     """Render metadata section for assistant messages.
 
@@ -1233,7 +1233,7 @@ def render_welcome_screen() -> None:
     # st.markdown(
     #     """
     #     <div class='welcome-hero' style='display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 30vh;'>
-    #         <h1>🏎️ ChatFormula1</h1>
+    #         <h1>🏎️ Chat P1</h1>
     #         <h3>Your AI-powered Formula 1 expert assistant</h3>
     #     </div>
     #     """,
@@ -1265,7 +1265,7 @@ def render_about_modal() -> None:
     This component displays a modal dialog containing:
     - Project description
     - Features list
-    - Creator information with name "Prateek Mulye"
+    - Creator information with name "P1.ai Team"
     - LinkedIn and GitHub links using st.link_button()
     - F1 theme colors and centered content
     - Error handling with fallback to simple text display
@@ -1277,11 +1277,11 @@ def render_about_modal() -> None:
     """
     try:
 
-        @st.dialog("About ChatFormula1")
+        @st.dialog("About Chat P1")
         def show_about():
             """Inner function to display about modal content."""
             # Project title with F1 emoji
-            st.markdown("## 🏎️ ChatFormula1")
+            st.markdown("## 🏎️ Chat P1")
 
             # Project description
             st.markdown("""
@@ -1304,7 +1304,7 @@ def render_about_modal() -> None:
 
             # Creator information
             st.markdown("### 👨‍💻 Created By")
-            st.markdown("**Prateek Mulye**")
+            st.markdown("**P1.ai Team**")
             st.markdown("*AI Engineer & Formula 1 Enthusiast*")
 
             # Social links in two columns
@@ -1336,7 +1336,7 @@ def render_about_modal() -> None:
 
             # Footer with version info
             st.markdown("---")
-            st.caption("ChatFormula1 • Version 1.0 • © 2024")
+            st.caption("Chat P1 • Version 1.0 • © 2024")
 
         # Show modal if flag is set
         if st.session_state.get("show_about", False):
@@ -1352,12 +1352,12 @@ def render_about_modal() -> None:
         st.error("⚠️ Unable to display About modal. Here's the information:")
 
         st.markdown("""
-        ### 🏎️ ChatFormula1
+        ### 🏎️ Chat P1
         
         An AI-powered Formula 1 expert assistant combining real-time data, 
         historical knowledge, and advanced language models.
         
-        **Created by:** Prateek Mulye
+        **Created by:** P1.ai Team
         
         **Connect:**
         - LinkedIn: https://www.linkedin.com/in/prateekmulye/
@@ -1374,7 +1374,7 @@ def render_welcome_message() -> None:
     This function is kept for backward compatibility.
     """
     st.markdown("""
-    ### Welcome to ChatFormula1! 🏎️
+    ### Welcome to Chat P1! 🏎️
     
     I'm your AI-powered Formula 1 expert assistant. I can help you with:
     

@@ -1,4 +1,4 @@
-"""Security module for ChatFormula1 application.
+"""Security module for Chat P1 application.
 
 This module provides security features including input validation, sanitization,
 rate limiting, and authentication.

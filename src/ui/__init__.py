@@ -1,4 +1,4 @@
-"""UI module for ChatFormula1 Streamlit application."""
+"""UI module for Chat P1 Streamlit application."""
 
 from src.ui.app import main
 

@@ -1,6 +1,6 @@
-# ChatFormula1 Streamlit UI
+# Chat P1 Streamlit UI
 
-This module implements the Streamlit-based user interface for the ChatFormula1 chatbot.
+This module implements the Streamlit-based user interface for the Chat P1 chatbot.
 
 ## Features
 

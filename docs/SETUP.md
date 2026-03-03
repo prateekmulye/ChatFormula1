@@ -1,6 +1,6 @@
 # 🛠️ Setup Guide
 
-Complete guide for setting up ChatFormula1 Agent locally.
+Complete guide for setting up Chat P1 Agent locally.
 
 ---
 
@@ -48,8 +48,8 @@ Complete guide for setting up ChatFormula1 Agent locally.
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/chatformula1.git
-cd chatformula1
+git clone https://github.com/YOUR_USERNAME/chatp1.git
+cd chatp1
 ```
 
 ### 2. Install Dependencies
@@ -295,7 +295,7 @@ docker-compose up
 ## Project Structure
 
 ```
-chatformula1/
+chatp1/
 ├── src/                      # Source code
 │   ├── agent/               # LangGraph agent
 │   │   ├── graph.py        # Agent workflow

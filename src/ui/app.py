@@ -1,4 +1,4 @@
-"""Streamlit UI for ChatFormula1 chatbot.
+"""Streamlit UI for Chat P1 chatbot.
 
 This module implements the main Streamlit application with:
 - Session state management
@@ -10,11 +10,11 @@ This module implements the main Streamlit application with:
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -37,13 +37,13 @@ logger = structlog.get_logger(__name__)
 
 # Page configuration
 st.set_page_config(
-    page_title="ChatFormula1",
+    page_title="Chat P1",
     page_icon="🏎️",
     layout="wide",
     menu_items={
-        "Get Help": "https://github.com/prateekmulye/chatformula1",
-        "Report a bug": "https://github.com/prateekmulye/chatformula1/issues",
-        "About": "# ChatFormula1\nYour AI-powered Formula 1 expert assistant",
+        "Get Help": "https://github.com/prateekmulye/chatp1",
+        "Report a bug": "https://github.com/prateekmulye/chatp1/issues",
+        "About": "# Chat P1\nYour AI-powered Formula 1 expert assistant",
     },
 )
 
@@ -103,7 +103,7 @@ def initialize_session_state() -> None:
         st.session_state.last_error = None
 
 
-def initialize_agent() -> Optional[F1AgentGraph]:
+def initialize_agent() -> F1AgentGraph | None:
     """Initialize the agent graph and dependencies.
 
     Returns:
@@ -113,7 +113,7 @@ def initialize_agent() -> Optional[F1AgentGraph]:
         return st.session_state.agent_graph
 
     try:
-        with st.spinner("🔧 Initializing ChatFormula1 agent..."):
+        with st.spinner("🔧 Initializing Chat P1 agent..."):
             settings = st.session_state.settings
 
             # Initialize vector store
@@ -266,7 +266,7 @@ def render_sidebar() -> None:
         # About section
         with st.expander("ℹ️ About"):
             st.markdown("""
-            **ChatFormula1** is an AI-powered Formula 1 expert assistant
+            **Chat P1** is an AI-powered Formula 1 expert assistant
             that combines:
             - Real-time F1 data and news
             - Historical F1 knowledge base
@@ -277,7 +277,7 @@ def render_sidebar() -> None:
             
             ---
             
-            **Created by:** Prateek Mulye
+            **Created by:** P1.ai Team
             
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
@@ -316,7 +316,7 @@ def render_header() -> None:
         st.markdown(
             """
             <div role="banner" style='text-align: center;'>
-                <h1 style='margin-bottom: 0;'>🏎️ ChatFormula1</h1>
+                <h1 style='margin-bottom: 0;'>🏎️ Chat P1</h1>
                 <p style='color: #888; margin-top: 0;' role="doc-subtitle">Your AI-powered Formula 1 expert assistant</p>
             </div>
             """,
@@ -328,14 +328,14 @@ def render_header() -> None:
         if st.button(
             "ℹ️",
             key="about_btn",
-            help="About ChatFormula1 - Learn about the project, features, and creator",
+            help="About Chat P1 - Learn about the project, features, and creator",
             use_container_width=False,
         ):
             st.session_state.show_about = not st.session_state.show_about
             st.rerun()
 
 
-def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
+def render_chat_interface(agent: F1AgentGraph | None) -> None:
     """Render the main chat interface with message history and input.
 
     This function implements the ChatGPT/Anthropic UX pattern where:

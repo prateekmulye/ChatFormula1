@@ -1,6 +1,6 @@
-# ChatFormula1 API Documentation
+# Chat P1 API Documentation
 
-Complete API reference for the ChatFormula1 Agent backend.
+Complete API reference for the Chat P1 Agent backend.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ Complete API reference for the ChatFormula1 Agent backend.
 
 ## Overview
 
-The ChatFormula1 API provides programmatic access to the F1 expert chatbot system. It supports:
+The Chat P1 API provides programmatic access to the F1 expert chatbot system. It supports:
 
 - **RESTful endpoints** for chat interactions
 - **Streaming responses** for real-time feedback
@@ -65,7 +65,7 @@ http://localhost:8000
 
 ### Production
 ```
-https://api.chatformula1.com
+https://api.chatp1.com
 ```
 
 ### API Documentation
@@ -888,9 +888,9 @@ WebSocket support for real-time bidirectional communication is planned for a fut
 ## Support
 
 For API support:
-- **Documentation**: https://docs.chatformula1.com
-- **Issues**: https://github.com/chatformula1/agent/issues
-- **Email**: api-support@chatformula1.com
+- **Documentation**: https://docs.chatp1.com
+- **Issues**: https://github.com/chatp1/agent/issues
+- **Email**: api-support@chatp1.com
 
 ---
 

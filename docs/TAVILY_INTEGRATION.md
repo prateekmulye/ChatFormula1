@@ -1,6 +1,6 @@
 # Tavily Integration Guide
 
-This document explains how the ChatFormula1 Agent uses Tavily's search capabilities to retrieve the latest and most accurate F1 news and information.
+This document explains how the Chat P1 Agent uses Tavily's search capabilities to retrieve the latest and most accurate F1 news and information.
 
 ## Overview
 
@@ -351,7 +351,7 @@ All operations are logged with structured logging:
     "query": "Max Verstappen championship",
     "results_count": 5,
     "timestamp": "2024-12-01T10:30:00Z",
-    "app": "chatformula1"
+    "app": "chatp1"
 }
 ```
 

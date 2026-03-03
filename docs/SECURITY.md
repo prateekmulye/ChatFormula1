@@ -1,10 +1,10 @@
 # Security Documentation
 
-This document describes the security features implemented in ChatFormula1 and how to use them.
+This document describes the security features implemented in Chat P1 and how to use them.
 
 ## Overview
 
-ChatFormula1 implements multiple layers of security to protect against common vulnerabilities and ensure safe operation:
+Chat P1 implements multiple layers of security to protect against common vulnerabilities and ensure safe operation:
 
 1. **Input Validation and Sanitization** - Prevents prompt injection and XSS attacks
 2. **Rate Limiting** - Prevents abuse and ensures fair usage
@@ -331,7 +331,7 @@ The API includes the following security headers:
 
 ## Vulnerability Reporting
 
-If you discover a security vulnerability, please email security@chatformula1.com (or your configured security contact) with:
+If you discover a security vulnerability, please email security@chatp1.com (or your configured security contact) with:
 
 1. Description of the vulnerability
 2. Steps to reproduce
@@ -342,7 +342,7 @@ If you discover a security vulnerability, please email security@chatformula1.com
 
 ## Compliance
 
-ChatFormula1 implements security controls to help with:
+Chat P1 implements security controls to help with:
 
 - **OWASP Top 10** protection
 - **Input validation** (A03:2021 - Injection)

@@ -1,6 +1,6 @@
-# ChatFormula1 LangChain Tools
+# Chat P1 LangChain Tools
 
-This module provides LangChain tools that enable the ChatFormula1 agent to access various data sources and capabilities.
+This module provides LangChain tools that enable the Chat P1 agent to access various data sources and capabilities.
 
 ## Overview
 
@@ -232,7 +232,7 @@ See `examples/tools_example.py` for a complete working example.
 
 Run the example:
 ```bash
-cd apps/chatformula1-agent
+cd apps/chatp1-agent
 python -m examples.tools_example
 ```
 

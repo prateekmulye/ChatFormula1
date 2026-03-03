@@ -4,9 +4,7 @@ This module contains prompts for query analysis, predictions, and other
 specialized tasks requiring structured outputs or specific reasoning patterns.
 """
 
-from typing import Any, Dict, List, Optional
-
-from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import (
     ChatPromptTemplate,
     FewShotPromptTemplate,
@@ -25,7 +23,7 @@ class QueryIntent(BaseModel):
     intent: str = Field(
         description="Primary intent: 'current_info', 'historical', 'prediction', 'comparison', 'explanation', 'general'"
     )
-    entities: Dict[str, List[str]] = Field(
+    entities: dict[str, list[str]] = Field(
         description="Extracted entities: drivers, teams, races, years, circuits"
     )
     requires_search: bool = Field(description="Whether query requires real-time search")
@@ -103,19 +101,19 @@ class RacePrediction(BaseModel):
     race_name: str = Field(description="Name of the race")
     circuit: str = Field(description="Circuit name")
     predicted_winner: str = Field(description="Predicted race winner")
-    podium: List[str] = Field(description="Predicted top 3 finishers")
+    podium: list[str] = Field(description="Predicted top 3 finishers")
     confidence_level: str = Field(
         description="Confidence level: 'low', 'medium', 'high'"
     )
     confidence_score: float = Field(description="Numerical confidence (0-1)")
-    key_factors: List[str] = Field(description="Key factors influencing prediction")
+    key_factors: list[str] = Field(description="Key factors influencing prediction")
     reasoning: str = Field(description="Detailed explanation of prediction reasoning")
-    alternative_scenarios: Optional[List[str]] = Field(
+    alternative_scenarios: list[str] | None = Field(
         default=None, description="Alternative outcomes and conditions"
     )
 
 
-PREDICTION_TEMPLATE = """You are ChatFormula1, an expert F1 analyst making race predictions.
+PREDICTION_TEMPLATE = """You are Chat P1, an expert F1 analyst making race predictions.
 
 **Race Information:**
 {race_info}
@@ -288,7 +286,7 @@ def create_few_shot_prediction_prompt() -> FewShotPromptTemplate:
 # Chain-of-Thought Prompts for Complex Reasoning
 # ============================================================================
 
-CHAIN_OF_THOUGHT_TEMPLATE = """You are ChatFormula1, solving a complex F1 analysis question.
+CHAIN_OF_THOUGHT_TEMPLATE = """You are Chat P1, solving a complex F1 analysis question.
 
 **Question:** {query}
 
@@ -352,7 +350,7 @@ def create_chain_of_thought_prompt() -> ChatPromptTemplate:
 # Comparison Analysis Prompt
 # ============================================================================
 
-COMPARISON_TEMPLATE = """You are ChatFormula1, conducting a detailed comparison analysis.
+COMPARISON_TEMPLATE = """You are Chat P1, conducting a detailed comparison analysis.
 
 **Comparison Request:** {query}
 
@@ -402,7 +400,7 @@ COMPARISON_PROMPT = PromptTemplate(
 # Technical Explanation Prompt
 # ============================================================================
 
-TECHNICAL_EXPLANATION_TEMPLATE = """You are ChatFormula1, explaining F1 technical concepts clearly.
+TECHNICAL_EXPLANATION_TEMPLATE = """You are Chat P1, explaining F1 technical concepts clearly.
 
 **Topic:** {topic}
 
@@ -477,17 +475,17 @@ def create_technical_explanation_prompt(
 class ExtractedEntities(BaseModel):
     """Structured output for entity extraction."""
 
-    drivers: List[str] = Field(
+    drivers: list[str] = Field(
         default_factory=list, description="Driver names mentioned"
     )
-    teams: List[str] = Field(default_factory=list, description="Team names mentioned")
-    circuits: List[str] = Field(
+    teams: list[str] = Field(default_factory=list, description="Team names mentioned")
+    circuits: list[str] = Field(
         default_factory=list, description="Circuit names mentioned"
     )
-    races: List[str] = Field(default_factory=list, description="Race names mentioned")
-    years: List[int] = Field(default_factory=list, description="Years mentioned")
-    seasons: List[int] = Field(default_factory=list, description="Seasons mentioned")
-    technical_terms: List[str] = Field(
+    races: list[str] = Field(default_factory=list, description="Race names mentioned")
+    years: list[int] = Field(default_factory=list, description="Years mentioned")
+    seasons: list[int] = Field(default_factory=list, description="Seasons mentioned")
+    technical_terms: list[str] = Field(
         default_factory=list, description="Technical F1 terms"
     )
 

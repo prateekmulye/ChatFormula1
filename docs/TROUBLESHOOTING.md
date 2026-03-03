@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-This guide helps you diagnose and resolve common issues with the ChatFormula1 Agent.
+This guide helps you diagnose and resolve common issues with the Chat P1 Agent.
 
 ## Table of Contents
 
@@ -644,7 +644,7 @@ If issues persist:
 1. Check [GitHub Issues](https://github.com/your-repo/issues)
 2. Review [Documentation](./README.md)
 3. Join [Discord Community](https://discord.gg/your-server)
-4. Email support: support@chatformula1.com
+4. Email support: support@chatp1.com
 
 Include:
 - Error messages

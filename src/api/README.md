@@ -1,6 +1,6 @@
-# ChatFormula1 API
+# Chat P1 API
 
-FastAPI-based REST API for the ChatFormula1 chatbot system.
+FastAPI-based REST API for the Chat P1 chatbot system.
 
 ## Features
 
@@ -58,7 +58,7 @@ Root endpoint with API information.
 **Response:**
 ```json
 {
-  "name": "ChatFormula1",
+  "name": "Chat P1",
   "version": "0.1.0",
   "status": "running",
   "docs": "/docs",
@@ -285,7 +285,7 @@ Get non-sensitive configuration summary.
 **Response:**
 ```json
 {
-  "app_name": "ChatFormula1",
+  "app_name": "Chat P1",
   "version": "0.1.0",
   "environment": "development",
   "models": {

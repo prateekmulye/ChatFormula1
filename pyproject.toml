@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "chatformula1"
+name = "chatp1"
 version = "0.1.0"
 description = "AI-powered Formula 1 expert chatbot with RAG architecture"
-authors = ["Prateek Mulye <prateekmulye@gmail.com>"]
+authors = ["P1.ai Team <prateekmulye@gmail.com>"]
 readme = "README.md"
 license = "MIT"
 packages = [{include = "src"}]

@@ -1,4 +1,4 @@
-# ChatFormula1 Data Ingestion Pipeline
+# Chat P1 Data Ingestion Pipeline
 
 This module provides a complete data ingestion pipeline for loading F1 knowledge base into Pinecone vector store.
 

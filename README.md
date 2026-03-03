@@ -1,10 +1,10 @@
-# 🏎️ ChatFormula1
+# 🏎️ Chat P1
 
 An AI-powered Formula 1 chatbot that provides real-time race information, predictions, and insights using advanced RAG (Retrieval-Augmented Generation) architecture.
 
 ## 🚀 Live Demo
 
-**Try it now**: [https://chatformula1.com](https://chatformula1.com)
+**Try it now**: [https://chatp1.com](https://chatp1.com)
 
 *Note: First load may take 30 seconds as the free tier wakes up.*
 
@@ -22,7 +22,7 @@ An AI-powered Formula 1 chatbot that provides real-time race information, predic
 
 ## 📖 What It Does
 
-ChatFormula1 is an intelligent chatbot that can:
+Chat P1 is an intelligent chatbot that can:
 
 - Answer questions about current F1 standings and race results
 - Provide historical F1 statistics and records
@@ -110,8 +110,8 @@ Response with Citations
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/chatformula1.git
-   cd chatformula1
+   git clone https://github.com/YOUR_USERNAME/chatp1.git
+   cd chatp1
    ```
 
 2. **Install dependencies**
@@ -191,7 +191,7 @@ git push origin main
 ## 📁 Project Structure
 
 ```
-chatformula1/
+chatp1/
 ├── src/                      # Source code
 │   ├── agent/               # LangGraph agent implementation
 │   ├── api/                 # FastAPI endpoints
@@ -265,7 +265,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **GitHub**: [Current Projects 🧠 🚧](https://github.com/prateekmulye)
 - **LinkedIn**: [Say Hi! 🤝](https://www.linkedin.com/in/prateekmulye/)
-- **Email**: prateek@chatformula1.com
+- **Email**: prateek@chatp1.com
 
 ---
 

@@ -1,4 +1,4 @@
-"""Health check endpoints for ChatFormula1 API.
+"""Health check endpoints for Chat P1 API.
 
 This module provides health check endpoints for monitoring application status
 and dependency health.

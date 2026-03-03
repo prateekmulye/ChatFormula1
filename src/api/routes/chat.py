@@ -1,11 +1,11 @@
-"""Chat endpoints for ChatFormula1 API.
+"""Chat endpoints for Chat P1 API.
 
 This module provides endpoints for chat interactions, including message processing,
 streaming responses, and conversation management.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
@@ -27,14 +27,14 @@ class ChatMessage(BaseModel):
 
     role: str = Field(..., description="Message role: 'user' or 'assistant'")
     content: str = Field(..., description="Message content")
-    timestamp: Optional[str] = Field(None, description="Message timestamp")
+    timestamp: str | None = Field(None, description="Message timestamp")
 
 
 class ChatRequest(BaseModel):
     """Chat request model."""
 
     message: str = Field(..., description="User message", min_length=1, max_length=2000)
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Session ID for conversation continuity"
     )
     stream: bool = Field(default=False, description="Enable streaming response")
@@ -104,7 +104,7 @@ def get_or_create_session(session_id: str) -> MemorySaver:
     response_model=ChatResponse,
     status_code=status.HTTP_200_OK,
     summary="Send chat message",
-    description="Send a message to the ChatFormula1 chatbot and receive a response",
+    description="Send a message to the Chat P1 chatbot and receive a response",
 )
 async def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
     """Process chat message and return response.
