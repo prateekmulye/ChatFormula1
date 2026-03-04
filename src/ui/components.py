@@ -9,7 +9,7 @@ This module provides components for:
 """
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import streamlit as st
 import structlog
@@ -760,8 +760,8 @@ def apply_f1_theme() -> None:
 def render_message(
     role: str,
     content: str,
-    metadata: Optional[dict[str, Any]] = None,
-    message_id: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    message_id: str | None = None,
 ) -> None:
     """Render a chat message with role-based styling.
 
@@ -782,7 +782,7 @@ def render_message(
 
 def render_message_metadata(
     metadata: dict[str, Any],
-    message_id: Optional[str] = None,
+    message_id: str | None = None,
 ) -> None:
     """Render metadata section for assistant messages.
 
@@ -1440,6 +1440,27 @@ def format_timestamp(dt: datetime) -> str:
         return dt.strftime("%b %d, %Y")
 
 
+@st.dialog("Confirm Clear Conversation")
+def render_clear_conversation_dialog() -> None:
+    """Render a confirmation dialog before clearing the conversation."""
+    st.warning("Are you sure you want to clear the entire conversation? This action cannot be undone.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Clear", type="primary", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info(
+                "conversation_cleared",
+                session_id=st.session_state.get("session_id", "unknown"),
+            )
+            st.rerun()
+
+
 def render_settings_panel() -> None:
     """Render collapsible settings panel positioned below header.
 
@@ -1526,14 +1547,7 @@ def render_settings_panel() -> None:
                 key="settings_clear",
                 help="Delete all messages in the current conversation",
             ):
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "conversation_cleared",
-                    session_id=st.session_state.get("session_id", "unknown"),
-                )
-                st.rerun()
+                render_clear_conversation_dialog()
 
         with col2:
             if st.button(

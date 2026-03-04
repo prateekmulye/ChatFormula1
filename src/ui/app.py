@@ -10,11 +10,11 @@ This module implements the main Streamlit application with:
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -24,6 +24,7 @@ from src.search.tavily_client import TavilyClient
 from src.ui.components import (
     apply_f1_theme,
     render_about_modal,
+    render_clear_conversation_dialog,
     render_error_message,
     render_input_validation_error,
     render_message,
@@ -103,7 +104,7 @@ def initialize_session_state() -> None:
         st.session_state.last_error = None
 
 
-def initialize_agent() -> Optional[F1AgentGraph]:
+def initialize_agent() -> F1AgentGraph | None:
     """Initialize the agent graph and dependencies.
 
     Returns:
@@ -210,11 +211,7 @@ def render_sidebar() -> None:
 
         # Clear conversation button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+            render_clear_conversation_dialog()
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):
@@ -335,7 +332,7 @@ def render_header() -> None:
             st.rerun()
 
 
-def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
+def render_chat_interface(agent: F1AgentGraph | None) -> None:
     """Render the main chat interface with message history and input.
 
     This function implements the ChatGPT/Anthropic UX pattern where:
