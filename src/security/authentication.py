@@ -41,6 +41,7 @@ class APIKeyManager:
         """Initialize API key manager."""
         # In production, store keys in a database
         self.keys: dict[str, APIKey] = {}
+        self.keys_by_id: dict[str, APIKey] = {}
         logger.info("api_key_manager_initialized")
 
     def generate_key(
@@ -87,6 +88,7 @@ class APIKeyManager:
 
         # Store key
         self.keys[key_hash] = api_key
+        self.keys_by_id[key_id] = api_key
 
         logger.info(
             "api_key_generated",
@@ -139,11 +141,11 @@ class APIKeyManager:
         Returns:
             True if key was revoked, False if not found
         """
-        for key_hash, api_key in self.keys.items():
-            if api_key.key_id == key_id:
-                api_key.is_active = False
-                logger.info("api_key_revoked", key_id=key_id)
-                return True
+        api_key = self.keys_by_id.get(key_id)
+        if api_key:
+            api_key.is_active = False
+            logger.info("api_key_revoked", key_id=key_id)
+            return True
 
         logger.warning("api_key_not_found_for_revocation", key_id=key_id)
         return False
@@ -158,11 +160,7 @@ class APIKeyManager:
             Tuple of (new_raw_key, new_api_key) if successful, None otherwise
         """
         # Find existing key
-        old_key = None
-        for key_hash, api_key in self.keys.items():
-            if api_key.key_id == key_id:
-                old_key = api_key
-                break
+        old_key = self.keys_by_id.get(key_id)
 
         if not old_key:
             logger.warning("api_key_not_found_for_rotation", key_id=key_id)
