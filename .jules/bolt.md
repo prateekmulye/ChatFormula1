@@ -1,3 +1,0 @@
-## 2025-03-04 - O(1) API key management
-**Learning:** The `APIKeyManager` in `src/security/authentication.py` was using an O(N) array scan for API key revocation and rotation, iterating over `self.keys.values()`. By introducing a secondary index (`self.keys_by_id`), we can perform these operations in O(1) time complexity.
-**Action:** Always look for opportunities to replace O(N) list/dict iterations with O(1) dictionary lookups, especially for management operations that might be called frequently or involve large datasets.
