@@ -37,7 +37,7 @@ class APIKey(BaseModel):
 class APIKeyManager:
     """Manager for API keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize API key manager."""
         # In production, store keys in a database
         self.keys: dict[str, APIKey] = {}
@@ -175,7 +175,7 @@ class APIKeyManager:
 
         # Fallback to linear search in self.keys for old format keys
         if not api_key:
-            for key_hash, key in self.keys.items():
+            for _key_hash, key in self.keys.items():
                 if key.key_id == key_id:
                     api_key = key
                     break
@@ -202,7 +202,7 @@ class APIKeyManager:
 
         # Fallback to linear search in self.keys for old format keys
         if not old_key:
-            for key_hash, key in self.keys.items():
+            for _key_hash, key in self.keys.items():
                 if key.key_id == key_id:
                     old_key = key
                     break
