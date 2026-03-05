@@ -1,10 +1,7 @@
 """Unit tests for UI components and F1 theme."""
 
-import sys
 from importlib import import_module
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Import components module directly without going through __init__.py
 components = import_module("src.ui.components")
@@ -70,7 +67,7 @@ class TestApplyF1Theme:
     def test_apply_f1_theme_injects_css(self, mock_st):
         """Test that apply_f1_theme injects CSS via st.markdown."""
         # Setup mock session state
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         # Call function
         apply_f1_theme()
@@ -91,7 +88,7 @@ class TestApplyF1Theme:
     def test_apply_f1_theme_sets_session_flag(self, mock_st):
         """Test that apply_f1_theme sets css_injected flag."""
         # Setup mock session state
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         # Call function
         apply_f1_theme()
@@ -115,7 +112,7 @@ class TestApplyF1Theme:
     @patch("src.ui.components.st")
     def test_apply_f1_theme_includes_responsive_css(self, mock_st):
         """Test that responsive CSS is included."""
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         apply_f1_theme()
 
@@ -128,7 +125,7 @@ class TestApplyF1Theme:
     @patch("src.ui.components.st")
     def test_apply_f1_theme_includes_accessibility_css(self, mock_st):
         """Test that accessibility CSS is included."""
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         apply_f1_theme()
 
@@ -141,7 +138,7 @@ class TestApplyF1Theme:
     @patch("src.ui.components.st")
     def test_apply_f1_theme_includes_animations(self, mock_st):
         """Test that animation CSS is included."""
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         apply_f1_theme()
 
@@ -155,7 +152,7 @@ class TestApplyF1Theme:
     @patch("src.ui.components.st")
     def test_apply_f1_theme_includes_component_styles(self, mock_st):
         """Test that all component styles are included."""
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         apply_f1_theme()
 
@@ -172,7 +169,7 @@ class TestApplyF1Theme:
     @patch("src.ui.components.st")
     def test_apply_f1_theme_includes_centered_layout(self, mock_st):
         """Test that centered layout CSS with 800px max-width is included."""
-        mock_st.session_state = {}
+        mock_st.session_state = {"messages": []}
 
         apply_f1_theme()
 
@@ -595,6 +592,15 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+        mock_col1.link_button = mock_st.link_button
+        mock_col2.link_button = mock_st.link_button
+
+        # Override session state messages correctly
+        mock_st.session_state = {"messages": [], "show_about": True}
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -664,6 +670,15 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+        mock_col1.link_button = mock_st.link_button
+        mock_col2.link_button = mock_st.link_button
+
+        # Override session state messages correctly
+        mock_st.session_state = {"messages": [], "show_about": True}
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -704,6 +719,15 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+        mock_col1.link_button = mock_st.link_button
+        mock_col2.link_button = mock_st.link_button
+
+        # Override session state messages correctly
+        mock_st.session_state = {"messages": [], "show_about": True}
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -743,6 +767,15 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+        mock_col1.link_button = mock_st.link_button
+        mock_col2.link_button = mock_st.link_button
+
+        # Override session state messages correctly
+        mock_st.session_state = {"messages": [], "show_about": True}
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -775,6 +808,15 @@ class TestRenderAboutModal:
                 return func
 
             return decorator
+
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+        mock_col1.link_button = mock_st.link_button
+        mock_col2.link_button = mock_st.link_button
+
+        # Override session state messages correctly
+        mock_st.session_state = {"messages": [], "show_about": True}
 
         mock_st.dialog = mock_dialog
 
