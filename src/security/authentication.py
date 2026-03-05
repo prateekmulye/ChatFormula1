@@ -36,7 +36,7 @@ class APIKey(BaseModel):
 class APIKeyManager:
     """Manager for API keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize API key manager."""
         # In production, store keys in a database
         self.keys: dict[str, APIKey] = {}
@@ -352,7 +352,7 @@ class AuthenticationMiddleware:
         app,
         require_auth: bool = False,
         public_paths: list[str] | None = None,
-    ):
+    ) -> None:
         """Initialize authentication middleware.
 
         Args:
@@ -396,6 +396,7 @@ class AuthenticationMiddleware:
             if api_key:
                 manager = get_api_key_manager()
                 from starlette.concurrency import run_in_threadpool
+
                 validated_key = await run_in_threadpool(manager.validate_key, api_key)
                 if validated_key:
                     # Store in request state for rate limiter
@@ -417,6 +418,7 @@ class AuthenticationMiddleware:
         # Validate key in a threadpool since bcrypt is CPU bound
         manager = get_api_key_manager()
         from starlette.concurrency import run_in_threadpool
+
         validated_key = await run_in_threadpool(manager.validate_key, api_key)
 
         if not validated_key:
