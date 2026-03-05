@@ -595,6 +595,10 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -664,6 +668,10 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -704,6 +712,10 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -743,6 +755,10 @@ class TestRenderAboutModal:
 
             return decorator
 
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+
         mock_st.dialog = mock_dialog
 
         # Call function
@@ -775,6 +791,10 @@ class TestRenderAboutModal:
                 return func
 
             return decorator
+
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
 
         mock_st.dialog = mock_dialog
 

@@ -1440,7 +1440,39 @@ def format_timestamp(dt: datetime) -> str:
         return dt.strftime("%b %d, %Y")
 
 
+
+@st.dialog("Clear Conversation")
+def confirm_clear_conversation():
+    st.write("Are you sure you want to clear the conversation? This action cannot be undone.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True): st.rerun()
+    with col2:
+        if st.button("🗑️ Clear", type="primary", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info("conversation_cleared", session_id=st.session_state.get("session_id", "unknown"))
+            st.rerun()
+
+@st.dialog("New Session")
+def confirm_new_session():
+    import uuid
+    st.write("Are you sure you want to start a new session? The current conversation will be lost.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True): st.rerun()
+    with col2:
+        if st.button("🆕 Start New Session", type="primary", use_container_width=True):
+            st.session_state.session_id = str(uuid.uuid4())
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info("new_session_created", session_id=st.session_state.session_id)
+            st.rerun()
+
 def render_settings_panel() -> None:
+
     """Render collapsible settings panel positioned below header.
 
     This component provides access to configuration options without a permanent sidebar:
@@ -1526,14 +1558,7 @@ def render_settings_panel() -> None:
                 key="settings_clear",
                 help="Delete all messages in the current conversation",
             ):
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "conversation_cleared",
-                    session_id=st.session_state.get("session_id", "unknown"),
-                )
-                st.rerun()
+                confirm_clear_conversation()
 
         with col2:
             if st.button(
@@ -1542,14 +1567,7 @@ def render_settings_panel() -> None:
                 key="settings_new_session",
                 help="Start a new conversation session with a fresh context",
             ):
-                st.session_state.session_id = str(uuid.uuid4())
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "new_session_created", session_id=st.session_state.session_id
-                )
-                st.rerun()
+                confirm_new_session()
 
         st.divider()
 
