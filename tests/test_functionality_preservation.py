@@ -12,10 +12,9 @@ correctly after the UI redesign, including:
 Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
 """
 
-import sys
 from datetime import datetime
 from importlib import import_module
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -650,7 +649,8 @@ class TestSessionStateManagement:
 
         # Mock render_clear_conversation_dialog
         from unittest.mock import patch
-        with patch('src.ui.components.render_clear_conversation_dialog') as mock_dialog:
+
+        with patch("src.ui.components.render_clear_conversation_dialog") as mock_dialog:
             # Call function
             render_settings_panel()
 
