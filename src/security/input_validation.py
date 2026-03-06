@@ -57,7 +57,7 @@ class InputValidator:
         r"os\.system",
     ]
 
-    def __init__(self, strict_mode: bool = False):
+    def __init__(self, strict_mode: bool = False) -> None:
         """Initialize input validator.
 
         Args:
@@ -234,7 +234,7 @@ class InputSanitizer:
         remove_html: bool = True,
         normalize_whitespace: bool = True,
         remove_control_chars: bool = True,
-    ):
+    ) -> None:
         """Initialize input sanitizer.
 
         Args:

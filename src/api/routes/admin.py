@@ -291,7 +291,7 @@ async def ingest_data(
     task_id = str(uuid.uuid4())
 
     # Define background task
-    async def run_ingestion():
+    async def run_ingestion() -> None:
         """Background task for data ingestion."""
         try:
             logger.info(

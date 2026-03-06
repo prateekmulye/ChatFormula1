@@ -20,7 +20,7 @@ class FreeTierLimiter:
     - Overall: 3 requests/min per user, 100/day per user
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.lock = threading.Lock()
 
         # User-level limits
@@ -55,7 +55,7 @@ class FreeTierLimiter:
         cutoff = time.time() - window_seconds
         return [req for req in requests if req > cutoff]
 
-    def _reset_daily_if_needed(self, user_id: str):
+    def _reset_daily_if_needed(self, user_id: str) -> None:
         """Reset daily counters if needed"""
         now = datetime.now()
 
@@ -178,7 +178,7 @@ class FreeTierLimiter:
         with self.lock:
             self._reset_daily_if_needed(user_id)
 
-            now = time.time()
+            time.time()
             self.user_requests[user_id] = self._clean_old_requests(
                 self.user_requests[user_id], 60
             )
