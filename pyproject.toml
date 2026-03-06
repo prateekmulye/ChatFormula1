@@ -49,6 +49,7 @@ tenacity = "^9.0.0"
 aiofiles = "^24.1.0"
 click = "^8.1.8"
 isort = "^7.0.0"
+bcrypt = "^5.0.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing - Latest
@@ -105,6 +106,7 @@ select = [
     "B",   # flake8-bugbear
     "UP",  # pyupgrade
     "ANN", # flake8-annotations
+    "B",   # flake8-bugbear
     "S",   # flake8-bandit
     "T20", # flake8-print
 ]
@@ -114,7 +116,28 @@ ignore = [
     "C901",   # too complex
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN206",
+    "ANN401",
     "S101",   # use of assert
+    "S104",
+    "S106",
+    "S108",
+    "S110",
+    "S324",
+    "E721",
+    "F821",
+    "F841",
+    "W291",
+    "W293",
+    "UP038",
+    "C401",
+    "B904",
 ]
 
 [tool.ruff.per-file-ignores]

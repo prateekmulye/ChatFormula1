@@ -1,0 +1,4 @@
+## 2026-03-06 - [CRITICAL] Fix weak API key hashing
+**Vulnerability:** The API Key Manager hashed sensitive API key secrets using SHA-256 instead of a proper password hashing algorithm.
+**Learning:** While SHA-256 is fine for general hashing, passwords and API keys should be securely hashed using a computationally expensive algorithm like `bcrypt`. Since `bcrypt` is CPU-bound, functions utilizing it inside FastAPI async contexts or middleware must be wrapped with `starlette.concurrency.run_in_threadpool` to avoid blocking the event loop. The `APIKeyManager` also needed to be refactored to index by `key_id` instead of `key_hash` since `bcrypt` uses a unique salt for each hash.
+**Prevention:** Always use `bcrypt` for secrets, always run it in a threadpool in async web frameworks, and design API key formats to include a lookup ID to avoid full table scans.
