@@ -897,6 +897,7 @@ def render_feedback_buttons(message_id: str) -> None:
     Requirements: 4.6, 5.5
     """
     # Check if feedback already given
+    feedback_key = f"feedback_{message_id}"
     current_feedback = st.session_state.feedback.get(message_id)
 
     col1, col2 = st.columns(2)
@@ -1277,7 +1278,7 @@ def render_about_modal() -> None:
     try:
 
         @st.dialog("About ChatFormula1")
-        def show_about() -> None:
+        def show_about():
             """Inner function to display about modal content."""
             # Project title with F1 emoji
             st.markdown("## 🏎️ ChatFormula1")

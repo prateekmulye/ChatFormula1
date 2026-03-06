@@ -101,7 +101,7 @@ class DataLoader:
     - Incremental loading with state tracking
     """
 
-    def __init__(self, data_dir: str | Path | None = None) -> None:
+    def __init__(self, data_dir: str | Path | None = None):
         """Initialize DataLoader.
 
         Args:

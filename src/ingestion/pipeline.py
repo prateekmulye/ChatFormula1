@@ -47,7 +47,7 @@ class IngestionPipeline:
         self,
         config: Settings | None = None,
         data_dir: str | Path | None = None,
-    ) -> None:
+    ):
         """Initialize IngestionPipeline.
 
         Args:

@@ -371,7 +371,7 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
 
             # Convert to ChatMessage format
             for msg in state_messages:
-                if isinstance(msg, HumanMessage | AIMessage):
+                if isinstance(msg, (HumanMessage, AIMessage)):
                     messages.append(
                         ChatMessage(
                             role=(

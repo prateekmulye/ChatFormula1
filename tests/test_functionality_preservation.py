@@ -685,6 +685,7 @@ class TestAgentInitializationAndProcessing:
         # This is tested through the components that interact with session state
 
         # The session state should have these keys for agent functionality
+        expected_keys = ["agent_graph", "agent_state", "vector_store", "tavily_client"]
 
         # This structure is verified through the execute_prompt and render_settings_panel tests
         # which interact with session state

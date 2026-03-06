@@ -26,7 +26,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
         strict_validation: bool = False,
-    ) -> None:
+    ):
         """Initialize security middleware.
 
         Args:
@@ -123,7 +123,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         app,
         strict_mode: bool = False,
         validate_paths: list[str] | None = None,
-    ) -> None:
+    ):
         """Initialize input validation middleware.
 
         Args:

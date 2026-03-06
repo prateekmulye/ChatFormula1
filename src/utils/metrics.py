@@ -63,7 +63,7 @@ class MetricsCollector:
     Datadog, or CloudWatch.
     """
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize metrics collector."""
         self._lock = Lock()
 
@@ -381,7 +381,7 @@ class MetricsCollector:
                 "overall": self.get_latency_stats(),
                 "by_operation": {
                     op: self.get_latency_stats(op)
-                    for op in {m.operation for m in self._latency_metrics}
+                    for op in set(m.operation for m in self._latency_metrics)
                 },
             },
             "token_usage": self.get_token_usage_stats(),

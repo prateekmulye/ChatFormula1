@@ -201,7 +201,7 @@ def categorize_error(error: Exception) -> ErrorCategory:
             return category
 
     # Check for common network errors
-    if isinstance(error, ConnectionError | OSError):
+    if isinstance(error, (ConnectionError, OSError)):
         return ErrorCategory.NETWORK
 
     return ErrorCategory.UNKNOWN
@@ -218,7 +218,7 @@ def determine_severity(error: Exception, category: ErrorCategory) -> ErrorSeveri
         Error severity
     """
     # Critical errors that require immediate attention
-    if isinstance(error, ConfigurationError | AuthenticationError):
+    if isinstance(error, (ConfigurationError, AuthenticationError)):
         return ErrorSeverity.CRITICAL
 
     # High priority errors
