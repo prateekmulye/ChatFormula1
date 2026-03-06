@@ -1,10 +1,7 @@
 """Unit tests for UI components and F1 theme."""
 
-import sys
 from importlib import import_module
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Import components module directly without going through __init__.py
 components = import_module("src.ui.components")
@@ -70,7 +67,8 @@ class TestApplyF1Theme:
     def test_apply_f1_theme_injects_css(self, mock_st):
         """Test that apply_f1_theme injects CSS via st.markdown."""
         # Setup mock session state
-        mock_st.session_state = {}
+        mock_st.session_state = MagicMock()
+        mock_st.session_state.__contains__.return_value = False
 
         # Call function
         apply_f1_theme()
@@ -91,14 +89,14 @@ class TestApplyF1Theme:
     def test_apply_f1_theme_sets_session_flag(self, mock_st):
         """Test that apply_f1_theme sets css_injected flag."""
         # Setup mock session state
-        mock_st.session_state = {}
+        mock_st.session_state = MagicMock()
+        mock_st.session_state.__contains__.return_value = False
 
         # Call function
         apply_f1_theme()
 
         # Verify flag was set
-        assert "css_injected" in mock_st.session_state
-        assert mock_st.session_state["css_injected"] is True
+        assert mock_st.session_state.css_injected is True
 
     @patch("src.ui.components.st")
     def test_apply_f1_theme_only_injects_once(self, mock_st):
