@@ -37,7 +37,7 @@ class APIKey(BaseModel):
 class APIKeyManager:
     """Manager for API keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize API key manager."""
         # In production, store keys in a database
         self.keys: dict[str, APIKey] = {}
@@ -356,7 +356,7 @@ class AuthenticationMiddleware:
         app,
         require_auth: bool = False,
         public_paths: list[str] | None = None,
-    ):
+    ) -> None:
         """Initialize authentication middleware.
 
         Args:

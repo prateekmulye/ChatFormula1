@@ -30,7 +30,7 @@ class DocumentProcessor:
     - Content cleaning and normalization
     """
 
-    def __init__(self, config: Settings):
+    def __init__(self, config: Settings) -> None:
         """Initialize DocumentProcessor.
 
         Args:

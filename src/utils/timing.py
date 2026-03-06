@@ -74,7 +74,7 @@ class PerformanceTimer:
         timer.finish()
     """
 
-    def __init__(self, operation: str, **context: Any):
+    def __init__(self, operation: str, **context: Any) -> None:
         """Initialize performance timer.
 
         Args:
