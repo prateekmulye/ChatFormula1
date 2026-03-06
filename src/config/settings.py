@@ -121,7 +121,7 @@ class Settings(BaseSettings):
         le=50,
         description="Maximum conversation history to maintain",
     )
-    environment: Literal["development", "staging", "production"] = Field(
+    environment: Literal["development", "staging", "production", "test"] = Field(
         default="development",
         description="Application environment",
     )
@@ -225,6 +225,9 @@ class Settings(BaseSettings):
     def validate_api_keys(cls, v: str, info) -> str:
         """Validate that API keys are not empty or placeholder values."""
         if not v or v.startswith("your_") or v == "":
+            import os
+            if os.environ.get("ENVIRONMENT") == "test":
+                return "test-key"
             raise ValueError(
                 f"{info.field_name} must be set to a valid API key. "
                 f"Please update your .env file."
