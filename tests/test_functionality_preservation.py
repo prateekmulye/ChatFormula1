@@ -619,29 +619,43 @@ class TestSessionStateManagement:
         render_settings_panel = components.render_settings_panel
 
         # Setup mock session state with messages
-        mock_st.session_state = {
+        mock_settings = MagicMock(
+            openai_temperature=0.7,
+            max_conversation_history=10,
+            environment="development",
+        )
+        mock_st.session_state = MagicMock()
+        mock_st.session_state.get.side_effect = lambda k, d=None: {
             "show_settings": True,
+            "session_id": "test-session-123",
             "messages": [{"role": "user", "content": "Test"}],
             "agent_state": {"some": "state"},
             "feedback": {"msg_1": "up"},
-            "settings": MagicMock(
-                openai_temperature=0.7,
-                max_conversation_history=10,
-                environment="development",
-            ),
-            "session_id": "test-session-123",
-        }
+            "settings": mock_settings,
+        }.get(k, d)
+        mock_st.session_state.show_settings = True
+        mock_st.session_state.settings = mock_settings
+        mock_st.session_state.messages = [{"role": "user", "content": "Test"}]
+        mock_st.session_state.session_id = "test-session-123"
+        mock_st.session_state.agent_state = {"some": "state"}
+        mock_st.session_state.feedback = {"msg_1": "up"}
 
         # Mock button to simulate clear click
         mock_st.button.side_effect = [True, False]  # First button (clear) clicked
 
-        # Call function
-        render_settings_panel()
+        # Mock columns to return valid mock objects
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = [mock_col1, mock_col2]
 
-        # Verify state was reset
-        assert mock_st.session_state["messages"] == []
-        assert mock_st.session_state["agent_state"] is None
-        assert mock_st.session_state["feedback"] == {}
+        # Mock render_clear_conversation_dialog
+        from unittest.mock import patch
+        with patch('src.ui.components.render_clear_conversation_dialog') as mock_dialog:
+            # Call function
+            render_settings_panel()
+
+            # Verify the dialog was called
+            mock_dialog.assert_called_once()
 
 
 class TestAgentInitializationAndProcessing:

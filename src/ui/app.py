@@ -24,6 +24,7 @@ from src.search.tavily_client import TavilyClient
 from src.ui.components import (
     apply_f1_theme,
     render_about_modal,
+    render_clear_conversation_dialog,
     render_error_message,
     render_input_validation_error,
     render_message,
@@ -209,12 +210,12 @@ def render_sidebar() -> None:
         st.metric("Messages", msg_count)
 
         # Clear conversation button
-        if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+        if st.button(
+            "🗑️ Clear Conversation",
+            use_container_width=True,
+            disabled=len(st.session_state.messages) == 0,
+        ):
+            render_clear_conversation_dialog()
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):

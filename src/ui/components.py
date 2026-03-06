@@ -1440,6 +1440,31 @@ def format_timestamp(dt: datetime) -> str:
         return dt.strftime("%b %d, %Y")
 
 
+@st.dialog("Clear Conversation?")
+def render_clear_conversation_dialog() -> None:
+    """Render a confirmation dialog for clearing the conversation.
+
+    This prevents accidental data loss from clicking the clear button.
+    """
+    st.warning("Are you sure you want to delete all messages? This action cannot be undone.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+
+    with col2:
+        if st.button("🗑️ Clear", type="primary", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info(
+                "conversation_cleared",
+                session_id=st.session_state.get("session_id", "unknown"),
+            )
+            st.rerun()
+
+
 def render_settings_panel() -> None:
     """Render collapsible settings panel positioned below header.
 
@@ -1525,15 +1550,9 @@ def render_settings_panel() -> None:
                 use_container_width=True,
                 key="settings_clear",
                 help="Delete all messages in the current conversation",
+                disabled=len(st.session_state.messages) == 0,
             ):
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "conversation_cleared",
-                    session_id=st.session_state.get("session_id", "unknown"),
-                )
-                st.rerun()
+                render_clear_conversation_dialog()
 
         with col2:
             if st.button(
