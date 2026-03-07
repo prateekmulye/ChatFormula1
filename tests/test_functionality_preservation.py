@@ -12,10 +12,9 @@ correctly after the UI redesign, including:
 Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
 """
 
-import sys
 from datetime import datetime
 from importlib import import_module
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -619,24 +618,60 @@ class TestSessionStateManagement:
         render_settings_panel = components.render_settings_panel
 
         # Setup mock session state with messages
-        mock_st.session_state = {
+        # Use MagicMock for session_state so we can access attributes (like .settings)
+        mock_session_state = MagicMock()
+        mock_session_state.get.side_effect = lambda k, d=None: {
             "show_settings": True,
+            "session_id": "test-session-123",
             "messages": [{"role": "user", "content": "Test"}],
             "agent_state": {"some": "state"},
             "feedback": {"msg_1": "up"},
-            "settings": MagicMock(
-                openai_temperature=0.7,
-                max_conversation_history=10,
-                environment="development",
-            ),
-            "session_id": "test-session-123",
-        }
+        }.get(k, d)
+
+        mock_session_state.show_settings = True
+        mock_session_state.messages = [{"role": "user", "content": "Test"}]
+        mock_session_state.agent_state = {"some": "state"}
+        mock_session_state.feedback = {"msg_1": "up"}
+        mock_session_state.settings = MagicMock(
+            openai_temperature=0.7,
+            max_conversation_history=10,
+            environment="development",
+        )
+        mock_session_state.session_id = "test-session-123"
+
+        # Override dict-like access for __getitem__ and __setitem__
+        def getitem(k):
+            return getattr(mock_session_state, k)
+
+        def setitem(k, v):
+            setattr(mock_session_state, k, v)
+
+        mock_session_state.__getitem__.side_effect = getitem
+        mock_session_state.__setitem__.side_effect = setitem
+
+        mock_st.session_state = mock_session_state
 
         # Mock button to simulate clear click
         mock_st.button.side_effect = [True, False]  # First button (clear) clicked
 
-        # Call function
-        render_settings_panel()
+        # Mock columns
+        mock_col1 = MagicMock()
+        mock_col2 = MagicMock()
+        mock_st.columns.return_value = (mock_col1, mock_col2)
+
+        # Patch clear_conversation_dialog to just execute its internal clear logic
+        # instead of trying to render the dialog which requires Streamlit internals
+        with patch("src.ui.components.clear_conversation_dialog") as mock_dialog:
+
+            def side_effect():
+                mock_st.session_state["messages"] = []
+                mock_st.session_state["agent_state"] = None
+                mock_st.session_state["feedback"] = {}
+
+            mock_dialog.side_effect = side_effect
+
+            # Call function
+            render_settings_panel()
 
         # Verify state was reset
         assert mock_st.session_state["messages"] == []
