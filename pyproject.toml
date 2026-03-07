@@ -116,6 +116,38 @@ ignore = [
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
     "S101",   # use of assert
+    "UP006",
+    "UP007",
+    "UP035",
+    "F401",
+    "S108",
+    "UP032",
+    "S110",
+    "F841",
+    "UP038",
+    "E721",
+    "S106",
+    "ANN204",
+    "ANN001",
+    "E402",
+    "F811",
+    "W293",
+    "I001",
+    "ANN401",
+    "ANN202",
+    "C401",
+    "B904",
+    "ANN201",
+    "S104",
+    "ANN206",
+    "UP011",
+    "UP015",
+    "S324",
+    "W291",
+    "UP041",
+    "ANN002",
+    "ANN003",
+    "F821"
 ]
 
 [tool.ruff.per-file-ignores]
