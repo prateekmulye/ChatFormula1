@@ -147,8 +147,6 @@ class TestRateLimiter:
         assert limiter.burst_size == 60
 
 
-import pytest
-
 @pytest.mark.asyncio
 class TestAPIKeyValidation:
     """Tests for API key validation."""
