@@ -909,7 +909,7 @@ async def create_api_key(request: APIKeyCreateRequest) -> APIKeyResponse:
     )
 
     manager = get_api_key_manager()
-    raw_key, api_key = manager.generate_key(
+    raw_key, api_key = await manager.generate_key(
         name=request.name,
         scopes=request.scopes,
         expires_in_days=request.expires_in_days,
@@ -1033,7 +1033,7 @@ async def rotate_api_key(key_id: str) -> APIKeyResponse:
     logger.info("rotating_api_key", key_id=key_id)
 
     manager = get_api_key_manager()
-    result = manager.rotate_key(key_id)
+    result = await manager.rotate_key(key_id)
 
     if not result:
         raise HTTPException(

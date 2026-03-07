@@ -4,7 +4,7 @@ This module provides authentication mechanisms including API key validation
 and optional JWT token support.
 """
 
-import hashlib
+import bcrypt
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
@@ -12,6 +12,7 @@ from typing import Optional
 import structlog
 from fastapi import HTTPException, Request, Security, status
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
@@ -40,10 +41,10 @@ class APIKeyManager:
     def __init__(self):
         """Initialize API key manager."""
         # In production, store keys in a database
-        self.keys: dict[str, APIKey] = {}
+        self.keys: dict[str, APIKey] = {}  # Indexed by key_id
         logger.info("api_key_manager_initialized")
 
-    def generate_key(
+    async def generate_key(
         self,
         name: str,
         scopes: Optional[list[str]] = None,
@@ -61,14 +62,15 @@ class APIKeyManager:
         Returns:
             Tuple of (raw_key, api_key_model)
         """
-        # Generate random key
-        raw_key = f"f1s_{secrets.token_urlsafe(32)}"
+        # Generate key ID and secret
+        key_id = secrets.token_hex(8)
+        secret = secrets.token_hex(32)
 
-        # Hash the key for storage
-        key_hash = self._hash_key(raw_key)
+        # Format key
+        raw_key = f"f1s_{key_id}_{secret}"
 
-        # Generate key ID
-        key_id = secrets.token_urlsafe(16)
+        # Hash the secret for storage
+        key_hash = await self._hash_key(secret)
 
         # Calculate expiration
         expires_at = None
@@ -86,7 +88,7 @@ class APIKeyManager:
         )
 
         # Store key
-        self.keys[key_hash] = api_key
+        self.keys[key_id] = api_key
 
         logger.info(
             "api_key_generated",
@@ -98,7 +100,7 @@ class APIKeyManager:
 
         return raw_key, api_key
 
-    def validate_key(self, raw_key: str) -> Optional[APIKey]:
+    async def validate_key(self, raw_key: str) -> Optional[APIKey]:
         """Validate an API key.
 
         Args:
@@ -107,14 +109,31 @@ class APIKeyManager:
         Returns:
             APIKey model if valid, None otherwise
         """
-        # Hash the provided key
-        key_hash = self._hash_key(raw_key)
+        if not raw_key.startswith("f1s_"):
+            return None
 
-        # Look up key
-        api_key = self.keys.get(key_hash)
+        parts = raw_key.split("_")
+        if len(parts) != 3:
+            return None
+
+        _, key_id, secret = parts
+
+        # Look up key by ID
+        api_key = self.keys.get(key_id)
 
         if not api_key:
             logger.warning("api_key_not_found")
+            return None
+
+        # Verify password using bcrypt
+        is_valid = await run_in_threadpool(
+            bcrypt.checkpw,
+            secret.encode(),
+            api_key.key_hash.encode(),
+        )
+
+        if not is_valid:
+            logger.warning("api_key_invalid_secret")
             return None
 
         # Check if key is active
@@ -139,16 +158,16 @@ class APIKeyManager:
         Returns:
             True if key was revoked, False if not found
         """
-        for key_hash, api_key in self.keys.items():
-            if api_key.key_id == key_id:
-                api_key.is_active = False
-                logger.info("api_key_revoked", key_id=key_id)
-                return True
+        api_key = self.keys.get(key_id)
+        if api_key:
+            api_key.is_active = False
+            logger.info("api_key_revoked", key_id=key_id)
+            return True
 
         logger.warning("api_key_not_found_for_revocation", key_id=key_id)
         return False
 
-    def rotate_key(self, key_id: str) -> Optional[tuple[str, APIKey]]:
+    async def rotate_key(self, key_id: str) -> Optional[tuple[str, APIKey]]:
         """Rotate an API key (generate new key with same settings).
 
         Args:
@@ -158,18 +177,14 @@ class APIKeyManager:
             Tuple of (new_raw_key, new_api_key) if successful, None otherwise
         """
         # Find existing key
-        old_key = None
-        for key_hash, api_key in self.keys.items():
-            if api_key.key_id == key_id:
-                old_key = api_key
-                break
+        old_key = self.keys.get(key_id)
 
         if not old_key:
             logger.warning("api_key_not_found_for_rotation", key_id=key_id)
             return None
 
         # Generate new key with same settings
-        new_raw_key, new_api_key = self.generate_key(
+        new_raw_key, new_api_key = await self.generate_key(
             name=f"{old_key.name} (rotated)",
             scopes=old_key.scopes,
             expires_in_days=None,  # Reset expiration
@@ -203,16 +218,18 @@ class APIKeyManager:
 
         return keys
 
-    def _hash_key(self, raw_key: str) -> str:
-        """Hash an API key for storage.
+    async def _hash_key(self, secret: str) -> str:
+        """Hash an API key secret for storage using bcrypt in a thread pool.
 
         Args:
-            raw_key: Raw API key
+            secret: Raw API key secret
 
         Returns:
             Hashed key
         """
-        return hashlib.sha256(raw_key.encode()).hexdigest()
+        salt = bcrypt.gensalt()
+        hashed = await run_in_threadpool(bcrypt.hashpw, secret.encode(), salt)
+        return hashed.decode()
 
 
 # Global API key manager
@@ -262,7 +279,7 @@ async def verify_api_key(
 
     # Validate key
     manager = get_api_key_manager()
-    validated_key = manager.validate_key(api_key)
+    validated_key = await manager.validate_key(api_key)
 
     if not validated_key:
         logger.warning("api_key_invalid")
@@ -291,7 +308,7 @@ async def verify_api_key_optional(
 
     # Validate key
     manager = get_api_key_manager()
-    return manager.validate_key(api_key)
+    return await manager.validate_key(api_key)
 
 
 def require_scope(required_scope: str):
@@ -384,7 +401,7 @@ class AuthenticationMiddleware:
             api_key = request.headers.get("X-API-Key")
             if api_key:
                 manager = get_api_key_manager()
-                validated_key = manager.validate_key(api_key)
+                validated_key = await manager.validate_key(api_key)
                 if validated_key:
                     # Store in request state for rate limiter
                     request.state.api_key = validated_key
@@ -404,7 +421,7 @@ class AuthenticationMiddleware:
 
         # Validate key
         manager = get_api_key_manager()
-        validated_key = manager.validate_key(api_key)
+        validated_key = await manager.validate_key(api_key)
 
         if not validated_key:
             return JSONResponse(
