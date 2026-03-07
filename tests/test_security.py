@@ -147,15 +147,18 @@ class TestRateLimiter:
         assert limiter.burst_size == 60
 
 
+import pytest
+
+@pytest.mark.asyncio
 class TestAPIKeyValidation:
     """Tests for API key validation."""
 
-    def test_api_key_generation(self):
+    async def test_api_key_generation(self):
         """Test API key generation."""
         from src.security.authentication import APIKeyManager
 
         manager = APIKeyManager()
-        raw_key, api_key = manager.generate_key(
+        raw_key, api_key = await manager.generate_key(
             name="Test Key",
             scopes=["chat"],
         )
@@ -165,61 +168,61 @@ class TestAPIKeyValidation:
         assert api_key.is_active is True
         assert "chat" in api_key.scopes
 
-    def test_api_key_validation(self):
+    async def test_api_key_validation(self):
         """Test API key validation."""
         from src.security.authentication import APIKeyManager
 
         manager = APIKeyManager()
-        raw_key, api_key = manager.generate_key(name="Test Key")
+        raw_key, api_key = await manager.generate_key(name="Test Key")
 
         # Should validate successfully
-        validated = manager.validate_key(raw_key)
+        validated = await manager.validate_key(raw_key)
         assert validated is not None
         assert validated.key_id == api_key.key_id
 
-    def test_invalid_api_key(self):
+    async def test_invalid_api_key(self):
         """Test validation of invalid API key."""
         from src.security.authentication import APIKeyManager
 
         manager = APIKeyManager()
 
         # Should fail validation
-        validated = manager.validate_key("invalid_key")
+        validated = await manager.validate_key("invalid_key")
         assert validated is None
 
-    def test_api_key_revocation(self):
+    async def test_api_key_revocation(self):
         """Test API key revocation."""
         from src.security.authentication import APIKeyManager
 
         manager = APIKeyManager()
-        raw_key, api_key = manager.generate_key(name="Test Key")
+        raw_key, api_key = await manager.generate_key(name="Test Key")
 
         # Revoke key
         success = manager.revoke_key(api_key.key_id)
         assert success is True
 
         # Should fail validation after revocation
-        validated = manager.validate_key(raw_key)
+        validated = await manager.validate_key(raw_key)
         assert validated is None
 
-    def test_api_key_rotation(self):
+    async def test_api_key_rotation(self):
         """Test API key rotation."""
         from src.security.authentication import APIKeyManager
 
         manager = APIKeyManager()
-        raw_key, api_key = manager.generate_key(name="Test Key")
+        raw_key, api_key = await manager.generate_key(name="Test Key")
 
         # Rotate key
-        result = manager.rotate_key(api_key.key_id)
+        result = await manager.rotate_key(api_key.key_id)
         assert result is not None
 
         new_raw_key, new_api_key = result
 
         # Old key should be invalid
-        assert manager.validate_key(raw_key) is None
+        assert await manager.validate_key(raw_key) is None
 
         # New key should be valid
-        assert manager.validate_key(new_raw_key) is not None
+        assert await manager.validate_key(new_raw_key) is not None
 
 
 class TestRequestSigning:

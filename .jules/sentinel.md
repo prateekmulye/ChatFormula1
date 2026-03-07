@@ -1,0 +1,5 @@
+## 2024-03-07 - Secure API Key Storage and Validation
+
+**Vulnerability:** API keys were being hashed with SHA-256 for storage, which is insufficient for secure secret storage, and stored/retrieved using the hash as the dictionary key which required hashing the incoming raw key before lookup.
+**Learning:** For secure storage of API keys and passwords, `bcrypt` should be used instead of SHA-256, specifically avoiding `passlib` due to compatibility issues. To prevent blocking the FastAPI event loop, CPU-bound `bcrypt` functions must be run via `starlette.concurrency.run_in_threadpool`. Additionally, a multi-part key format `f1s_{key_id}_{secret}` allows `key_id` to be used for O(1) retrieval during rotation or validation while the `secret` part is securely hashed using `bcrypt` instead of hashing the whole key.
+**Prevention:** Always use bcrypt for API key/password hashing. Use multi-part keys with a public ID and secret component. Wrap CPU-bound crypto functions in `run_in_threadpool` within async contexts.
