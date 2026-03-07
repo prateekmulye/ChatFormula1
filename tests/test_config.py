@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from src.config.settings import Settings
-from src.exceptions import ConfigurationError
 
 
 @pytest.mark.unit
