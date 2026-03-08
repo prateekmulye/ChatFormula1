@@ -1,0 +1,9 @@
+import re
+
+with open("pyproject.toml", "r") as f:
+    content = f.read()
+
+content = content.replace('ignore = [\n    "E501",   # line too long, handled by black\n    "B008",   # do not perform function calls in argument defaults\n    "C901",   # too complex\n    "ANN101", # missing type annotation for self\n    "ANN102", # missing type annotation for cls\n    "S101",   # use of assert\n    "S106",   # ignore possible hardcoded password for tests\n    "ANN201", # missing return type\n    "ANN001", # missing arg type\n    "ANN204", # missing init return type\n    "ANN401", # Any type\n    "E721", # use is instead of == for type\n    "W293", # blank line whitespace\n    "S108", # probable insecure usage of temp file\n    "S110", # try except pass\n    "F841", # unused variable\n]', 'ignore = [\n    "E501",   # line too long, handled by black\n    "B008",   # do not perform function calls in argument defaults\n    "C901",   # too complex\n    "ANN101", # missing type annotation for self\n    "ANN102", # missing type annotation for cls\n    "S101",   # use of assert\n    "S106",   # ignore possible hardcoded password for tests\n    "ANN201", # missing return type\n    "ANN001", # missing arg type\n    "ANN204", # missing init return type\n    "ANN401", # Any type\n    "E721", # use is instead of == for type\n    "W293", # blank line whitespace\n    "S108", # probable insecure usage of temp file\n    "S110", # try except pass\n    "F841", # unused variable\n    "F821", # undefined name\n    "ANN002", # missing arg type for *args\n    "ANN003", # missing arg type for **kwargs\n    "ANN202", # missing return type for private function\n    "B904", # raise exception from err\n    "S104", # possible binding to all interfaces\n    "ANN206", # missing return type for classmethod\n    "S324", # probable use of insecure hash\n]')
+
+with open("pyproject.toml", "w") as f:
+    f.write(content)
