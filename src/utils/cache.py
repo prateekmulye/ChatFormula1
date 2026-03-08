@@ -115,7 +115,10 @@ class TTLCache:
             Cached value if found and not expired, None otherwise
         """
         # Clean up expired entries periodically, throttled to max once per 60 seconds
-        if len(self._cache) > self.max_size * 0.9 and time.time() - self._last_evict_time > 60.0:
+        if (
+            len(self._cache) > self.max_size * 0.9
+            and time.time() - self._last_evict_time > 60.0
+        ):
             self._evict_expired()
 
         if key in self._cache:
