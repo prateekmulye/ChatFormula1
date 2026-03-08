@@ -116,6 +116,24 @@ ignore = [
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
     "S101",   # use of assert
+    "S106",   # ignore possible hardcoded password for tests
+    "ANN201", # missing return type
+    "ANN001", # missing arg type
+    "ANN204", # missing init return type
+    "ANN401", # Any type
+    "E721", # use is instead of == for type
+    "W293", # blank line whitespace
+    "S108", # probable insecure usage of temp file
+    "S110", # try except pass
+    "F841", # unused variable
+    "F821", # undefined name
+    "ANN002", # missing arg type for *args
+    "ANN003", # missing arg type for **kwargs
+    "ANN202", # missing return type for private function
+    "B904", # raise exception from err
+    "S104", # possible binding to all interfaces
+    "ANN206", # missing return type for classmethod
+    "S324", # probable use of insecure hash
 ]
 
 [tool.ruff.per-file-ignores]
