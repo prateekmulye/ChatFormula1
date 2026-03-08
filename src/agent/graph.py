@@ -4,7 +4,7 @@ This module implements the main agent graph that orchestrates the RAG pipeline,
 including query analysis, routing, retrieval, context ranking, and generation.
 """
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import structlog
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -18,7 +18,7 @@ from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
 from src.vector_store.manager import VectorStoreManager
 
-from .state import AgentState, QueryAnalysis, SearchDecision
+from .state import AgentState, QueryAnalysis
 
 logger = structlog.get_logger(__name__)
 
@@ -153,7 +153,7 @@ class F1AgentGraph:
 
         return graph
 
-    def compile(self, checkpointer: Optional[MemorySaver] = None) -> Any:
+    def compile(self, checkpointer: MemorySaver | None = None) -> Any:
         """Compile the graph with optional checkpointing.
 
         Args:
@@ -479,6 +479,7 @@ Be accurate and concise."""
         import time
 
         start_time = time.time()
+        import asyncio
 
         logger.info("performing_parallel_retrieval")
 
@@ -864,7 +865,7 @@ Provide a concise, accurate answer using the context. Cite sources."""
 
     def _build_vector_filters(
         self, entities: dict[str, Any]
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Build Pinecone metadata filters from extracted entities.
 
         Args:
