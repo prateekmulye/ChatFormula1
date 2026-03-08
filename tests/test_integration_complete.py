@@ -3,12 +3,10 @@
 Tests the integration of UI, agent, tools, and caching.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
