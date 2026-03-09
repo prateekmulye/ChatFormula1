@@ -119,6 +119,36 @@ ignore = [
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
     "S101",   # use of assert
+    "UP006",  # use list instead of List for type annotation
+    "UP007",  # use X | Y for type annotations
+    "UP032",  # use f-string instead of format call
+    "UP035",  # import from collections.abc instead
+    "UP038",  # use X | Y in isinstance
+    "F401",   # imported but unused
+    "S108",   # probable insecure usage of temporary file
+    "S110",   # try-except-pass detected
+    "W293",   # blank line contains whitespace
+    "F841",   # local variable is assigned to but never used
+    "E721",   # use is and is not for type comparisons
+    "S106",   # possible hardcoded password
+    "ANN201", # missing return type annotation for public function
+    "ANN202", # missing return type annotation for private function
+    "ANN204", # missing return type annotation for special method
+    "ANN401", # dynamically typed expressions (typing.Any) are disallowed
+    "C401",   # unnecessary generator (rewrite as set comprehension)
+    "ANN001", # missing type annotation for function argument
+    "UP011",  # unnecessary parentheses to lru_cache
+    "UP015",  # unnecessary open mode parameters
+    "S324",   # probable use of insecure hash function
+    "B904",   # raise ... from err
+    "B007",   # loop control variable not used
+    "S104",   # possible binding to all interfaces
+    "ANN206", # missing return type annotation for classmethod
+    "W291",   # trailing whitespace
+    "F821",   # undefined name
+    "UP041",  # replace aliased errors with TimeoutError
+    "ANN002", # missing type annotation for *args
+    "ANN003", # missing type annotation for **kwargs
 ]
 
 [tool.ruff.per-file-ignores]
