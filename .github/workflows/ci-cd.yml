@@ -98,9 +98,10 @@ jobs:
       - name: Run unit tests
         run: poetry run pytest -m unit --cov=src --cov-report=xml --cov-report=term-missing
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || 'sk-dummy-key' }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY || 'dummy-key' }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY || 'dummy-key' }}
+          ENVIRONMENT: "development"
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3

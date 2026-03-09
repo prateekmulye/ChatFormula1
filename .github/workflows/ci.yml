@@ -109,7 +109,7 @@ jobs:
           OPENAI_API_KEY: "sk-test-key"
           PINECONE_API_KEY: "test-key"
           TAVILY_API_KEY: "test-key"
-          ENVIRONMENT: "test"
+          ENVIRONMENT: "development"
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
