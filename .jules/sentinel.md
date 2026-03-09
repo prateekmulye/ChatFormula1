@@ -1,0 +1,4 @@
+## 2025-02-27 - Insecure Hash Function usage (MD5)
+**Vulnerability:** The application was using `hashlib.md5` for document deduplication hashing. MD5 is an obsolete, cryptographically insecure hashing algorithm vulnerable to collision attacks, flagged by static analysis tools (e.g., Bandit `S324`).
+**Learning:** Even in non-security contexts like deduplication or caching, insecure hash functions like MD5 or SHA-1 should be entirely eliminated from the codebase. They trigger security scanner alarms and can introduce subtle vulnerabilities if their usage ever overlaps with security or integrity boundaries.
+**Prevention:** Always use SHA-256 (`hashlib.sha256`) as the minimum standard hashing algorithm for all non-security operations (like caches, ETags, and deduplication) to ensure robust collision resistance and compliance with static analysis.
