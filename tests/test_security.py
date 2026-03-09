@@ -229,7 +229,7 @@ class TestRequestSigning:
         """Test request signing."""
         from src.security.request_signing import RequestSigner
 
-        signer = RequestSigner(secret_key="test-secret")
+        signer = RequestSigner(secret_key="test-secret")  # noqa: S106
 
         signature = signer.sign_request(
             method="POST",
@@ -244,7 +244,7 @@ class TestRequestSigning:
         """Test signature verification."""
         from src.security.request_signing import RequestSigner
 
-        signer = RequestSigner(secret_key="test-secret")
+        signer = RequestSigner(secret_key="test-secret")  # noqa: S106
 
         # Sign request
         signature = signer.sign_request(
@@ -267,7 +267,7 @@ class TestRequestSigning:
         """Test verification of invalid signature."""
         from src.security.request_signing import RequestSigner
 
-        signer = RequestSigner(secret_key="test-secret")
+        signer = RequestSigner(secret_key="test-secret")  # noqa: S106
 
         # Verify invalid signature
         is_valid = signer.verify_signature(
@@ -283,7 +283,7 @@ class TestRequestSigning:
         """Test detection of signature tampering."""
         from src.security.request_signing import RequestSigner
 
-        signer = RequestSigner(secret_key="test-secret")
+        signer = RequestSigner(secret_key="test-secret")  # noqa: S106
 
         # Sign request
         signature = signer.sign_request(
