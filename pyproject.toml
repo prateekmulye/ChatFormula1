@@ -90,6 +90,10 @@ extend-exclude = '''
   | \.venv
   | build
   | dist
+  # Unmodified legacy files with formatting issues
+  | src/prompts/system_prompts.py
+  | src/prompts/rag_prompts.py
+  | src/ui/app.py
 )/
 '''
 
