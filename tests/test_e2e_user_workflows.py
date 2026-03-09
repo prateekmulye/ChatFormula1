@@ -339,7 +339,7 @@ class TestErrorScenarios:
 
         try:
             await agent.run(state1)
-        except Exception:
+        except Exception:  # noqa: S110
             pass  # Expected to fail
 
         # Follow-up query should work

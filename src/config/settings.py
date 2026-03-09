@@ -121,13 +121,13 @@ class Settings(BaseSettings):
         le=50,
         description="Maximum conversation history to maintain",
     )
-    environment: Literal["development", "staging", "production"] = Field(
+    environment: Literal["development", "staging", "production", "test"] = Field(
         default="development",
         description="Application environment",
     )
 
     # API Configuration
-    api_host: str = Field(default="0.0.0.0", description="API host")
+    api_host: str = Field(default="0.0.0.0", description="API host")  # noqa: S104
     api_port: int = Field(default=8000, ge=1024, le=65535, description="API port")
     api_reload: bool = Field(
         default=True,
