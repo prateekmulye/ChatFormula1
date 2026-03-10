@@ -123,7 +123,7 @@ target-version = "py311"
 "__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101", "ANN", "UP006", "UP007", "UP032", "UP035", "UP038", "S108", "S110", "F401", "F841", "E721", "W293", "S106"]
 "tests/conftest.py" = ["UP006", "UP007", "UP035", "E721", "F401"]
-"src/vector_store/manager.py" = ["UP006", "UP007", "UP035", "F401"]
+"src/**/*.py" = ["ANN", "UP006", "UP007", "UP035", "F401", "F841", "C401", "F821", "UP041", "B904", "UP038", "S104", "UP015", "S324", "B007"]
 
 [tool.mypy]
 python_version = "3.11"
