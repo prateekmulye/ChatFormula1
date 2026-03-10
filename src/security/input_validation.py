@@ -7,8 +7,6 @@ XSS attacks, and other security vulnerabilities.
 import re
 
 import structlog
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
@@ -18,7 +16,7 @@ class ValidationResult(BaseModel):
     """Result of input validation."""
 
     valid: bool = Field(..., description="Whether input is valid")
-    sanitized_input: Optional[str] = Field(None, description="Sanitized input if valid")
+    sanitized_input: str | None = Field(None, description="Sanitized input if valid")
     errors: list[str] = Field(default_factory=list, description="Validation errors")
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
 
