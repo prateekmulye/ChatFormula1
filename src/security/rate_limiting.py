@@ -5,11 +5,11 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
+
+from src.config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -20,7 +20,7 @@ class RateLimitExceeded(HTTPException):
     def __init__(
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
-        retry_after: Optional[int] = None,
+        retry_after: int | None = None,
     ):
         """Initialize rate limit exception.
 
@@ -99,7 +99,7 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        burst_size: Optional[int] = None,
+        burst_size: int | None = None,
     ):
         """Initialize rate limiter.
 
@@ -136,13 +136,19 @@ class RateLimiter:
             return f"user:{user_id}"
 
         # Fall back to IP address
+        client_ip = request.client.host if request.client else "unknown"
+
         # Check for forwarded IP (behind proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-            # Take the first IP in the chain
-            client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
+            settings = get_settings()
+            trusted_proxies = settings.trusted_proxies
+
+            # If the direct client is a trusted proxy, or if we trust all proxies (*),
+            # we can use the X-Forwarded-For header
+            if client_ip in trusted_proxies or "*" in trusted_proxies:
+                # Take the first IP in the chain (the original client)
+                client_ip = forwarded_for.split(",")[0].strip()
 
         return f"ip:{client_ip}"
 
@@ -296,13 +302,13 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter(
     requests_per_minute: int = 60,
     requests_per_hour: int = 1000,
-    burst_size: Optional[int] = None,
+    burst_size: int | None = None,
 ) -> RateLimiter:
     """Get or create global rate limiter instance.
 
