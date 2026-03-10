@@ -10,11 +10,11 @@ This module implements the main Streamlit application with:
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import streamlit as st
 import structlog
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -103,7 +103,7 @@ def initialize_session_state() -> None:
         st.session_state.last_error = None
 
 
-def initialize_agent() -> F1AgentGraph | None:
+def initialize_agent() -> Optional[F1AgentGraph]:
     """Initialize the agent graph and dependencies.
 
     Returns:
@@ -214,11 +214,7 @@ def render_sidebar() -> None:
             "🗑️ Clear Conversation",
             use_container_width=True,
             disabled=not has_messages,
-            help=(
-                "Delete all messages in the current conversation"
-                if has_messages
-                else "No messages to clear"
-            ),
+            help="Delete all messages in the current conversation" if has_messages else "No messages to clear",
         ):
             st.session_state.messages = []
             st.session_state.agent_state = None
@@ -258,8 +254,7 @@ def render_sidebar() -> None:
 
         # Help section
         with st.expander("❓ Help & Tips"):
-            st.markdown(
-                """
+            st.markdown("""
             **What can I ask?**
             - Current F1 standings and results
             - Historical statistics and records
@@ -272,13 +267,11 @@ def render_sidebar() -> None:
             - Mention years, drivers, or races for better context
             - Ask follow-up questions naturally
             - Use the feedback buttons to help improve responses
-            """
-            )
+            """)
 
         # About section
         with st.expander("ℹ️ About"):
-            st.markdown(
-                """
+            st.markdown("""
             **ChatFormula1** is an AI-powered Formula 1 expert assistant
             that combines:
             - Real-time F1 data and news
@@ -295,8 +288,7 @@ def render_sidebar() -> None:
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
-            """
-            )
+            """)
 
 
 def render_header() -> None:
@@ -349,7 +341,7 @@ def render_header() -> None:
             st.rerun()
 
 
-def render_chat_interface(agent: F1AgentGraph | None) -> None:
+def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
     """Render the main chat interface with message history and input.
 
     This function implements the ChatGPT/Anthropic UX pattern where:

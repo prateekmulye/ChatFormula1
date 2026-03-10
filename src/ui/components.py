@@ -9,7 +9,7 @@ This module provides components for:
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import streamlit as st
 import structlog
@@ -760,8 +760,8 @@ def apply_f1_theme() -> None:
 def render_message(
     role: str,
     content: str,
-    metadata: dict[str, Any] | None = None,
-    message_id: str | None = None,
+    metadata: Optional[dict[str, Any]] = None,
+    message_id: Optional[str] = None,
 ) -> None:
     """Render a chat message with role-based styling.
 
@@ -782,7 +782,7 @@ def render_message(
 
 def render_message_metadata(
     metadata: dict[str, Any],
-    message_id: str | None = None,
+    message_id: Optional[str] = None,
 ) -> None:
     """Render metadata section for assistant messages.
 
@@ -897,6 +897,7 @@ def render_feedback_buttons(message_id: str) -> None:
     Requirements: 4.6, 5.5
     """
     # Check if feedback already given
+    feedback_key = f"feedback_{message_id}"
     current_feedback = st.session_state.feedback.get(message_id)
 
     col1, col2 = st.columns(2)
@@ -1277,31 +1278,27 @@ def render_about_modal() -> None:
     try:
 
         @st.dialog("About ChatFormula1")
-        def show_about() -> None:
+        def show_about():
             """Inner function to display about modal content."""
             # Project title with F1 emoji
             st.markdown("## 🏎️ ChatFormula1")
 
             # Project description
-            st.markdown(
-                """
+            st.markdown("""
             An AI-powered Formula 1 expert assistant that combines real-time
             data, historical knowledge, and advanced language models to provide
             comprehensive answers about Formula 1 racing.
-            """
-            )
+            """)
 
             # Features list
             st.markdown("### ✨ Features")
-            st.markdown(
-                """
+            st.markdown("""
             - **Real-time F1 Data**: Current standings, race results, and live updates
             - **Historical Statistics**: Comprehensive F1 records and historical data
             - **Data-driven Predictions**: AI-powered race and championship predictions
             - **RAG-powered Knowledge**: Retrieval-Augmented Generation for accurate responses
             - **Natural Conversations**: Chat naturally about any F1 topic
-            """
-            )
+            """)
 
             st.divider()
 
@@ -1329,15 +1326,13 @@ def render_about_modal() -> None:
 
             # Technology stack
             st.markdown("### 🛠️ Built With")
-            st.markdown(
-                """
+            st.markdown("""
             - **LangChain & LangGraph**: Agent orchestration and workflow
             - **OpenAI GPT-4**: Language model for natural conversations
             - **Pinecone**: Vector database for knowledge retrieval
             - **Tavily**: Real-time web search integration
             - **Streamlit**: Interactive web interface
-            """
-            )
+            """)
 
             # Footer with version info
             st.markdown("---")
@@ -1356,8 +1351,7 @@ def render_about_modal() -> None:
         # Display fallback content
         st.error("⚠️ Unable to display About modal. Here's the information:")
 
-        st.markdown(
-            """
+        st.markdown("""
         ### 🏎️ ChatFormula1
 
         An AI-powered Formula 1 expert assistant combining real-time data,
@@ -1370,8 +1364,7 @@ def render_about_modal() -> None:
         - GitHub: https://github.com/prateekmulye
 
         **Built with:** LangChain, LangGraph, OpenAI, Pinecone, Tavily, and Streamlit
-        """
-        )
+        """)
 
 
 def render_welcome_message() -> None:
@@ -1380,8 +1373,7 @@ def render_welcome_message() -> None:
     DEPRECATED: Use render_welcome_screen() instead for the new UI design.
     This function is kept for backward compatibility.
     """
-    st.markdown(
-        """
+    st.markdown("""
     ### Welcome to ChatFormula1! 🏎️
 
     I'm your AI-powered Formula 1 expert assistant. I can help you with:
@@ -1401,8 +1393,7 @@ def render_welcome_message() -> None:
     - "What are the current technical regulations?"
 
     Just type your question below to get started! 🚀
-    """
-    )
+    """)
 
 
 def render_input_validation_error(error_type: str) -> None:
@@ -1534,11 +1525,7 @@ def render_settings_panel() -> None:
                 "🗑️ Clear Conversation",
                 use_container_width=True,
                 key="settings_clear",
-                help=(
-                    "Delete all messages in the current conversation"
-                    if has_messages
-                    else "No messages to clear"
-                ),
+                help="Delete all messages in the current conversation" if has_messages else "No messages to clear",
                 disabled=not has_messages,
             ):
                 st.session_state.messages = []
