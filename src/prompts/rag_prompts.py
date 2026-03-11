@@ -145,13 +145,15 @@ CONVERSATIONAL_RAG_PROMPT = ChatPromptTemplate.from_messages(
     [
         SystemMessage(content="You are ChatFormula1, an expert Formula 1 analyst."),
         MessagesPlaceholder(variable_name="chat_history", optional=True),
-        HumanMessagePromptTemplate.from_template("""**Retrieved Context:**
+        HumanMessagePromptTemplate.from_template(
+            """**Retrieved Context:**
 {context}
 
 **Current Question:**
 {query}
 
-Use the context above and our conversation history to answer the question."""),
+Use the context above and our conversation history to answer the question."""
+        ),
     ]
 )
 
