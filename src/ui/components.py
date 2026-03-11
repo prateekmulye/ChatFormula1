@@ -9,7 +9,7 @@ This module provides components for:
 """
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import streamlit as st
 import structlog
@@ -760,8 +760,8 @@ def apply_f1_theme() -> None:
 def render_message(
     role: str,
     content: str,
-    metadata: Optional[dict[str, Any]] = None,
-    message_id: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    message_id: str | None = None,
 ) -> None:
     """Render a chat message with role-based styling.
 
@@ -782,7 +782,7 @@ def render_message(
 
 def render_message_metadata(
     metadata: dict[str, Any],
-    message_id: Optional[str] = None,
+    message_id: str | None = None,
 ) -> None:
     """Render metadata section for assistant messages.
 
@@ -1516,6 +1516,25 @@ def render_settings_panel() -> None:
         msg_count = len(st.session_state.messages)
         st.metric("Messages in conversation", msg_count)
 
+        @st.dialog("Clear Conversation?")
+        def confirm_clear_conversation() -> None:
+            """Confirmation dialog for clearing the conversation."""
+            st.warning("Are you sure you want to clear the conversation? This action cannot be undone.")
+            col_cancel, col_clear = st.columns(2)
+            with col_cancel:
+                if st.button("Cancel", use_container_width=True, key="cancel_clear_btn"):
+                    st.rerun()
+            with col_clear:
+                if st.button("🗑️ Clear", use_container_width=True, type="primary", key="confirm_clear_btn"):
+                    st.session_state.messages = []
+                    st.session_state.agent_state = None
+                    st.session_state.feedback = {}
+                    logger.info(
+                        "conversation_cleared",
+                        session_id=st.session_state.get("session_id", "unknown"),
+                    )
+                    st.rerun()
+
         # Clear conversation and new session buttons in two columns
         col1, col2 = st.columns(2)
 
@@ -1525,15 +1544,9 @@ def render_settings_panel() -> None:
                 use_container_width=True,
                 key="settings_clear",
                 help="Delete all messages in the current conversation",
+                disabled=len(st.session_state.messages) == 0,
             ):
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "conversation_cleared",
-                    session_id=st.session_state.get("session_id", "unknown"),
-                )
-                st.rerun()
+                confirm_clear_conversation()
 
         with col2:
             if st.button(
