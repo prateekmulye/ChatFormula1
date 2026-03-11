@@ -1,0 +1,3 @@
+## 2024-03-20 - Adding Confirmation Dialog to Clear Conversation
+**Learning:** Destructive actions (like clearing conversation history) in Streamlit applications should use the `@st.dialog` pattern. This provides clear confirmation and avoids accidental data loss. Furthermore, dynamically disabling the button when there's nothing to clear (e.g., `disabled=len(st.session_state.messages) == 0`) improves micro-UX by giving accurate visual feedback on the system state.
+**Action:** Always implement `@st.dialog` for destructive actions and conditionally disable interactive elements when they are not applicable.
