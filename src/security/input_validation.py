@@ -21,13 +21,6 @@ class ValidationResult(BaseModel):
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
 
 
-# Pre-compile common regex patterns for performance optimization
-REPEATED_CHARS_REGEX = re.compile(r"(.)\1{50,}")
-WHITESPACE_REGEX = re.compile(r"[ \t]+")
-MULTIPLE_NEWLINES_REGEX = re.compile(r"\n{3,}")
-HTML_TAGS_REGEX = re.compile(r"<[^>]+>")
-
-
 class InputValidator:
     """Validator for user input with security checks."""
 
@@ -64,14 +57,6 @@ class InputValidator:
         r"os\.system",
     ]
 
-    # Pre-compile patterns at class level
-    SUSPICIOUS_REGEX = [
-        re.compile(pattern, re.IGNORECASE) for pattern in SUSPICIOUS_PATTERNS
-    ]
-    CODE_INJECTION_REGEX = [
-        re.compile(pattern, re.IGNORECASE) for pattern in CODE_INJECTION_PATTERNS
-    ]
-
     def __init__(self, strict_mode: bool = False) -> None:
         """Initialize input validator.
 
@@ -79,6 +64,17 @@ class InputValidator:
             strict_mode: If True, apply stricter validation rules
         """
         self.strict_mode = strict_mode
+        self._compile_patterns()
+
+    def _compile_patterns(self) -> None:
+        """Compile regex patterns for efficiency."""
+        self.suspicious_regex = [
+            re.compile(pattern, re.IGNORECASE) for pattern in self.SUSPICIOUS_PATTERNS
+        ]
+        self.code_injection_regex = [
+            re.compile(pattern, re.IGNORECASE)
+            for pattern in self.CODE_INJECTION_PATTERNS
+        ]
 
     def validate(self, user_input: str) -> ValidationResult:
         """Validate user input with security checks.
@@ -120,7 +116,7 @@ class InputValidator:
                 )
 
         # Check for suspicious patterns (prompt injection attempts)
-        for pattern in self.SUSPICIOUS_REGEX:
+        for pattern in self.suspicious_regex:
             if pattern.search(user_input):
                 if self.strict_mode:
                     errors.append(
@@ -138,7 +134,7 @@ class InputValidator:
                 break
 
         # Check for code injection patterns
-        for pattern in self.CODE_INJECTION_REGEX:
+        for pattern in self.code_injection_regex:
             if pattern.search(user_input):
                 errors.append("Input contains potentially malicious code patterns")
                 logger.warning(
@@ -163,7 +159,7 @@ class InputValidator:
                 warnings.append("Input has a high ratio of special characters")
 
         # Check for repeated characters (potential DoS)
-        if REPEATED_CHARS_REGEX.search(user_input):
+        if re.search(r"(.)\1{50,}", user_input):
             errors.append("Input contains excessive character repetition")
 
         # If validation failed, return early
@@ -211,14 +207,14 @@ class InputValidator:
         sanitized = user_input.replace("\x00", "")
 
         # Normalize whitespace (but preserve single newlines)
-        sanitized = WHITESPACE_REGEX.sub(" ", sanitized)
-        sanitized = MULTIPLE_NEWLINES_REGEX.sub("\n\n", sanitized)
+        sanitized = re.sub(r"[ \t]+", " ", sanitized)
+        sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
 
         # Remove leading/trailing whitespace
         sanitized = sanitized.strip()
 
         # Remove any HTML tags (basic sanitization)
-        sanitized = HTML_TAGS_REGEX.sub("", sanitized)
+        sanitized = re.sub(r"<[^>]+>", "", sanitized)
 
         # Remove control characters except newlines and tabs
         sanitized = "".join(
@@ -269,12 +265,12 @@ class InputSanitizer:
 
         # Remove HTML tags
         if self.remove_html:
-            sanitized = HTML_TAGS_REGEX.sub("", sanitized)
+            sanitized = re.sub(r"<[^>]+>", "", sanitized)
 
         # Normalize whitespace
         if self.normalize_whitespace:
-            sanitized = WHITESPACE_REGEX.sub(" ", sanitized)
-            sanitized = MULTIPLE_NEWLINES_REGEX.sub("\n\n", sanitized)
+            sanitized = re.sub(r"[ \t]+", " ", sanitized)
+            sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
 
         # Remove control characters
         if self.remove_control_chars:
