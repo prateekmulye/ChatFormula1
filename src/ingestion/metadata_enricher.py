@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
@@ -185,7 +185,18 @@ class MetadataEnricher:
         "news": ["announced", "confirmed", "reported", "breaking"],
     }
 
-    def __init__(self):
+    # Pre-compiled regex patterns for performance optimization
+    YEAR_PATTERN = re.compile(r"\b(19[5-9]\d|20\d{2}|21[0-4]\d)\b")
+    DATE_PATTERNS = [
+        re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b", re.IGNORECASE),  # YYYY-MM-DD
+        re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b", re.IGNORECASE),  # DD/MM/YYYY
+        re.compile(
+            r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})\b",
+            re.IGNORECASE,
+        ),
+    ]
+
+    def __init__(self) -> None:
         """Initialize MetadataEnricher."""
         self.logger = logger.bind(component="metadata_enricher")
         self._enrichment_stats = {
@@ -259,7 +270,7 @@ class MetadataEnricher:
 
         return Document(page_content=doc.page_content, metadata=enriched_metadata)
 
-    def enrich_documents(self, documents: List[Document]) -> List[Document]:
+    def enrich_documents(self, documents: list[Document]) -> list[Document]:
         """Enrich multiple documents' metadata.
 
         Args:
@@ -281,8 +292,8 @@ class MetadataEnricher:
         return enriched_docs
 
     def _extract_dates(
-        self, text: str, existing_metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, text: str, existing_metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract and normalize dates from text and metadata.
 
         Args:
@@ -292,7 +303,7 @@ class MetadataEnricher:
         Returns:
             Dictionary with date-related metadata
         """
-        date_info: Dict[str, Any] = {}
+        date_info: dict[str, Any] = {}
 
         # Check existing metadata for season/year
         if "season" in existing_metadata:
@@ -300,22 +311,15 @@ class MetadataEnricher:
             date_info["season"] = existing_metadata["season"]
 
         # Try to extract year from text (4-digit number between 1950-2100)
-        year_pattern = r"\b(19[5-9]\d|20\d{2}|21[0-4]\d)\b"
-        year_matches = re.findall(year_pattern, text)
+        year_matches = self.YEAR_PATTERN.findall(text)
         if year_matches and "year" not in date_info:
             # Use the most recent year found
             years = [int(y) for y in year_matches]
             date_info["year"] = max(years)
 
         # Try to extract full dates (various formats)
-        date_patterns = [
-            r"\b(\d{4})-(\d{2})-(\d{2})\b",  # YYYY-MM-DD
-            r"\b(\d{2})/(\d{2})/(\d{4})\b",  # DD/MM/YYYY
-            r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})\b",
-        ]
-
-        for pattern in date_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+        for pattern in self.DATE_PATTERNS:
+            matches = pattern.findall(text)
             if matches:
                 # Store the first match as the date
                 date_info["date_extracted"] = str(matches[0])
@@ -323,7 +327,7 @@ class MetadataEnricher:
 
         return date_info
 
-    def _identify_drivers(self, text: str) -> Set[str]:
+    def _identify_drivers(self, text: str) -> set[str]:
         """Identify driver names in text.
 
         Args:
@@ -342,7 +346,7 @@ class MetadataEnricher:
 
         return identified
 
-    def _identify_teams(self, text: str) -> Set[str]:
+    def _identify_teams(self, text: str) -> set[str]:
         """Identify team/constructor names in text.
 
         Args:
@@ -361,7 +365,7 @@ class MetadataEnricher:
 
         return identified
 
-    def _identify_circuits(self, text: str) -> Set[str]:
+    def _identify_circuits(self, text: str) -> set[str]:
         """Identify circuit names in text.
 
         Args:
@@ -380,7 +384,7 @@ class MetadataEnricher:
 
         return identified
 
-    def _classify_category(self, text: str, metadata: Dict[str, Any]) -> Optional[str]:
+    def _classify_category(self, text: str, metadata: dict[str, Any]) -> str | None:
         """Classify document category based on content and metadata.
 
         Args:
@@ -401,7 +405,7 @@ class MetadataEnricher:
             return "race_info"
 
         # Check content for category keywords
-        category_scores: Dict[str, int] = {}
+        category_scores: dict[str, int] = {}
 
         for category, keywords in self.CATEGORY_KEYWORDS.items():
             score = sum(1 for keyword in keywords if keyword in text)
@@ -444,7 +448,7 @@ class MetadataEnricher:
         self.KNOWN_CIRCUITS.add(normalized)
         self.logger.info("custom_circuit_added", circuit=normalized)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get enrichment statistics.
 
         Returns:
