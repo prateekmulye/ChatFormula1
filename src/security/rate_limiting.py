@@ -5,8 +5,6 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
@@ -20,7 +18,7 @@ class RateLimitExceeded(HTTPException):
     def __init__(
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
-        retry_after: Optional[int] = None,
+        retry_after: int | None = None,
     ):
         """Initialize rate limit exception.
 
@@ -99,7 +97,7 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        burst_size: Optional[int] = None,
+        burst_size: int | None = None,
     ):
         """Initialize rate limiter.
 
@@ -130,19 +128,36 @@ class RateLimiter:
         Returns:
             Client identifier (IP address or user ID)
         """
+        from src.config.settings import get_settings
+
         # Try to get user ID from request state (if authenticated)
         user_id = getattr(request.state, "user_id", None)
         if user_id:
             return f"user:{user_id}"
 
         # Fall back to IP address
+        client_ip = request.client.host if request.client else "unknown"
+
         # Check for forwarded IP (behind proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-            # Take the first IP in the chain
-            client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
+            settings = get_settings()
+            # Only trust X-Forwarded-For if request comes from a trusted proxy
+            if client_ip in settings.trusted_proxies or "*" in settings.trusted_proxies:
+                # Parse IPs from right to left to find the real client
+                ips = [ip.strip() for ip in forwarded_for.split(",")]
+
+                # Start with the original client_ip which we know is trusted
+                for ip in reversed(ips):
+                    if (
+                        ip not in settings.trusted_proxies
+                        and "*" not in settings.trusted_proxies
+                    ):
+                        client_ip = ip
+                        break
+                    # If all IPs in the chain are trusted proxies, or if it's the last one we checked
+                    # we just fall back to the leftmost IP
+                    client_ip = ip
 
         return f"ip:{client_ip}"
 
@@ -296,13 +311,13 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter(
     requests_per_minute: int = 60,
     requests_per_hour: int = 1000,
-    burst_size: Optional[int] = None,
+    burst_size: int | None = None,
 ) -> RateLimiter:
     """Get or create global rate limiter instance.
 
