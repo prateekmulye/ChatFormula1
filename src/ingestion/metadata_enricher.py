@@ -185,6 +185,17 @@ class MetadataEnricher:
         "news": ["announced", "confirmed", "reported", "breaking"],
     }
 
+    # Pre-compiled regex patterns for performance optimization
+    YEAR_PATTERN = re.compile(r"\b(19[5-9]\d|20\d{2}|21[0-4]\d)\b")
+    DATE_PATTERNS = [
+        re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b", re.IGNORECASE),  # YYYY-MM-DD
+        re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b", re.IGNORECASE),  # DD/MM/YYYY
+        re.compile(
+            r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})\b",
+            re.IGNORECASE,
+        ),
+    ]
+
     def __init__(self):
         """Initialize MetadataEnricher."""
         self.logger = logger.bind(component="metadata_enricher")
@@ -300,22 +311,15 @@ class MetadataEnricher:
             date_info["season"] = existing_metadata["season"]
 
         # Try to extract year from text (4-digit number between 1950-2100)
-        year_pattern = r"\b(19[5-9]\d|20\d{2}|21[0-4]\d)\b"
-        year_matches = re.findall(year_pattern, text)
+        year_matches = self.YEAR_PATTERN.findall(text)
         if year_matches and "year" not in date_info:
             # Use the most recent year found
             years = [int(y) for y in year_matches]
             date_info["year"] = max(years)
 
         # Try to extract full dates (various formats)
-        date_patterns = [
-            r"\b(\d{4})-(\d{2})-(\d{2})\b",  # YYYY-MM-DD
-            r"\b(\d{2})/(\d{2})/(\d{4})\b",  # DD/MM/YYYY
-            r"\b(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{4})\b",
-        ]
-
-        for pattern in date_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+        for pattern in self.DATE_PATTERNS:
+            matches = pattern.findall(text)
             if matches:
                 # Store the first match as the date
                 date_info["date_extracted"] = str(matches[0])
