@@ -1,1 +1,0 @@
-## 2024-05-19 - Regex Compilation Optimization\n**Learning:** Compiling regexes locally inside loops or methods invoked frequently causes unnecessary CPU overhead. Compiling them once at the class or module level significantly improves performance.\n**Action:** Always use pre-compiled regexes.
