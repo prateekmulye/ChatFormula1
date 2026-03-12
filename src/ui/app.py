@@ -23,6 +23,7 @@ from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
 from src.ui.components import (
     apply_f1_theme,
+    confirm_clear_conversation,
     render_about_modal,
     render_error_message,
     render_input_validation_error,
@@ -209,12 +210,12 @@ def render_sidebar() -> None:
         st.metric("Messages", msg_count)
 
         # Clear conversation button
-        if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+        if st.button(
+            "🗑️ Clear Conversation",
+            use_container_width=True,
+            disabled=len(st.session_state.messages) == 0,
+        ):
+            confirm_clear_conversation()
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):
@@ -248,7 +249,8 @@ def render_sidebar() -> None:
 
         # Help section
         with st.expander("❓ Help & Tips"):
-            st.markdown("""
+            st.markdown(
+                """
             **What can I ask?**
             - Current F1 standings and results
             - Historical statistics and records
@@ -261,11 +263,13 @@ def render_sidebar() -> None:
             - Mention years, drivers, or races for better context
             - Ask follow-up questions naturally
             - Use the feedback buttons to help improve responses
-            """)
+            """
+            )
 
         # About section
         with st.expander("ℹ️ About"):
-            st.markdown("""
+            st.markdown(
+                """
             **ChatFormula1** is an AI-powered Formula 1 expert assistant
             that combines:
             - Real-time F1 data and news
@@ -282,7 +286,8 @@ def render_sidebar() -> None:
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
-            """)
+            """
+            )
 
 
 def render_header() -> None:
