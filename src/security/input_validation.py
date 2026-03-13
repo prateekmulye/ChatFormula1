@@ -38,14 +38,19 @@ class InputValidator:
 
     # Suspicious patterns that might indicate prompt injection
     SUSPICIOUS_PATTERNS = [
-        re.compile(r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)", re.IGNORECASE),
+        re.compile(
+            r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
+            re.IGNORECASE,
+        ),
         re.compile(r"system\s*:\s*you\s+are", re.IGNORECASE),
         re.compile(r"<\s*\|\s*im_start\s*\|\s*>", re.IGNORECASE),
         re.compile(r"<\s*\|\s*im_end\s*\|\s*>", re.IGNORECASE),
         re.compile(r"###\s*instruction", re.IGNORECASE),
         re.compile(r"###\s*system", re.IGNORECASE),
         re.compile(r"forget\s+(everything|all|previous)", re.IGNORECASE),
-        re.compile(r"disregard\s+(previous|all)\s+(instructions|prompts)", re.IGNORECASE),
+        re.compile(
+            r"disregard\s+(previous|all)\s+(instructions|prompts)", re.IGNORECASE
+        ),
         re.compile(r"you\s+are\s+now\s+a", re.IGNORECASE),
         re.compile(r"pretend\s+you\s+are", re.IGNORECASE),
         re.compile(r"act\s+as\s+if", re.IGNORECASE),
