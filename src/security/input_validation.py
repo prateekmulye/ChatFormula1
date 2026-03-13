@@ -12,6 +12,12 @@ from pydantic import BaseModel, Field, field_validator
 
 logger = structlog.get_logger(__name__)
 
+# Pre-compiled regular expressions for performance
+_REPEATED_CHARS_RE = re.compile(r"(.)\1{50,}")
+_WHITESPACE_RE = re.compile(r"[ \t]+")
+_MULTIPLE_NEWLINES_RE = re.compile(r"\n{3,}")
+_HTML_TAGS_RE = re.compile(r"<[^>]+>")
+
 
 class ValidationResult(BaseModel):
     """Result of input validation."""
@@ -32,30 +38,35 @@ class InputValidator:
 
     # Suspicious patterns that might indicate prompt injection
     SUSPICIOUS_PATTERNS = [
-        r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
-        r"system\s*:\s*you\s+are",
-        r"<\s*\|\s*im_start\s*\|\s*>",
-        r"<\s*\|\s*im_end\s*\|\s*>",
-        r"###\s*instruction",
-        r"###\s*system",
-        r"forget\s+(everything|all|previous)",
-        r"disregard\s+(previous|all)\s+(instructions|prompts)",
-        r"you\s+are\s+now\s+a",
-        r"pretend\s+you\s+are",
-        r"act\s+as\s+if",
-        r"roleplay\s+as",
+        re.compile(
+            r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
+            re.IGNORECASE,
+        ),
+        re.compile(r"system\s*:\s*you\s+are", re.IGNORECASE),
+        re.compile(r"<\s*\|\s*im_start\s*\|\s*>", re.IGNORECASE),
+        re.compile(r"<\s*\|\s*im_end\s*\|\s*>", re.IGNORECASE),
+        re.compile(r"###\s*instruction", re.IGNORECASE),
+        re.compile(r"###\s*system", re.IGNORECASE),
+        re.compile(r"forget\s+(everything|all|previous)", re.IGNORECASE),
+        re.compile(
+            r"disregard\s+(previous|all)\s+(instructions|prompts)", re.IGNORECASE
+        ),
+        re.compile(r"you\s+are\s+now\s+a", re.IGNORECASE),
+        re.compile(r"pretend\s+you\s+are", re.IGNORECASE),
+        re.compile(r"act\s+as\s+if", re.IGNORECASE),
+        re.compile(r"roleplay\s+as", re.IGNORECASE),
     ]
 
     # Patterns for potential code injection
     CODE_INJECTION_PATTERNS = [
-        r"<script[^>]*>",
-        r"javascript:",
-        r"on\w+\s*=",  # Event handlers like onclick=
-        r"eval\s*\(",
-        r"exec\s*\(",
-        r"__import__",
-        r"subprocess",
-        r"os\.system",
+        re.compile(r"<script[^>]*>", re.IGNORECASE),
+        re.compile(r"javascript:", re.IGNORECASE),
+        re.compile(r"on\w+\s*=", re.IGNORECASE),  # Event handlers like onclick=
+        re.compile(r"eval\s*\(", re.IGNORECASE),
+        re.compile(r"exec\s*\(", re.IGNORECASE),
+        re.compile(r"__import__", re.IGNORECASE),
+        re.compile(r"subprocess", re.IGNORECASE),
+        re.compile(r"os\.system", re.IGNORECASE),
     ]
 
     def __init__(self, strict_mode: bool = False):
@@ -65,17 +76,6 @@ class InputValidator:
             strict_mode: If True, apply stricter validation rules
         """
         self.strict_mode = strict_mode
-        self._compile_patterns()
-
-    def _compile_patterns(self) -> None:
-        """Compile regex patterns for efficiency."""
-        self.suspicious_regex = [
-            re.compile(pattern, re.IGNORECASE) for pattern in self.SUSPICIOUS_PATTERNS
-        ]
-        self.code_injection_regex = [
-            re.compile(pattern, re.IGNORECASE)
-            for pattern in self.CODE_INJECTION_PATTERNS
-        ]
 
     def validate(self, user_input: str) -> ValidationResult:
         """Validate user input with security checks.
@@ -117,7 +117,7 @@ class InputValidator:
                 )
 
         # Check for suspicious patterns (prompt injection attempts)
-        for pattern in self.suspicious_regex:
+        for pattern in self.SUSPICIOUS_PATTERNS:
             if pattern.search(user_input):
                 if self.strict_mode:
                     errors.append(
@@ -135,7 +135,7 @@ class InputValidator:
                 break
 
         # Check for code injection patterns
-        for pattern in self.code_injection_regex:
+        for pattern in self.CODE_INJECTION_PATTERNS:
             if pattern.search(user_input):
                 errors.append("Input contains potentially malicious code patterns")
                 logger.warning(
@@ -160,7 +160,7 @@ class InputValidator:
                 warnings.append("Input has a high ratio of special characters")
 
         # Check for repeated characters (potential DoS)
-        if re.search(r"(.)\1{50,}", user_input):
+        if _REPEATED_CHARS_RE.search(user_input):
             errors.append("Input contains excessive character repetition")
 
         # If validation failed, return early
@@ -208,14 +208,14 @@ class InputValidator:
         sanitized = user_input.replace("\x00", "")
 
         # Normalize whitespace (but preserve single newlines)
-        sanitized = re.sub(r"[ \t]+", " ", sanitized)
-        sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+        sanitized = _WHITESPACE_RE.sub(" ", sanitized)
+        sanitized = _MULTIPLE_NEWLINES_RE.sub("\n\n", sanitized)
 
         # Remove leading/trailing whitespace
         sanitized = sanitized.strip()
 
         # Remove any HTML tags (basic sanitization)
-        sanitized = re.sub(r"<[^>]+>", "", sanitized)
+        sanitized = _HTML_TAGS_RE.sub("", sanitized)
 
         # Remove control characters except newlines and tabs
         sanitized = "".join(
@@ -266,12 +266,12 @@ class InputSanitizer:
 
         # Remove HTML tags
         if self.remove_html:
-            sanitized = re.sub(r"<[^>]+>", "", sanitized)
+            sanitized = _HTML_TAGS_RE.sub("", sanitized)
 
         # Normalize whitespace
         if self.normalize_whitespace:
-            sanitized = re.sub(r"[ \t]+", " ", sanitized)
-            sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+            sanitized = _WHITESPACE_RE.sub(" ", sanitized)
+            sanitized = _MULTIPLE_NEWLINES_RE.sub("\n\n", sanitized)
 
         # Remove control characters
         if self.remove_control_chars:
