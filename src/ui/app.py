@@ -255,7 +255,7 @@ def render_sidebar() -> None:
             - Race predictions and analysis
             - Technical regulations and rules
             - Driver and team information
-            
+
             **Tips:**
             - Be specific with your questions
             - Mention years, drivers, or races for better context
@@ -272,13 +272,13 @@ def render_sidebar() -> None:
             - Historical F1 knowledge base
             - Advanced language models
             - RAG (Retrieval-Augmented Generation)
-            
+
             Built with LangChain, LangGraph, Pinecone, and Streamlit.
-            
+
             ---
-            
+
             **Created by:** Prateek Mulye
-            
+
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
