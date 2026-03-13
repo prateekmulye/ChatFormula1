@@ -5,9 +5,10 @@ XSS attacks, and other security vulnerabilities.
 """
 
 import re
+from typing import Optional
 
 import structlog
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 logger = structlog.get_logger(__name__)
 
@@ -22,7 +23,7 @@ class ValidationResult(BaseModel):
     """Result of input validation."""
 
     valid: bool = Field(..., description="Whether input is valid")
-    sanitized_input: str | None = Field(None, description="Sanitized input if valid")
+    sanitized_input: Optional[str] = Field(None, description="Sanitized input if valid")
     errors: list[str] = Field(default_factory=list, description="Validation errors")
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
 
@@ -37,7 +38,7 @@ class InputValidator:
 
     # Suspicious patterns that might indicate prompt injection
     SUSPICIOUS_PATTERNS = [
-        re.compile(r"ignore\s+(previous|above|all)(?:\s+(?:previous|above|all))?\s+(instructions|prompts|rules)", re.IGNORECASE),
+        re.compile(r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)", re.IGNORECASE),
         re.compile(r"system\s*:\s*you\s+are", re.IGNORECASE),
         re.compile(r"<\s*\|\s*im_start\s*\|\s*>", re.IGNORECASE),
         re.compile(r"<\s*\|\s*im_end\s*\|\s*>", re.IGNORECASE),

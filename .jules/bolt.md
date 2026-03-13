@@ -1,3 +1,0 @@
-## 2025-03-13 - Pre-compiled regex overhead removal
-**Learning:** The Python `re` module caches recent compilations, but for frequently instantiated classes like `InputValidator` and highly active paths like `validate()` processing thousands of lines, lifting the `re.compile()` calls to module-level constants or static class properties avoids internal cache lookup overhead, creating a measurable micro-optimization.
-**Action:** Always prefer statically pre-compiling regular expressions (e.g., `_REGEX = re.compile(...)`) at the module level instead of using inline `re.sub`/`re.search` when the regex is executed within a hot loop, class initialization, or frequent request path.
