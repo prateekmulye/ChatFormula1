@@ -550,10 +550,10 @@ class DocumentProcessor:
             doc: Document to hash
 
         Returns:
-            MD5 hash of document content
+            SHA-256 hash of document content
         """
         content = doc.page_content.encode("utf-8")
-        return hashlib.md5(content).hexdigest()
+        return hashlib.sha256(content).hexdigest()
 
     def clear_deduplication_cache(self) -> None:
         """Clear the deduplication cache."""
