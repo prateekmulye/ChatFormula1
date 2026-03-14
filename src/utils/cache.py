@@ -12,8 +12,7 @@ import hashlib
 import json
 import time
 from collections import OrderedDict
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import structlog
 
@@ -41,9 +40,10 @@ class TTLCache:
         """
         self.max_size = max_size
         self.default_ttl = default_ttl
-        self._cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
+        self._cache: OrderedDict[str, tuple[Any, float]] = OrderedDict()
         self._hits = 0
         self._misses = 0
+        self._last_evict_time = 0.0
 
         logger.info(
             "ttl_cache_initialized",
@@ -85,6 +85,8 @@ class TTLCache:
         Returns:
             Number of entries evicted
         """
+        self._last_evict_time = time.time()
+
         expired_keys = [
             key for key, (_, expiry) in self._cache.items() if self._is_expired(expiry)
         ]
@@ -103,7 +105,7 @@ class TTLCache:
             key, _ = self._cache.popitem(last=False)
             logger.debug("lru_entry_evicted", key=key[:16])
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value from cache.
 
         Args:
@@ -114,7 +116,9 @@ class TTLCache:
         """
         # Clean up expired entries periodically
         if len(self._cache) > self.max_size * 0.9:
-            self._evict_expired()
+            # Throttle O(N) sweep to at most once per minute to maintain O(1) reads
+            if time.time() - self._last_evict_time > 60.0:
+                self._evict_expired()
 
         if key in self._cache:
             value, expiry = self._cache[key]
@@ -136,7 +140,7 @@ class TTLCache:
         logger.debug("cache_miss", key=key[:16])
         return None
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Set value in cache.
 
         Args:
@@ -187,10 +191,11 @@ class TTLCache:
         self._cache.clear()
         self._hits = 0
         self._misses = 0
+        self._last_evict_time = 0.0
         logger.info("cache_cleared", entries_cleared=count)
         return count
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:
@@ -257,7 +262,7 @@ class CacheManager:
         self,
         query: str,
         k: int,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
     ) -> str:
         """Generate cache key for vector search.
 
@@ -328,7 +333,7 @@ class CacheManager:
             temperature,
         )
 
-    def clear_all(self) -> Dict[str, int]:
+    def clear_all(self) -> dict[str, int]:
         """Clear all caches.
 
         Returns:
@@ -340,7 +345,7 @@ class CacheManager:
             "llm_cache": self.llm_cache.clear(),
         }
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> dict[str, dict[str, Any]]:
         """Get statistics for all caches.
 
         Returns:
@@ -354,7 +359,7 @@ class CacheManager:
 
 
 # Global cache manager instance
-_cache_manager: Optional[CacheManager] = None
+_cache_manager: CacheManager | None = None
 
 
 def get_cache_manager() -> CacheManager:
@@ -372,7 +377,7 @@ def get_cache_manager() -> CacheManager:
     return _cache_manager
 
 
-def clear_all_caches() -> Dict[str, int]:
+def clear_all_caches() -> dict[str, int]:
     """Clear all caches in the global cache manager.
 
     Returns:
@@ -382,7 +387,7 @@ def clear_all_caches() -> Dict[str, int]:
     return manager.clear_all()
 
 
-def get_cache_stats() -> Dict[str, Dict[str, Any]]:
+def get_cache_stats() -> dict[str, dict[str, Any]]:
     """Get statistics for all caches.
 
     Returns:
