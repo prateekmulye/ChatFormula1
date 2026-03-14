@@ -1440,6 +1440,26 @@ def format_timestamp(dt: datetime) -> str:
         return dt.strftime("%b %d, %Y")
 
 
+
+@st.dialog("⚠️ Clear Conversation")
+def confirm_clear_conversation() -> None:
+    """Render confirmation dialog for clearing conversation."""
+    st.write("Are you sure you want to clear the conversation? This action cannot be undone.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+    with col2:
+        if st.button("Clear", type="primary", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info(
+                "conversation_cleared",
+                session_id=st.session_state.get("session_id", "unknown"),
+            )
+            st.rerun()
+
 def render_settings_panel() -> None:
     """Render collapsible settings panel positioned below header.
 
@@ -1520,20 +1540,15 @@ def render_settings_panel() -> None:
         col1, col2 = st.columns(2)
 
         with col1:
+            is_empty = len(st.session_state.messages) == 0
             if st.button(
                 "🗑️ Clear Conversation",
                 use_container_width=True,
                 key="settings_clear",
-                help="Delete all messages in the current conversation",
+                help="Conversation is already empty" if is_empty else "Delete all messages in the current conversation",
+                disabled=is_empty,
             ):
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "conversation_cleared",
-                    session_id=st.session_state.get("session_id", "unknown"),
-                )
-                st.rerun()
+                confirm_clear_conversation()
 
         with col2:
             if st.button(
