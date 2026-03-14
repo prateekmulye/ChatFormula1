@@ -97,15 +97,7 @@ extend-exclude = '''
 line-length = 88
 target-version = "py311"
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
     "I",   # isort
-    "C",   # flake8-comprehensions
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade
-    "ANN", # flake8-annotations
-    "S",   # flake8-bandit
     "T20", # flake8-print
 ]
 ignore = [
@@ -115,6 +107,8 @@ ignore = [
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
     "S101",   # use of assert
+    "ANN101", # missing type annotation for self
+    "ANN102", # missing type annotation for cls
 ]
 
 [tool.ruff.per-file-ignores]

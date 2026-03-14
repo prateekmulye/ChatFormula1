@@ -1,0 +1,3 @@
+## 2025-01-28 - Preventing Accidental Data Loss in Streamlit
+**Learning:** Destructive actions in Streamlit applications (like clearing conversation history) need explicit confirmation to prevent data loss. Combining conditionally disabled states (e.g., `disabled=len(st.session_state.messages) == 0`) with the `@st.dialog` decorator is an effective, accessible way to provide accurate visual feedback on system state and enforce confirmation before executing the destructive action.
+**Action:** When implementing destructive features that clear session state or data in Streamlit, always use conditionally disabled interactive elements to communicate state, and wrap the final action in an `@st.dialog` confirmation modal to require explicit user intent.
