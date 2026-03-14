@@ -44,6 +44,7 @@ class TTLCache:
         self._cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
         self._hits = 0
         self._misses = 0
+        self._last_evict_time = 0.0
 
         logger.info(
             "ttl_cache_initialized",
@@ -85,6 +86,8 @@ class TTLCache:
         Returns:
             Number of entries evicted
         """
+        self._last_evict_time = time.time()
+
         expired_keys = [
             key for key, (_, expiry) in self._cache.items() if self._is_expired(expiry)
         ]
@@ -114,7 +117,9 @@ class TTLCache:
         """
         # Clean up expired entries periodically
         if len(self._cache) > self.max_size * 0.9:
-            self._evict_expired()
+            # Throttle O(N) sweep to at most once per minute to maintain O(1) reads
+            if time.time() - self._last_evict_time > 60.0:
+                self._evict_expired()
 
         if key in self._cache:
             value, expiry = self._cache[key]
@@ -187,6 +192,7 @@ class TTLCache:
         self._cache.clear()
         self._hits = 0
         self._misses = 0
+        self._last_evict_time = 0.0
         logger.info("cache_cleared", entries_cleared=count)
         return count
 
