@@ -34,6 +34,13 @@ Example Usage:
 """
 
 import os
+
+# Set environment variables for testing BEFORE any app imports occur
+os.environ["OPENAI_API_KEY"] = "test-openai-key"
+os.environ["PINECONE_API_KEY"] = "test-pinecone-key"
+os.environ["TAVILY_API_KEY"] = "test-tavily-key"
+os.environ["ENVIRONMENT"] = "development"
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
