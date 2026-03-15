@@ -10,11 +10,11 @@ This module implements the main Streamlit application with:
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -103,7 +103,7 @@ def initialize_session_state() -> None:
         st.session_state.last_error = None
 
 
-def initialize_agent() -> Optional[F1AgentGraph]:
+def initialize_agent() -> F1AgentGraph | None:
     """Initialize the agent graph and dependencies.
 
     Returns:
@@ -208,13 +208,32 @@ def render_sidebar() -> None:
         msg_count = len(st.session_state.messages)
         st.metric("Messages", msg_count)
 
+        @st.dialog("Clear Conversation?")
+        def confirm_clear() -> None:
+            st.write(
+                "Are you sure you want to clear the current conversation? This action cannot be undone."
+            )
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Cancel", use_container_width=True):
+                    st.rerun()
+            with col2:
+                if st.button("Clear", type="primary", use_container_width=True):
+                    st.session_state.messages = []
+                    st.session_state.agent_state = None
+                    st.session_state.feedback = {}
+                    logger.info(
+                        "conversation_cleared", session_id=st.session_state.session_id
+                    )
+                    st.rerun()
+
         # Clear conversation button
-        if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+        if st.button(
+            "🗑️ Clear Conversation",
+            use_container_width=True,
+            disabled=len(st.session_state.messages) == 0,
+        ):
+            confirm_clear()
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):
@@ -335,7 +354,7 @@ def render_header() -> None:
             st.rerun()
 
 
-def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
+def render_chat_interface(agent: F1AgentGraph | None) -> None:
     """Render the main chat interface with message history and input.
 
     This function implements the ChatGPT/Anthropic UX pattern where:
