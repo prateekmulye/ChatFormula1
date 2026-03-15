@@ -1,0 +1,3 @@
+## 2024-05-18 - Prevent Accidental Data Loss & Accurate Feedback
+**Learning:** Destructive actions (like clearing conversation history) need explicit user confirmation, especially in chat contexts where state isn't persistently saved on the backend. Furthermore, disabling interactive elements accurately based on system state (e.g. graying out 'Clear Conversation' when there are no messages) provides clear visual feedback of app state and prevents confusing empty-state actions.
+**Action:** When implementing destructive UI interactions in Streamlit, always wrap the action using `@st.dialog` to get user confirmation. Additionally, leverage `disabled` attributes on action buttons tied directly to the relevant session state length/existence.

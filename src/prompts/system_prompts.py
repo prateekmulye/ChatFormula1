@@ -236,7 +236,7 @@ CONCISE_SYSTEM_PROMPT = ChatPromptTemplate.from_messages(
     [
         SystemMessage(
             content="""You are ChatFormula1, an F1 expert. Provide concise, accurate answers about Formula 1.
-    
+
 Keep responses brief but informative. Cite specific data when relevant. Stay focused on F1 topics only."""
         )
     ]
@@ -245,7 +245,9 @@ Keep responses brief but informative. Cite specific data when relevant. Stay foc
 DETAILED_SYSTEM_PROMPT = create_system_prompt(include_guardrails=True)
 
 PREDICTION_SYSTEM_PROMPT = ChatPromptTemplate.from_messages(
-    [SystemMessage(content=f"""{F1_EXPERT_SYSTEM_PROMPT}
+    [
+        SystemMessage(
+            content=f"""{F1_EXPERT_SYSTEM_PROMPT}
 
 **Prediction Mode:**
 When making predictions:
@@ -258,5 +260,7 @@ When making predictions:
 
 Always explain your reasoning with supporting data points.
 {OFF_TOPIC_GUARDRAIL_PROMPT}
-""")]
+"""
+        )
+    ]
 )
