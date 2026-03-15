@@ -5,10 +5,9 @@ XSS attacks, and other security vulnerabilities.
 """
 
 import re
-from typing import Optional
 
 import structlog
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -17,7 +16,7 @@ class ValidationResult(BaseModel):
     """Result of input validation."""
 
     valid: bool = Field(..., description="Whether input is valid")
-    sanitized_input: Optional[str] = Field(None, description="Sanitized input if valid")
+    sanitized_input: str | None = Field(None, description="Sanitized input if valid")
     errors: list[str] = Field(default_factory=list, description="Validation errors")
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
 
@@ -44,6 +43,7 @@ class InputValidator:
         r"pretend\s+you\s+are",
         r"act\s+as\s+if",
         r"roleplay\s+as",
+        r"ignore\s+all\s+previous\s+instructions",
     ]
 
     # Patterns for potential code injection
@@ -58,7 +58,7 @@ class InputValidator:
         r"os\.system",
     ]
 
-    def __init__(self, strict_mode: bool = False):
+    def __init__(self, strict_mode: bool = False) -> None:
         """Initialize input validator.
 
         Args:
@@ -235,7 +235,7 @@ class InputSanitizer:
         remove_html: bool = True,
         normalize_whitespace: bool = True,
         remove_control_chars: bool = True,
-    ):
+    ) -> None:
         """Initialize input sanitizer.
 
         Args:

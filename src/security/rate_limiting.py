@@ -5,11 +5,11 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
+
+from src.config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -20,8 +20,8 @@ class RateLimitExceeded(HTTPException):
     def __init__(
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
-        retry_after: Optional[int] = None,
-    ):
+        retry_after: int | None = None,
+    ) -> None:
         """Initialize rate limit exception.
 
         Args:
@@ -42,7 +42,7 @@ class RateLimitExceeded(HTTPException):
 class TokenBucket:
     """Token bucket algorithm for rate limiting."""
 
-    def __init__(self, capacity: int, refill_rate: float):
+    def __init__(self, capacity: int, refill_rate: float) -> None:
         """Initialize token bucket.
 
         Args:
@@ -99,8 +99,8 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        burst_size: Optional[int] = None,
-    ):
+        burst_size: int | None = None,
+    ) -> None:
         """Initialize rate limiter.
 
         Args:
@@ -138,11 +138,21 @@ class RateLimiter:
         # Fall back to IP address
         # Check for forwarded IP (behind proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
+        client_ip = request.client.host if request.client else "unknown"
         if forwarded_for:
-            # Take the first IP in the chain
-            client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
+            # Parse the chain from right to left to avoid IP spoofing
+            settings = get_settings()
+            trusted_proxies = settings.trusted_proxies
+
+            ips = [ip.strip() for ip in forwarded_for.split(",")]
+            ips.reverse()
+
+            # Default to the most rightmost IP if all are trusted (unlikely)
+            client_ip = ips[-1] if ips else client_ip
+            for ip in ips:
+                if ip not in trusted_proxies:
+                    client_ip = ip
+                    break
 
         return f"ip:{client_ip}"
 
@@ -296,13 +306,13 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter(
     requests_per_minute: int = 60,
     requests_per_hour: int = 1000,
-    burst_size: Optional[int] = None,
+    burst_size: int | None = None,
 ) -> RateLimiter:
     """Get or create global rate limiter instance.
 
