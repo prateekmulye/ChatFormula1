@@ -267,41 +267,45 @@ def render_sidebar() -> None:
 
         # Help section
         with st.expander("❓ Help & Tips"):
-            st.markdown("""
+            st.markdown(
+                """
             **What can I ask?**
             - Current F1 standings and results
             - Historical statistics and records
             - Race predictions and analysis
             - Technical regulations and rules
             - Driver and team information
-            
+
             **Tips:**
             - Be specific with your questions
             - Mention years, drivers, or races for better context
             - Ask follow-up questions naturally
             - Use the feedback buttons to help improve responses
-            """)
+            """
+            )
 
         # About section
         with st.expander("ℹ️ About"):
-            st.markdown("""
+            st.markdown(
+                """
             **ChatFormula1** is an AI-powered Formula 1 expert assistant
             that combines:
             - Real-time F1 data and news
             - Historical F1 knowledge base
             - Advanced language models
             - RAG (Retrieval-Augmented Generation)
-            
+
             Built with LangChain, LangGraph, Pinecone, and Streamlit.
-            
+
             ---
-            
+
             **Created by:** Prateek Mulye
-            
+
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
-            """)
+            """
+            )
 
 
 def render_header() -> None:
