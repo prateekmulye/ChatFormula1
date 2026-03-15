@@ -11,6 +11,8 @@ from typing import Optional
 import structlog
 from fastapi import HTTPException, Request, status
 
+from src.config.settings import get_settings
+
 logger = structlog.get_logger(__name__)
 
 
@@ -138,11 +140,21 @@ class RateLimiter:
         # Fall back to IP address
         # Check for forwarded IP (behind proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
+        client_ip = request.client.host if request.client else "unknown"
         if forwarded_for:
-            # Take the first IP in the chain
-            client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
+            # Parse the chain from right to left to avoid IP spoofing
+            settings = get_settings()
+            trusted_proxies = settings.trusted_proxies
+
+            ips = [ip.strip() for ip in forwarded_for.split(",")]
+            ips.reverse()
+
+            # Default to the most rightmost IP if all are trusted (unlikely)
+            client_ip = ips[-1] if ips else client_ip
+            for ip in ips:
+                if ip not in trusted_proxies:
+                    client_ip = ip
+                    break
 
         return f"ip:{client_ip}"
 

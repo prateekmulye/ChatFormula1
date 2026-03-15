@@ -44,6 +44,7 @@ class InputValidator:
         r"pretend\s+you\s+are",
         r"act\s+as\s+if",
         r"roleplay\s+as",
+        r"ignore\s+all\s+previous\s+instructions",
     ]
 
     # Patterns for potential code injection

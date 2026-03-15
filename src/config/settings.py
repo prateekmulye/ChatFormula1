@@ -219,6 +219,10 @@ class Settings(BaseSettings):
         default="X-API-Key",
         description="Header name for API key",
     )
+    trusted_proxies: Union[str, list[str]] = Field(
+        default_factory=list,
+        description="Trusted proxy IPs for rate limiting",
+    )
 
     @field_validator("openai_api_key", "pinecone_api_key", "tavily_api_key")
     @classmethod
@@ -235,6 +239,7 @@ class Settings(BaseSettings):
         "cors_allow_origins",
         "tavily_include_domains",
         "tavily_exclude_domains",
+        "trusted_proxies",
         mode="before",
     )
     @classmethod
