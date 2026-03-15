@@ -515,12 +515,14 @@ async def get_metrics() -> dict[str, Any]:
     return metrics
 
 
+from fastapi.responses import PlainTextResponse
+
 @router.get(
     "/metrics/prometheus",
     status_code=status.HTTP_200_OK,
     summary="Get metrics in Prometheus format",
     description="Export metrics in Prometheus text format for scraping",
-    response_class=None,
+    response_class=PlainTextResponse,
 )
 async def get_prometheus_metrics():
     """Export metrics in Prometheus format.
