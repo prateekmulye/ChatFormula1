@@ -13,6 +13,13 @@ from pydantic import BaseModel, Field, field_validator
 logger = structlog.get_logger(__name__)
 
 
+# Pre-compiled regular expressions for performance
+WHITESPACE_RE = re.compile(r"[ \t]+")
+NEWLINES_RE = re.compile(r"\n{3,}")
+HTML_TAGS_RE = re.compile(r"<[^>]+>")
+REPEATED_CHARS_RE = re.compile(r"(.)\1{50,}")
+
+
 class ValidationResult(BaseModel):
     """Result of input validation."""
 
@@ -32,7 +39,7 @@ class InputValidator:
 
     # Suspicious patterns that might indicate prompt injection
     SUSPICIOUS_PATTERNS = [
-        r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
+        r"ignore\s+(?:all\s+)?(previous|above|all)\s+(instructions|prompts|rules)",
         r"system\s*:\s*you\s+are",
         r"<\s*\|\s*im_start\s*\|\s*>",
         r"<\s*\|\s*im_end\s*\|\s*>",
@@ -160,7 +167,7 @@ class InputValidator:
                 warnings.append("Input has a high ratio of special characters")
 
         # Check for repeated characters (potential DoS)
-        if re.search(r"(.)\1{50,}", user_input):
+        if REPEATED_CHARS_RE.search(user_input):
             errors.append("Input contains excessive character repetition")
 
         # If validation failed, return early
@@ -208,14 +215,14 @@ class InputValidator:
         sanitized = user_input.replace("\x00", "")
 
         # Normalize whitespace (but preserve single newlines)
-        sanitized = re.sub(r"[ \t]+", " ", sanitized)
-        sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+        sanitized = WHITESPACE_RE.sub(" ", sanitized)
+        sanitized = NEWLINES_RE.sub("\n\n", sanitized)
 
         # Remove leading/trailing whitespace
         sanitized = sanitized.strip()
 
         # Remove any HTML tags (basic sanitization)
-        sanitized = re.sub(r"<[^>]+>", "", sanitized)
+        sanitized = HTML_TAGS_RE.sub("", sanitized)
 
         # Remove control characters except newlines and tabs
         sanitized = "".join(
@@ -266,12 +273,12 @@ class InputSanitizer:
 
         # Remove HTML tags
         if self.remove_html:
-            sanitized = re.sub(r"<[^>]+>", "", sanitized)
+            sanitized = HTML_TAGS_RE.sub("", sanitized)
 
         # Normalize whitespace
         if self.normalize_whitespace:
-            sanitized = re.sub(r"[ \t]+", " ", sanitized)
-            sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+            sanitized = WHITESPACE_RE.sub(" ", sanitized)
+            sanitized = NEWLINES_RE.sub("\n\n", sanitized)
 
         # Remove control characters
         if self.remove_control_chars:
