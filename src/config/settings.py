@@ -211,6 +211,12 @@ class Settings(BaseSettings):
         ],
         description="Allowed CORS origins",
     )
+    trusted_proxies: Union[str, list[str]] = Field(
+        default_factory=lambda: [
+            "127.0.0.1",
+        ],
+        description="List of trusted proxy IPs for rate limiting",
+    )
     require_api_key: bool = Field(
         default=False,
         description="Require API key for all endpoints (except public paths)",
@@ -235,6 +241,7 @@ class Settings(BaseSettings):
         "cors_allow_origins",
         "tavily_include_domains",
         "tavily_exclude_domains",
+        "trusted_proxies",
         mode="before",
     )
     @classmethod
