@@ -137,12 +137,29 @@ class RateLimiter:
 
         # Fall back to IP address
         # Check for forwarded IP (behind proxy)
+        from src.config.settings import get_settings
+        config = get_settings()
+
+        client_ip = request.client.host if request.client else "unknown"
         forwarded_for = request.headers.get("X-Forwarded-For")
+
         if forwarded_for:
-            # Take the first IP in the chain
-            client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
+            # Parse IPs from right to left to prevent IP spoofing
+            ips = [ip.strip() for ip in forwarded_for.split(",")]
+            ips.reverse()
+
+            # Start with the immediate client IP (which proxy reported it)
+            current_ip = client_ip
+
+            for ip in ips:
+                # If the current IP is a trusted proxy, we can trust the forwarded IP it reported
+                if current_ip in config.trusted_proxies:
+                    current_ip = ip
+                else:
+                    # As soon as we hit an untrusted IP in the chain, we stop
+                    break
+
+            client_ip = current_ip
 
         return f"ip:{client_ip}"
 
