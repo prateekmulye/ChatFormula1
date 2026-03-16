@@ -10,11 +10,11 @@ This module implements the main Streamlit application with:
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -22,7 +22,6 @@ from src.config.settings import get_settings
 from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
 from src.ui.components import (
-    show_clear_confirmation,
     apply_f1_theme,
     render_about_modal,
     render_error_message,
@@ -30,6 +29,7 @@ from src.ui.components import (
     render_message,
     render_settings_panel,
     render_welcome_screen,
+    show_clear_confirmation,
 )
 from src.vector_store.manager import VectorStoreManager
 
@@ -104,7 +104,7 @@ def initialize_session_state() -> None:
         st.session_state.last_error = None
 
 
-def initialize_agent() -> Optional[F1AgentGraph]:
+def initialize_agent() -> F1AgentGraph | None:
     """Initialize the agent graph and dependencies.
 
     Returns:
@@ -257,7 +257,7 @@ def render_sidebar() -> None:
             - Race predictions and analysis
             - Technical regulations and rules
             - Driver and team information
-            
+
             **Tips:**
             - Be specific with your questions
             - Mention years, drivers, or races for better context
@@ -276,13 +276,13 @@ def render_sidebar() -> None:
             - Historical F1 knowledge base
             - Advanced language models
             - RAG (Retrieval-Augmented Generation)
-            
+
             Built with LangChain, LangGraph, Pinecone, and Streamlit.
-            
+
             ---
-            
+
             **Created by:** Prateek Mulye
-            
+
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
@@ -340,7 +340,7 @@ def render_header() -> None:
             st.rerun()
 
 
-def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
+def render_chat_interface(agent: F1AgentGraph | None) -> None:
     """Render the main chat interface with message history and input.
 
     This function implements the ChatGPT/Anthropic UX pattern where:
