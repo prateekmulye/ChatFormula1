@@ -5,8 +5,6 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
@@ -20,8 +18,8 @@ class RateLimitExceeded(HTTPException):
     def __init__(
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
-        retry_after: Optional[int] = None,
-    ):
+        retry_after: int | None = None,
+    ) -> None:
         """Initialize rate limit exception.
 
         Args:
@@ -42,7 +40,7 @@ class RateLimitExceeded(HTTPException):
 class TokenBucket:
     """Token bucket algorithm for rate limiting."""
 
-    def __init__(self, capacity: int, refill_rate: float):
+    def __init__(self, capacity: int, refill_rate: float) -> None:
         """Initialize token bucket.
 
         Args:
@@ -99,8 +97,8 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        burst_size: Optional[int] = None,
-    ):
+        burst_size: int | None = None,
+    ) -> None:
         """Initialize rate limiter.
 
         Args:
@@ -138,6 +136,7 @@ class RateLimiter:
         # Fall back to IP address
         # Check for forwarded IP (behind proxy)
         from src.config.settings import get_settings
+
         config = get_settings()
 
         client_ip = request.client.host if request.client else "unknown"
@@ -313,13 +312,13 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter(
     requests_per_minute: int = 60,
     requests_per_hour: int = 1000,
-    burst_size: Optional[int] = None,
+    burst_size: int | None = None,
 ) -> RateLimiter:
     """Get or create global rate limiter instance.
 
