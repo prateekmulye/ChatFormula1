@@ -8,8 +8,7 @@ This module provides additional node implementations with:
 - Streaming support using astream_events
 """
 
-from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, AsyncIterator, Optional
 
 import structlog
 from langchain_core.messages import AIMessage, HumanMessage
@@ -789,7 +788,7 @@ Please provide a comprehensive answer using the context above."""
         }
 
 
-def _build_advanced_filters(entities: dict[str, Any]) -> dict[str, Any] | None:
+def _build_advanced_filters(entities: dict[str, Any]) -> Optional[dict[str, Any]]:
     """Build advanced Pinecone filters from entities.
 
     Args:
