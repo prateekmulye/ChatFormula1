@@ -3,6 +3,16 @@
 These tests start the FastAPI application and test endpoints end-to-end.
 """
 
+import os
+
+# Patch environment variables for CI before importing app
+os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "dummy-openai-key")
+os.environ["PINECONE_API_KEY"] = os.environ.get(
+    "PINECONE_API_KEY", "dummy-pinecone-key"
+)
+os.environ["TAVILY_API_KEY"] = os.environ.get("TAVILY_API_KEY", "dummy-tavily-key")
+os.environ["ENVIRONMENT"] = os.environ.get("ENVIRONMENT", "test")
+
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
