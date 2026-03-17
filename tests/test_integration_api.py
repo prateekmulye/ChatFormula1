@@ -1,3 +1,8 @@
+import os
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
 """Integration tests for FastAPI endpoints.
 
 These tests start the FastAPI application and test endpoints end-to-end.
