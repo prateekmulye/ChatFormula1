@@ -1,3 +1,8 @@
+import os
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
 """Integration tests for FastAPI endpoints.
 
 These tests start the FastAPI application and test endpoints end-to-end.
@@ -8,7 +13,6 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from src.api.main import app
-from src.config.settings import Settings
 
 
 @pytest.mark.integration
@@ -112,14 +116,14 @@ class TestAdminEndpoints:
 
     def test_stats_endpoint_exists(self, client: TestClient):
         """Test stats endpoint exists."""
-        response = client.get("/stats")
+        response = client.get("/api/admin/stats")
 
         # Should not return 404
         assert response.status_code != 404
 
     def test_ingest_endpoint_exists(self, client: TestClient):
         """Test ingest endpoint exists."""
-        response = client.post("/ingest", json={})
+        response = client.post("/api/admin/ingest", json={})
 
         # Should not return 404 (might return 400 or 401 for auth)
         assert response.status_code != 404
