@@ -29,6 +29,12 @@ class InputValidator:
     MAX_LENGTH = 2000
     MAX_LINES = 50
 
+    # Compiled patterns for efficiency
+    _WHITESPACE_PATTERN = re.compile(r"[ \t]+")
+    _NEWLINE_PATTERN = re.compile(r"\n{3,}")
+    _HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+    _REPETITION_PATTERN = re.compile(r"(.)\1{50,}")
+
     # Suspicious patterns that might indicate prompt injection
     SUSPICIOUS_PATTERNS = [
         r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
@@ -56,12 +62,6 @@ class InputValidator:
         r"subprocess",
         r"os\.system",
     ]
-
-    # Compiled patterns for efficiency
-    _WHITESPACE_PATTERN = re.compile(r"[ \t]+")
-    _NEWLINE_PATTERN = re.compile(r"\n{3,}")
-    _HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
-    _REPETITION_PATTERN = re.compile(r"(.)\1{50,}")
 
     def __init__(self, strict_mode: bool = False) -> None:
         """Initialize input validator.
