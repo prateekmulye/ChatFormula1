@@ -38,6 +38,7 @@ class InputValidator:
     # Suspicious patterns that might indicate prompt injection
     SUSPICIOUS_PATTERNS = [
         r"ignore\s+(previous|above|all)\s+(instructions|prompts|rules)",
+        r"ignore\s+all\s+previous\s+instructions",
         r"system\s*:\s*you\s+are",
         r"<\s*\|\s*im_start\s*\|\s*>",
         r"<\s*\|\s*im_end\s*\|\s*>",
