@@ -5,10 +5,9 @@ XSS attacks, and other security vulnerabilities.
 """
 
 import re
-from typing import Optional
 
 import structlog
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 
@@ -17,7 +16,7 @@ class ValidationResult(BaseModel):
     """Result of input validation."""
 
     valid: bool = Field(..., description="Whether input is valid")
-    sanitized_input: Optional[str] = Field(None, description="Sanitized input if valid")
+    sanitized_input: str | None = Field(None, description="Sanitized input if valid")
     errors: list[str] = Field(default_factory=list, description="Validation errors")
     warnings: list[str] = Field(default_factory=list, description="Validation warnings")
 
@@ -58,7 +57,13 @@ class InputValidator:
         r"os\.system",
     ]
 
-    def __init__(self, strict_mode: bool = False):
+    # Compiled patterns for efficiency
+    _WHITESPACE_PATTERN = re.compile(r"[ \t]+")
+    _NEWLINE_PATTERN = re.compile(r"\n{3,}")
+    _HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+    _REPETITION_PATTERN = re.compile(r"(.)\1{50,}")
+
+    def __init__(self, strict_mode: bool = False) -> None:
         """Initialize input validator.
 
         Args:
@@ -160,7 +165,7 @@ class InputValidator:
                 warnings.append("Input has a high ratio of special characters")
 
         # Check for repeated characters (potential DoS)
-        if re.search(r"(.)\1{50,}", user_input):
+        if self._REPETITION_PATTERN.search(user_input):
             errors.append("Input contains excessive character repetition")
 
         # If validation failed, return early
@@ -208,14 +213,14 @@ class InputValidator:
         sanitized = user_input.replace("\x00", "")
 
         # Normalize whitespace (but preserve single newlines)
-        sanitized = re.sub(r"[ \t]+", " ", sanitized)
-        sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+        sanitized = self._WHITESPACE_PATTERN.sub(" ", sanitized)
+        sanitized = self._NEWLINE_PATTERN.sub("\n\n", sanitized)
 
         # Remove leading/trailing whitespace
         sanitized = sanitized.strip()
 
         # Remove any HTML tags (basic sanitization)
-        sanitized = re.sub(r"<[^>]+>", "", sanitized)
+        sanitized = self._HTML_TAG_PATTERN.sub("", sanitized)
 
         # Remove control characters except newlines and tabs
         sanitized = "".join(
@@ -230,12 +235,17 @@ class InputValidator:
 class InputSanitizer:
     """Sanitizer for user input with configurable rules."""
 
+    # Compiled patterns for efficiency
+    _WHITESPACE_PATTERN = re.compile(r"[ \t]+")
+    _NEWLINE_PATTERN = re.compile(r"\n{3,}")
+    _HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
+
     def __init__(
         self,
         remove_html: bool = True,
         normalize_whitespace: bool = True,
         remove_control_chars: bool = True,
-    ):
+    ) -> None:
         """Initialize input sanitizer.
 
         Args:
@@ -266,12 +276,12 @@ class InputSanitizer:
 
         # Remove HTML tags
         if self.remove_html:
-            sanitized = re.sub(r"<[^>]+>", "", sanitized)
+            sanitized = self._HTML_TAG_PATTERN.sub("", sanitized)
 
         # Normalize whitespace
         if self.normalize_whitespace:
-            sanitized = re.sub(r"[ \t]+", " ", sanitized)
-            sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+            sanitized = self._WHITESPACE_PATTERN.sub(" ", sanitized)
+            sanitized = self._NEWLINE_PATTERN.sub("\n\n", sanitized)
 
         # Remove control characters
         if self.remove_control_chars:
