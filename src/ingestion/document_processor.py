@@ -2,7 +2,7 @@
 
 import hashlib
 import re
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
@@ -30,7 +30,10 @@ class DocumentProcessor:
     - Content cleaning and normalization
     """
 
-    def __init__(self, config: Settings):
+    # Compiled patterns for efficiency
+    _WHITESPACE_PATTERN = re.compile(r"\s+")
+
+    def __init__(self, config: Settings) -> None:
         """Initialize DocumentProcessor.
 
         Args:
@@ -56,7 +59,7 @@ class DocumentProcessor:
         )
 
         # Track seen document hashes for deduplication
-        self._seen_hashes: Set[str] = set()
+        self._seen_hashes: set[str] = set()
 
         self.logger.info(
             "document_processor_initialized",
@@ -66,9 +69,9 @@ class DocumentProcessor:
 
     def process_race_results(
         self,
-        race_data: List[Dict[str, Any]],
+        race_data: list[dict[str, Any]],
         chunk: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Process race result data into documents.
 
         Args:
@@ -78,7 +81,7 @@ class DocumentProcessor:
         Returns:
             List of LangChain Document objects
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         self.logger.info("processing_race_results", total_records=len(race_data))
 
@@ -118,8 +121,8 @@ class DocumentProcessor:
 
     def process_driver_data(
         self,
-        driver_data: List[Dict[str, Any]],
-    ) -> List[Document]:
+        driver_data: list[dict[str, Any]],
+    ) -> list[Document]:
         """Process driver data into documents.
 
         Args:
@@ -128,7 +131,7 @@ class DocumentProcessor:
         Returns:
             List of LangChain Document objects
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         self.logger.info("processing_driver_data", total_drivers=len(driver_data))
 
@@ -164,8 +167,8 @@ class DocumentProcessor:
 
     def process_race_info(
         self,
-        race_data: List[Dict[str, Any]],
-    ) -> List[Document]:
+        race_data: list[dict[str, Any]],
+    ) -> list[Document]:
         """Process race information into documents.
 
         Args:
@@ -174,7 +177,7 @@ class DocumentProcessor:
         Returns:
             List of LangChain Document objects
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         self.logger.info("processing_race_info", total_races=len(race_data))
 
@@ -210,10 +213,10 @@ class DocumentProcessor:
 
     def process_text_documents(
         self,
-        texts: List[str],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
+        texts: list[str],
+        metadatas: list[dict[str, Any]] | None = None,
         chunk: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Process raw text documents.
 
         Args:
@@ -229,7 +232,7 @@ class DocumentProcessor:
                 f"Metadata count ({len(metadatas)}) must match text count ({len(texts)})"
             )
 
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         for idx, text in enumerate(texts):
             metadata = metadatas[idx] if metadatas else {}
@@ -261,8 +264,8 @@ class DocumentProcessor:
 
     def chunk_documents(
         self,
-        documents: List[Document],
-    ) -> List[Document]:
+        documents: list[Document],
+    ) -> list[Document]:
         """Chunk documents using semantic text splitter.
 
         Args:
@@ -290,8 +293,8 @@ class DocumentProcessor:
 
     def deduplicate_documents(
         self,
-        documents: List[Document],
-    ) -> List[Document]:
+        documents: list[Document],
+    ) -> list[Document]:
         """Remove duplicate documents based on content hash.
 
         Args:
@@ -300,7 +303,7 @@ class DocumentProcessor:
         Returns:
             List of unique documents
         """
-        unique_docs: List[Document] = []
+        unique_docs: list[Document] = []
         duplicates_found = 0
 
         for doc in documents:
@@ -322,7 +325,7 @@ class DocumentProcessor:
 
         return unique_docs
 
-    def _create_race_result_text(self, record: Dict[str, Any]) -> str:
+    def _create_race_result_text(self, record: dict[str, Any]) -> str:
         """Create narrative text from race result record.
 
         Args:
@@ -372,7 +375,7 @@ class DocumentProcessor:
 
         return ". ".join(parts) + "."
 
-    def _create_driver_text(self, driver: Dict[str, Any]) -> str:
+    def _create_driver_text(self, driver: dict[str, Any]) -> str:
         """Create narrative text from driver data.
 
         Args:
@@ -402,7 +405,7 @@ class DocumentProcessor:
 
         return ". ".join(parts) + "."
 
-    def _create_race_info_text(self, race: Dict[str, Any]) -> str:
+    def _create_race_info_text(self, race: dict[str, Any]) -> str:
         """Create narrative text from race information.
 
         Args:
@@ -436,7 +439,7 @@ class DocumentProcessor:
 
         return ". ".join(parts) + "."
 
-    def _extract_race_metadata(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_race_metadata(self, record: dict[str, Any]) -> dict[str, Any]:
         """Extract metadata from race result record.
 
         Args:
@@ -469,7 +472,7 @@ class DocumentProcessor:
 
         return metadata
 
-    def _extract_driver_metadata(self, driver: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_driver_metadata(self, driver: dict[str, Any]) -> dict[str, Any]:
         """Extract metadata from driver data.
 
         Args:
@@ -494,7 +497,7 @@ class DocumentProcessor:
 
         return metadata
 
-    def _extract_race_info_metadata(self, race: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_race_info_metadata(self, race: dict[str, Any]) -> dict[str, Any]:
         """Extract metadata from race information.
 
         Args:
@@ -536,7 +539,7 @@ class DocumentProcessor:
             return ""
 
         # Remove excessive whitespace
-        text = re.sub(r"\s+", " ", text)
+        text = self._WHITESPACE_PATTERN.sub(" ", text)
 
         # Remove leading/trailing whitespace
         text = text.strip()
@@ -553,7 +556,7 @@ class DocumentProcessor:
             MD5 hash of document content
         """
         content = doc.page_content.encode("utf-8")
-        return hashlib.md5(content).hexdigest()
+        return hashlib.md5(content).hexdigest()  # noqa: S324
 
     def clear_deduplication_cache(self) -> None:
         """Clear the deduplication cache."""
@@ -561,7 +564,7 @@ class DocumentProcessor:
         self._seen_hashes.clear()
         self.logger.info("deduplication_cache_cleared", entries_removed=cache_size)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get processing statistics.
 
         Returns:
