@@ -244,7 +244,7 @@ async def get_vector_store_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve vector store statistics: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -295,7 +295,7 @@ async def ingest_data(
     task_id = str(uuid.uuid4())
 
     # Define background task
-    async def run_ingestion():
+    async def run_ingestion() -> None:
         """Background task for data ingestion."""
         try:
             logger.info(
@@ -530,7 +530,7 @@ async def get_metrics(api_key: APIKey = Depends(verify_api_key)) -> dict[str, An
     description="Export metrics in Prometheus text format for scraping",
     response_class=None,
 )
-async def get_prometheus_metrics(api_key: APIKey = Depends(verify_api_key)):
+async def get_prometheus_metrics(api_key: APIKey = Depends(verify_api_key)) -> Any:  # noqa: ANN401
     """Export metrics in Prometheus format.
 
     Returns:
