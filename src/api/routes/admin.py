@@ -530,7 +530,9 @@ async def get_metrics(api_key: APIKey = Depends(verify_api_key)) -> dict[str, An
     description="Export metrics in Prometheus text format for scraping",
     response_class=None,
 )
-async def get_prometheus_metrics(api_key: APIKey = Depends(verify_api_key)) -> Any:  # noqa: ANN401
+async def get_prometheus_metrics(
+    api_key: APIKey = Depends(verify_api_key),
+) -> Any:  # noqa: ANN401
     """Export metrics in Prometheus format.
 
     Returns:
