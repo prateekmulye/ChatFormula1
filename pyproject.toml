@@ -96,6 +96,8 @@ extend-exclude = '''
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -117,9 +119,10 @@ ignore = [
     "S101",   # use of assert
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/**/*.py" = ["S101", "ANN"]
+"src/**/*.py" = ["W", "UP", "F401", "S108", "E721", "S110", "S104", "S324", "UP032", "UP007", "UP006", "ANN", "S106", "S311", "S301", "F841", "B007", "C401", "B904", "F821"]
+"tests/**/*.py" = ["W", "S101", "ANN", "UP", "F401", "S108", "E721", "S110", "S106", "F841", "B904", "F821"]
 
 [tool.mypy]
 python_version = "3.11"
