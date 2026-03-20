@@ -5,11 +5,11 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
+
+from src.config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -20,7 +20,7 @@ class RateLimitExceeded(HTTPException):
     def __init__(
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
-        retry_after: Optional[int] = None,
+        retry_after: int | None = None,
     ):
         """Initialize rate limit exception.
 
@@ -99,7 +99,7 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        burst_size: Optional[int] = None,
+        burst_size: int | None = None,
     ):
         """Initialize rate limiter.
 
@@ -139,8 +139,21 @@ class RateLimiter:
         # Check for forwarded IP (behind proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
-            # Take the first IP in the chain
-            client_ip = forwarded_for.split(",")[0].strip()
+            # Parse the chain from right to left
+            ips = [ip.strip() for ip in forwarded_for.split(",")]
+            trusted_proxies = get_settings().trusted_proxies
+
+            # Start from the rightmost IP (closest to the server)
+            # Find the first IP that is not in the trusted proxies list
+            client_ip = "unknown"
+            for ip in reversed(ips):
+                if ip not in trusted_proxies:
+                    client_ip = ip
+                    break
+
+            # If all IPs in the chain are trusted, use the leftmost IP as a fallback
+            if client_ip == "unknown" and ips:
+                client_ip = ips[0]
         else:
             client_ip = request.client.host if request.client else "unknown"
 
@@ -296,13 +309,13 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter(
     requests_per_minute: int = 60,
     requests_per_hour: int = 1000,
-    burst_size: Optional[int] = None,
+    burst_size: int | None = None,
 ) -> RateLimiter:
     """Get or create global rate limiter instance.
 
