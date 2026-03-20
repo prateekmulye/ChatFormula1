@@ -5,6 +5,8 @@ fair usage of the API.
 """
 
 import time
+from collections import defaultdict
+from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
@@ -20,7 +22,7 @@ class RateLimitExceeded(HTTPException):
     def __init__(
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
-        retry_after: int | None = None,
+        retry_after: Optional[int] = None,
     ):
         """Initialize rate limit exception.
 
@@ -99,7 +101,7 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
-        burst_size: int | None = None,
+        burst_size: Optional[int] = None,
     ):
         """Initialize rate limiter.
 
@@ -309,13 +311,13 @@ class RateLimiter:
 
 
 # Global rate limiter instance
-_rate_limiter: RateLimiter | None = None
+_rate_limiter: Optional[RateLimiter] = None
 
 
 def get_rate_limiter(
     requests_per_minute: int = 60,
     requests_per_hour: int = 1000,
-    burst_size: int | None = None,
+    burst_size: Optional[int] = None,
 ) -> RateLimiter:
     """Get or create global rate limiter instance.
 
