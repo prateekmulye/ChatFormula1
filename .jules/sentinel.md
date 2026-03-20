@@ -1,0 +1,4 @@
+## 2024-05-31 - IP Spoofing in Rate Limiter X-Forwarded-For Parsing
+**Vulnerability:** The rate limiter blindly trusted the first IP address (leftmost) in the `X-Forwarded-For` header for identifying clients. An attacker could trivially bypass rate limits by spoofing this header (e.g., `X-Forwarded-For: 1.2.3.4, <attacker-ip>`), causing the limiter to apply limits to a fake IP `1.2.3.4` instead of the attacker's actual IP.
+**Learning:** The `X-Forwarded-For` header is user-controllable input. The leftmost IP is not necessarily the true origin client. Only the rightmost IP appended by the trusted proxy directly connected to the server is reliable.
+**Prevention:** Configure a list of `trusted_proxies`. When parsing `X-Forwarded-For`, iterate from right to left (closest to the server first). Discard IPs that belong to the `trusted_proxies` list. The first IP encountered that is *not* in the trusted list is the true untrusted client IP.
