@@ -150,6 +150,45 @@ def initialize_agent() -> Optional[F1AgentGraph]:
         return None
 
 
+@st.dialog("Clear Conversation")
+def confirm_clear_conversation():
+    st.warning(
+        "Are you sure you want to clear the conversation history? This action cannot be undone."
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+    with col2:
+        if st.button("Yes, Clear", type="primary", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info("conversation_cleared", session_id=st.session_state.session_id)
+            st.rerun()
+
+
+@st.dialog("New Session")
+def confirm_new_session():
+    st.warning(
+        "Are you sure you want to start a new session? Current conversation history will be lost."
+    )
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+    with col2:
+        if st.button("Yes, Start New", type="primary", use_container_width=True):
+            import uuid
+
+            st.session_state.session_id = str(uuid.uuid4())
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info("new_session_created", session_id=st.session_state.session_id)
+            st.rerun()
+
+
 def render_sidebar() -> None:
     """Render the sidebar with settings and controls."""
     with st.sidebar:
@@ -210,20 +249,11 @@ def render_sidebar() -> None:
 
         # Clear conversation button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+            confirm_clear_conversation()
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):
-            st.session_state.session_id = str(uuid.uuid4())
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("new_session_created", session_id=st.session_state.session_id)
-            st.rerun()
+            confirm_new_session()
 
         st.divider()
 
@@ -248,7 +278,8 @@ def render_sidebar() -> None:
 
         # Help section
         with st.expander("❓ Help & Tips"):
-            st.markdown("""
+            st.markdown(
+                """
             **What can I ask?**
             - Current F1 standings and results
             - Historical statistics and records
@@ -261,11 +292,13 @@ def render_sidebar() -> None:
             - Mention years, drivers, or races for better context
             - Ask follow-up questions naturally
             - Use the feedback buttons to help improve responses
-            """)
+            """
+            )
 
         # About section
         with st.expander("ℹ️ About"):
-            st.markdown("""
+            st.markdown(
+                """
             **ChatFormula1** is an AI-powered Formula 1 expert assistant
             that combines:
             - Real-time F1 data and news
@@ -282,7 +315,8 @@ def render_sidebar() -> None:
             **Connect:**
             - 🔗 LinkedIn: [linkedin.com/in/prateekmulye](https://www.linkedin.com/in/prateekmulye/)
             - 💻 GitHub: [github.com/prateekmulye](https://github.com/prateekmulye)
-            """)
+            """
+            )
 
 
 def render_header() -> None:
