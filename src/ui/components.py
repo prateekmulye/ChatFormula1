@@ -1518,7 +1518,9 @@ def render_settings_panel() -> None:
         # Dialog for clearing conversation
         @st.dialog("Clear Conversation")
         def confirm_clear() -> None:
-            st.warning("Are you sure you want to clear the conversation? This action cannot be undone.")
+            st.warning(
+                "Are you sure you want to clear the conversation? This action cannot be undone."
+            )
             col_yes, col_no = st.columns(2)
             with col_yes:
                 if st.button("Yes, Clear", use_container_width=True, type="primary"):
