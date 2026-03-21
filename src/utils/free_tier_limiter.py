@@ -7,6 +7,7 @@ import threading
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Dict, Optional
 
 
 class FreeTierLimiter:
@@ -24,18 +25,18 @@ class FreeTierLimiter:
         self.lock = threading.Lock()
 
         # User-level limits
-        self.user_requests: dict[str, list] = defaultdict(list)
-        self.user_daily_requests: dict[str, int] = defaultdict(int)
-        self.user_daily_reset: dict[str, datetime] = {}
+        self.user_requests: Dict[str, list] = defaultdict(list)
+        self.user_daily_requests: Dict[str, int] = defaultdict(int)
+        self.user_daily_reset: Dict[str, datetime] = {}
 
         # Global service limits
         self.openai_requests: list = []
         self.openai_daily_count: int = 0
-        self.openai_daily_reset: datetime | None = None
+        self.openai_daily_reset: Optional[datetime] = None
 
         self.tavily_requests: list = []
         self.tavily_daily_count: int = 0
-        self.tavily_daily_reset: datetime | None = None
+        self.tavily_daily_reset: Optional[datetime] = None
 
         self.pinecone_requests: list = []
 
@@ -77,7 +78,7 @@ class FreeTierLimiter:
             self.tavily_daily_count = 0
             self.tavily_daily_reset = now + timedelta(days=1)
 
-    def check_user_limit(self, user_id: str) -> tuple[bool, str | None]:
+    def check_user_limit(self, user_id: str) -> tuple[bool, Optional[str]]:
         """
         Check if user is within rate limits
 
@@ -117,7 +118,7 @@ class FreeTierLimiter:
 
             return True, None
 
-    def check_openai_limit(self) -> tuple[bool, str | None]:
+    def check_openai_limit(self) -> tuple[bool, Optional[str]]:
         """Check if OpenAI API call is allowed"""
         with self.lock:
             self._reset_daily_if_needed("system")
@@ -142,7 +143,7 @@ class FreeTierLimiter:
 
             return True, None
 
-    def check_tavily_limit(self) -> tuple[bool, str | None]:
+    def check_tavily_limit(self) -> tuple[bool, Optional[str]]:
         """Check if Tavily search is allowed"""
         with self.lock:
             self._reset_daily_if_needed("system")
@@ -156,7 +157,7 @@ class FreeTierLimiter:
 
             return True, None
 
-    def check_pinecone_limit(self) -> tuple[bool, str | None]:
+    def check_pinecone_limit(self) -> tuple[bool, Optional[str]]:
         """Check if Pinecone query is allowed"""
         with self.lock:
             now = time.time()
@@ -208,7 +209,7 @@ class FreeTierLimiter:
 
 
 # Global instance
-_limiter: FreeTierLimiter | None = None
+_limiter: Optional[FreeTierLimiter] = None
 
 
 def get_limiter() -> FreeTierLimiter:

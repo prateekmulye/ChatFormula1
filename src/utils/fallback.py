@@ -1,10 +1,9 @@
 """Fallback mechanisms for graceful degradation when services are unavailable."""
 
 import asyncio
-from collections.abc import Callable
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Callable, Generic, Optional, TypeVar
 
 from ..config.logging import get_logger
 from ..exceptions import LLMError, SearchAPIError, VectorStoreError
@@ -57,7 +56,7 @@ class ResponseCache:
         self._cache: dict[str, CachedResponse] = {}
         self._default_ttl = default_ttl
 
-    def get(self, key: str) -> Any | None:
+    def get(self, key: str) -> Optional[Any]:
         """Get cached response if available and not expired.
 
         Args:
@@ -82,7 +81,7 @@ class ResponseCache:
         )
         return cached.data
 
-    def set(self, key: str, data: Any, ttl: int | None = None) -> None:
+    def set(self, key: str, data: Any, ttl: Optional[int] = None) -> None:
         """Store response in cache.
 
         Args:
@@ -137,7 +136,7 @@ class FallbackChain(Generic[T]):
         self,
         primary: Callable[..., T],
         fallbacks: list[Callable[..., T]],
-        cache_key_fn: Callable[..., str] | None = None,
+        cache_key_fn: Optional[Callable[..., str]] = None,
         use_cache: bool = True,
     ) -> None:
         """Initialize fallback chain.

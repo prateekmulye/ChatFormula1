@@ -4,9 +4,8 @@ This module defines the state structure used by the LangGraph agent,
 including message handling, context management, and metadata tracking.
 """
 
-from collections.abc import Sequence
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Optional, Sequence
 
 import structlog
 from langchain_core.messages import BaseMessage
@@ -95,7 +94,7 @@ class AgentState(BaseModel):
     )
 
     # Query analysis results
-    intent: str | None = Field(
+    intent: Optional[str] = Field(
         default=None,
         description="Detected intent: current_info, historical, prediction, technical, general",
     )
@@ -123,7 +122,7 @@ class AgentState(BaseModel):
     )
 
     # Generated response
-    response: str | None = Field(
+    response: Optional[str] = Field(
         default=None,
         description="Generated response from LLM",
     )
@@ -181,7 +180,7 @@ class QueryAnalysis(BaseModel):
         description="Extracted entities organized by type",
     )
 
-    time_period: str | None = Field(
+    time_period: Optional[str] = Field(
         default=None,
         description="Relevant time period (e.g., '2024 season', '2020-2023', 'all-time')",
     )
@@ -205,7 +204,7 @@ class SearchDecision(BaseModel):
         description="Whether to use Tavily for real-time information",
     )
 
-    vector_search_filters: dict[str, Any] | None = Field(
+    vector_search_filters: Optional[dict[str, Any]] = Field(
         default=None,
         description="Metadata filters for vector search (year, category, etc.)",
     )
@@ -359,7 +358,7 @@ class ConversationContext(BaseModel):
         }
 
 
-def validate_state(state: AgentState) -> tuple[bool, str | None]:
+def validate_state(state: AgentState) -> tuple[bool, Optional[str]]:
     """Validate agent state for consistency and completeness.
 
     Args:
@@ -393,7 +392,7 @@ def validate_state(state: AgentState) -> tuple[bool, str | None]:
 
 def create_initial_state(
     session_id: str,
-    system_message: BaseMessage | None = None,
+    system_message: Optional[BaseMessage] = None,
 ) -> AgentState:
     """Create initial agent state for a new conversation.
 
