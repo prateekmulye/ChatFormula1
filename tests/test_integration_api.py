@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from src.api.main import app
-from src.config.settings import Settings
 
 
 @pytest.mark.integration
