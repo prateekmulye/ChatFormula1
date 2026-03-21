@@ -9,7 +9,6 @@ import pytest
 from src.ingestion.data_loader import (
     DataLoader,
     DataLoadError,
-    DataValidationError,
     DriverSchema,
     RaceResultSchema,
     RaceSchema,

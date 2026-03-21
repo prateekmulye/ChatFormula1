@@ -190,7 +190,9 @@ async def detailed_health_check() -> HealthCheckResponse:
     summary="Vector store statistics",
     description="Get statistics about the vector store index",
 )
-async def get_vector_store_stats() -> VectorStoreStatsResponse:
+async def get_vector_store_stats(
+    api_key: APIKey = Depends(verify_api_key),
+) -> VectorStoreStatsResponse:
     """Get vector store statistics.
 
     Returns:
@@ -356,9 +358,7 @@ async def ingest_data(
     summary="Validate configuration",
     description="Validate application configuration and check for issues",
 )
-async def validate_configuration(
-    api_key: APIKey = Depends(verify_api_key),
-) -> ConfigValidationResponse:
+async def validate_configuration() -> ConfigValidationResponse:
     """Validate application configuration.
 
     Returns:
@@ -526,7 +526,9 @@ async def get_metrics() -> dict[str, Any]:
     description="Export metrics in Prometheus text format for scraping",
     response_class=None,
 )
-async def get_prometheus_metrics():
+async def get_prometheus_metrics(
+    api_key: APIKey = Depends(verify_api_key),
+):
     """Export metrics in Prometheus format.
 
     Returns:

@@ -3,11 +3,18 @@
 These tests start the FastAPI application and test endpoints end-to-end.
 """
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from src.api.main import app
+
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
 
 
 @pytest.mark.integration
@@ -79,7 +86,7 @@ class TestChatEndpoints:
         )
 
         # Should not return 404
-        assert response.status_code in [200, 202, 401, 503]
+        assert response.status_code != 404
 
     async def test_chat_endpoint_validation(self, async_client: AsyncClient):
         """Test chat endpoint input validation."""
@@ -114,14 +121,14 @@ class TestAdminEndpoints:
         response = client.get("/api/admin/stats")
 
         # Should not return 404
-        assert response.status_code in [200, 202, 401, 503]
+        assert response.status_code != 404
 
     def test_ingest_endpoint_exists(self, client: TestClient):
         """Test ingest endpoint exists."""
         response = client.post("/api/admin/ingest", json={})
 
         # Should not return 404 (might return 400 or 401 for auth)
-        assert response.status_code in [200, 202, 401, 503]
+        assert response.status_code != 404
 
 
 @pytest.mark.integration

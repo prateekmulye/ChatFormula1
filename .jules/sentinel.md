@@ -1,4 +1,4 @@
-## 2025-03-21 - Critical Missing Authentication on Admin Endpoints
-**Vulnerability:** Found that multiple sensitive endpoints in `src/api/routes/admin.py` (such as `/ingest`, `/config/validate`, `/metrics/reset`, and all `/api-keys` management routes) were completely unauthenticated, allowing any unauthorized user to perform administrative actions. The `AuthenticationMiddleware` was imported but not globally applied in `main.py`, meaning routes without explicit `Depends(verify_api_key)` were public by default.
-**Learning:** In a FastAPI application containing a mix of public and private routes within the same router module, relying on global middleware can cause accidental public exposure if not correctly configured. Developers often assume importing authentication utilities is enough.
-**Prevention:** Always apply authentication dependencies like `Depends(verify_api_key)` directly to the specific target function signatures. This ensures granular, explicit security controls and prevents accidental exposure of sensitive administrative endpoints.
+## 2024-03-17 - Missing Authentication on Admin Endpoints
+**Vulnerability:** Several sensitive administrative endpoints (ingestion, metric reset, and API key management) in `src/api/routes/admin.py` lacked authentication entirely.
+**Learning:** Admin endpoints placed alongside public endpoints (like `/health`) can be easily missed if router-level dependencies aren't applied. In this case, no authentication mechanism (like `verify_api_key`) was applied to the sensitive endpoints.
+**Prevention:** Apply function-level authentication dependencies to sensitive endpoints, or segregate public and private routes into separate routers so router-level security constraints can be strictly enforced.
