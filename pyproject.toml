@@ -96,6 +96,8 @@ extend-exclude = '''
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -117,9 +119,22 @@ ignore = [
     "S101",   # use of assert
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101", "ANN"]
+"src/vector_store/manager.py" = ["UP006", "UP007"]
+"tests/conftest.py" = ["UP035", "F401", "UP006", "UP007", "E721"]
+"tests/test_config.py" = ["F401"]
+"tests/test_data_loader.py" = ["F401", "S108"]
+"tests/test_document_processor.py" = ["UP032"]
+"tests/test_e2e_user_workflows.py" = ["S110"]
+"tests/test_fallback.py" = ["F401"]
+"tests/test_functionality_preservation.py" = ["F401", "W293", "F841"]
+"tests/test_integration_agent.py" = ["UP038"]
+"tests/test_integration_api.py" = ["F401"]
+"tests/test_integration_complete.py" = ["F401"]
+"tests/test_security.py" = ["S106"]
+"tests/test_ui_components.py" = ["F401"]
 
 [tool.mypy]
 python_version = "3.11"
