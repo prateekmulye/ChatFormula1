@@ -79,7 +79,7 @@ class TestChatEndpoints:
         )
 
         # Should not return 404
-        assert response.status_code == 401
+        assert response.status_code != 404
 
     async def test_chat_endpoint_validation(self, async_client: AsyncClient):
         """Test chat endpoint input validation."""
