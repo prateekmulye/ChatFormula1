@@ -7,6 +7,13 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
+
+import os
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
+os.environ["ENVIRONMENT"] = "development"
+
 from src.api.main import app
 from src.config.settings import Settings
 
