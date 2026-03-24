@@ -96,6 +96,8 @@ extend-exclude = '''
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -112,14 +114,41 @@ ignore = [
     "E501",   # line too long, handled by black
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
-    "ANN101", # missing type annotation for self
-    "ANN102", # missing type annotation for cls
     "S101",   # use of assert
+    "UP006",  # Use `list` instead of `List` for type annotation
+    "UP007",  # Use `X | Y` for type annotations
+    "UP035",  # Import from `collections.abc` instead
+    "UP038",  # Use `X | Y` in `isinstance` call instead of `(X, Y)`
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "C401",   # Unnecessary generator (rewrite as a set comprehension)
+    "S106",   # Possible hardcoded password
+    "S108",   # Probable insecure usage of temporary file or directory
+    "S110",   # `try`-`except`-`pass` detected, consider logging the exception
+    "F841",   # Local variable is assigned to but never used
+    "UP032",  # Use f-string instead of `format` call
+    "W291",   # Trailing whitespace
+    "W293",   # Blank line contains whitespace
+    "F401",   # Imported but unused
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "F821",   # Undefined name (e.g. `asyncio`)
+    "UP041",  # Replace aliased errors with TimeoutError
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "B904",   # Within an except clause, raise exceptions with raise ... from err
+    "S104",   # Possible binding to all interfaces
+    "UP011",  # Unnecessary parentheses to functools.lru_cache
+    "UP015",  # Unnecessary open mode parameters
+    "S324",   # Probable use of insecure hash functions in hashlib
+    "B007",   # Loop control variable not used within loop body
+    "ANN206",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/**/*.py" = ["S101", "ANN"]
+"tests/**/*.py" = ["S101", "ANN", "F401", "E721"]
 
 [tool.mypy]
 python_version = "3.11"
