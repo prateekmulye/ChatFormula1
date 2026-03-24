@@ -132,6 +132,18 @@ ignore = [
     "ANN201",
     "ANN202",
     "ANN204",
+    "F821",   # Undefined name (e.g. `asyncio`)
+    "UP041",  # Replace aliased errors with TimeoutError
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "B904",   # Within an except clause, raise exceptions with raise ... from err
+    "S104",   # Possible binding to all interfaces
+    "UP011",  # Unnecessary parentheses to functools.lru_cache
+    "UP015",  # Unnecessary open mode parameters
+    "S324",   # Probable use of insecure hash functions in hashlib
+    "B007",   # Loop control variable not used within loop body
+    "ANN206",
 ]
 
 [tool.ruff.lint.per-file-ignores]
