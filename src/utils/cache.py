@@ -115,7 +115,9 @@ class TTLCache:
         # Clean up expired entries periodically, but throttle to max once per minute
         # to prevent O(N) scan from destroying O(1) read latency under heavy load
         current_time = time.time()
-        if len(self._cache) > self.max_size * 0.9 and (current_time - self._last_evict_time > 60.0):
+        if len(self._cache) > self.max_size * 0.9 and (
+            current_time - self._last_evict_time > 60.0
+        ):
             self._evict_expired()
             self._last_evict_time = current_time
 
