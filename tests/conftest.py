@@ -34,6 +34,14 @@ Example Usage:
 """
 
 import os
+
+# Mock essential environment variables before any application modules are imported.
+# This prevents pydantic ValidationError during pytest collection.
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("OPENAI_API_KEY", "dummy-openai-key")
+os.environ.setdefault("PINECONE_API_KEY", "dummy-pinecone-key")
+os.environ.setdefault("TAVILY_API_KEY", "dummy-tavily-key")
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
