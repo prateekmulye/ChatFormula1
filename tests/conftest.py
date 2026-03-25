@@ -34,6 +34,13 @@ Example Usage:
 """
 
 import os
+
+# Set required environment variables before any project code is imported
+os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "dummy-openai-key") or "dummy-openai-key"
+os.environ["PINECONE_API_KEY"] = os.environ.get("PINECONE_API_KEY", "dummy-pinecone-key") or "dummy-pinecone-key"
+os.environ["TAVILY_API_KEY"] = os.environ.get("TAVILY_API_KEY", "dummy-tavily-key") or "dummy-tavily-key"
+os.environ["ENVIRONMENT"] = "development" # Must be development, staging, or production
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
