@@ -116,7 +116,10 @@ class TTLCache:
         # Clean up expired entries periodically, throttled to at most once per minute
         # to avoid O(N) operations blocking the read path
         current_time = time.time()
-        if len(self._cache) > self.max_size * 0.9 and current_time > self._next_eviction_time:
+        if (
+            len(self._cache) > self.max_size * 0.9
+            and current_time > self._next_eviction_time
+        ):
             self._evict_expired()
             self._next_eviction_time = current_time + 60.0
 
