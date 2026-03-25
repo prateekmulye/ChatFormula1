@@ -34,6 +34,13 @@ Example Usage:
 """
 
 import os
+
+# Set required environment variables before any project code is imported
+os.environ.setdefault("OPENAI_API_KEY", "dummy-openai-key")
+os.environ.setdefault("PINECONE_API_KEY", "dummy-pinecone-key")
+os.environ.setdefault("TAVILY_API_KEY", "dummy-tavily-key")
+os.environ.setdefault("ENVIRONMENT", "development")
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
