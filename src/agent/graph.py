@@ -483,6 +483,7 @@ Be accurate and concise."""
         logger.info("performing_parallel_retrieval")
 
         # Execute both searches in parallel
+        import asyncio
         vector_task = asyncio.create_task(self.vector_search_node(state))
         tavily_task = asyncio.create_task(self.tavily_search_node(state))
 
