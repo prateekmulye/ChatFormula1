@@ -632,16 +632,24 @@ class TestSessionStateManagement:
             "session_id": "test-session-123",
         }
 
+        class MockSessionState(dict):
+            def __getattr__(self, attr):
+                return self.get(attr)
+            def __setattr__(self, attr, value):
+                self[attr] = value
+
+        mock_st.session_state = MockSessionState(mock_st.session_state)
+
+        mock_st.columns.return_value = (MagicMock(), MagicMock())
+
         # Mock button to simulate clear click
         mock_st.button.side_effect = [True, False]  # First button (clear) clicked
 
         # Call function
-        render_settings_panel()
+        with patch("src.ui.components.confirm_clear_conversation") as mock_confirm:
+            render_settings_panel()
+            mock_confirm.assert_called_once()
 
-        # Verify state was reset
-        assert mock_st.session_state["messages"] == []
-        assert mock_st.session_state["agent_state"] is None
-        assert mock_st.session_state["feedback"] == {}
 
 
 class TestAgentInitializationAndProcessing:
