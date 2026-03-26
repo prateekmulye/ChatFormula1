@@ -635,6 +635,7 @@ class TestSessionStateManagement:
         class MockSessionState(dict):
             def __getattr__(self, attr):
                 return self.get(attr)
+
             def __setattr__(self, attr, value):
                 self[attr] = value
 
@@ -649,7 +650,6 @@ class TestSessionStateManagement:
         with patch("src.ui.components.confirm_clear_conversation") as mock_confirm:
             render_settings_panel()
             mock_confirm.assert_called_once()
-
 
 
 class TestAgentInitializationAndProcessing:
