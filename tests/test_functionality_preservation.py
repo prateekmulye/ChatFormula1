@@ -641,7 +641,10 @@ class TestSessionStateManagement:
 
         mock_st.session_state = MockSessionState(mock_st.session_state)
 
-        mock_st.columns.return_value = (MagicMock(), MagicMock())
+        mock_st.columns.return_value = (
+            MagicMock(),
+            MagicMock(),
+        )
 
         # Mock button to simulate clear click
         mock_st.button.side_effect = [True, False]  # First button (clear) clicked
