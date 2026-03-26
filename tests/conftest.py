@@ -34,6 +34,13 @@ Example Usage:
 """
 
 import os
+
+# Override environment for tests to bypass Pydantic validation errors
+os.environ["ENVIRONMENT"] = "development"
+os.environ.setdefault("OPENAI_API_KEY", "dummy-openai-key")
+os.environ.setdefault("PINECONE_API_KEY", "dummy-pinecone-key")
+os.environ.setdefault("TAVILY_API_KEY", "dummy-tavily-key")
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
