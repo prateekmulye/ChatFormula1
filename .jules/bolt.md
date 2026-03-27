@@ -1,0 +1,3 @@
+## 2024-05-24 - Throttle O(N) cache eviction scans on read paths
+**Learning:** In the `TTLCache` class, `_evict_expired()` performs an O(N) scan of the entire dictionary. When triggered automatically on read operations (`get()`) solely based on cache size (`len(self._cache) > self.max_size * 0.9`), a mostly-full cache can trigger this O(N) scan on *every single read*, destroying O(1) performance guarantees and causing severe latency spikes.
+**Action:** When implementing or reviewing cache structures that use O(N) cleanup mechanisms, always decouple them from the direct read path or aggressively throttle them (e.g., using a minimum time interval like 60 seconds) to ensure `get()` operations remain O(1) even under heavy load or full-cache conditions.
