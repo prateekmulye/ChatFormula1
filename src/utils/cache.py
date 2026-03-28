@@ -12,7 +12,8 @@ import hashlib
 import json
 import time
 from collections import OrderedDict
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, Tuple
 
 import structlog
 
@@ -40,7 +41,7 @@ class TTLCache:
         """
         self.max_size = max_size
         self.default_ttl = default_ttl
-        self._cache: OrderedDict[str, tuple[Any, float]] = OrderedDict()
+        self._cache: OrderedDict[str, Tuple[Any, float]] = OrderedDict()
         self._hits = 0
         self._misses = 0
         self._last_evict_time: float = 0.0
@@ -51,7 +52,7 @@ class TTLCache:
             default_ttl=default_ttl,
         )
 
-    def _generate_key(self, *args: Any, **kwargs: Any) -> str:  # noqa: ANN401
+    def _generate_key(self, *args: Any, **kwargs: Any) -> str:
         """Generate cache key from arguments.
 
         Args:
@@ -103,7 +104,7 @@ class TTLCache:
             key, _ = self._cache.popitem(last=False)
             logger.debug("lru_entry_evicted", key=key[:16])
 
-    def get(self, key: str) -> Any | None:  # noqa: ANN401
+    def get(self, key: str) -> Optional[Any]:
         """Get value from cache.
 
         Args:
@@ -141,7 +142,7 @@ class TTLCache:
         logger.debug("cache_miss", key=key[:16])
         return None
 
-    def set(self, key: str, value: Any, ttl: int | None = None) -> None:  # noqa: ANN401
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
         """Set value in cache.
 
         Args:
@@ -195,7 +196,7 @@ class TTLCache:
         logger.info("cache_cleared", entries_cleared=count)
         return count
 
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics.
 
         Returns:
@@ -262,7 +263,7 @@ class CacheManager:
         self,
         query: str,
         k: int,
-        filters: dict[str, Any] | None = None,
+        filters: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Generate cache key for vector search.
 
@@ -333,7 +334,7 @@ class CacheManager:
             temperature,
         )
 
-    def clear_all(self) -> dict[str, int]:
+    def clear_all(self) -> Dict[str, int]:
         """Clear all caches.
 
         Returns:
@@ -345,7 +346,7 @@ class CacheManager:
             "llm_cache": self.llm_cache.clear(),
         }
 
-    def get_all_stats(self) -> dict[str, dict[str, Any]]:
+    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
         """Get statistics for all caches.
 
         Returns:
@@ -359,7 +360,7 @@ class CacheManager:
 
 
 # Global cache manager instance
-_cache_manager: CacheManager | None = None
+_cache_manager: Optional[CacheManager] = None
 
 
 def get_cache_manager() -> CacheManager:
@@ -377,7 +378,7 @@ def get_cache_manager() -> CacheManager:
     return _cache_manager
 
 
-def clear_all_caches() -> dict[str, int]:
+def clear_all_caches() -> Dict[str, int]:
     """Clear all caches in the global cache manager.
 
     Returns:
@@ -387,7 +388,7 @@ def clear_all_caches() -> dict[str, int]:
     return manager.clear_all()
 
 
-def get_cache_stats() -> dict[str, dict[str, Any]]:
+def get_cache_stats() -> Dict[str, Dict[str, Any]]:
     """Get statistics for all caches.
 
     Returns:
