@@ -51,7 +51,7 @@ class TTLCache:
             default_ttl=default_ttl,
         )
 
-    def _generate_key(self, *args: Any, **kwargs: Any) -> str:
+    def _generate_key(self, *args: Any, **kwargs: Any) -> str:  # noqa: ANN401
         """Generate cache key from arguments.
 
         Args:
@@ -103,7 +103,7 @@ class TTLCache:
             key, _ = self._cache.popitem(last=False)
             logger.debug("lru_entry_evicted", key=key[:16])
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:  # noqa: ANN401
         """Get value from cache.
 
         Args:
@@ -139,7 +139,7 @@ class TTLCache:
         logger.debug("cache_miss", key=key[:16])
         return None
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl: int | None = None) -> None:  # noqa: ANN401
         """Set value in cache.
 
         Args:
