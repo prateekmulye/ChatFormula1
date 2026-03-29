@@ -143,7 +143,7 @@ class DataLoader:
 
             data: List[Dict[str, Any]] = []
 
-            with open(file_path, "r", encoding=encoding) as f:
+            with open(file_path, encoding=encoding) as f:
                 reader = csv.DictReader(f)
 
                 for row_num, row in enumerate(
@@ -219,7 +219,7 @@ class DataLoader:
                 "loading_json", file_path=str(file_path), validate=validate
             )
 
-            with open(file_path, "r", encoding=encoding) as f:
+            with open(file_path, encoding=encoding) as f:
                 data = json.load(f)
 
             # Validate if schema provided

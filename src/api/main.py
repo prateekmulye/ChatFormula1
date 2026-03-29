@@ -47,7 +47,7 @@ async def _process_background_tasks():
                     app_state["task_queue"].get(),
                     timeout=1.0,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # No tasks in queue, continue loop
                 continue
 
