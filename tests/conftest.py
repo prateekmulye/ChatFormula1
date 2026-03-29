@@ -1,4 +1,5 @@
 import os
+
 os.environ["ENVIRONMENT"] = "development"
 os.environ.setdefault("OPENAI_API_KEY", "dummy")
 os.environ.setdefault("PINECONE_API_KEY", "dummy")
