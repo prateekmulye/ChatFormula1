@@ -4,8 +4,6 @@ This module contains system-level prompts that define the agent's persona,
 capabilities, and behavioral guardrails.
 """
 
-from typing import Optional
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
@@ -74,7 +72,7 @@ Do NOT:
 
 def create_system_prompt(
     include_guardrails: bool = True,
-    additional_context: Optional[str] = None,
+    additional_context: str | None = None,
 ) -> ChatPromptTemplate:
     """Create a system prompt template with F1 expert persona.
 
@@ -146,7 +144,7 @@ def create_role_based_system_prompt(
     return SystemMessage(content=prompt)
 
 
-def validate_prompt_safety(user_input: str) -> tuple[bool, Optional[str]]:
+def validate_prompt_safety(user_input: str) -> tuple[bool, str | None]:
     """Validate user input for prompt injection attempts and off-topic queries.
 
     Args:
@@ -245,7 +243,9 @@ Keep responses brief but informative. Cite specific data when relevant. Stay foc
 DETAILED_SYSTEM_PROMPT = create_system_prompt(include_guardrails=True)
 
 PREDICTION_SYSTEM_PROMPT = ChatPromptTemplate.from_messages(
-    [SystemMessage(content=f"""{F1_EXPERT_SYSTEM_PROMPT}
+    [
+        SystemMessage(
+            content=f"""{F1_EXPERT_SYSTEM_PROMPT}
 
 **Prediction Mode:**
 When making predictions:
@@ -258,5 +258,7 @@ When making predictions:
 
 Always explain your reasoning with supporting data points.
 {OFF_TOPIC_GUARDRAIL_PROMPT}
-""")]
+"""
+        )
+    ]
 )
