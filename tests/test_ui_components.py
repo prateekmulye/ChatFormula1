@@ -1,7 +1,10 @@
 """Unit tests for UI components and F1 theme."""
 
+import sys
 from importlib import import_module
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Import components module directly without going through __init__.py
 components = import_module("src.ui.components")
