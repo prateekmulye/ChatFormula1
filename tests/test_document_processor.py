@@ -65,9 +65,7 @@ class TestDocumentProcessor:
         processor = DocumentProcessor(test_settings)
 
         # Create a long document that will be chunked
-        long_text = " ".join(
-            [f"This is sentence number {i}." for i in range(100)]
-        )
+        long_text = " ".join([f"This is sentence number {i}." for i in range(100)])
         docs = [Document(page_content=long_text, metadata={"source": "test"})]
 
         chunked = processor.chunk_documents(docs)
