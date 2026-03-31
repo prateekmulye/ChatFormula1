@@ -34,6 +34,13 @@ Example Usage:
 """
 
 import os
+
+# Set environment variables for tests to avoid Pydantic validation errors
+os.environ["ENVIRONMENT"] = "development"
+os.environ.setdefault("OPENAI_API_KEY", "dummy")
+os.environ.setdefault("PINECONE_API_KEY", "dummy")
+os.environ.setdefault("TAVILY_API_KEY", "dummy")
+
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, Mock
