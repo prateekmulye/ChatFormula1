@@ -8,7 +8,8 @@ This module provides additional node implementations with:
 - Streaming support using astream_events
 """
 
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import Any
 
 import structlog
 from langchain_core.messages import AIMessage, HumanMessage
@@ -264,7 +265,6 @@ async def route_with_branching(
         State updates with routing decision
     """
     intent = state.intent
-    entities = state.entities
     metadata = state.metadata
 
     logger.info(
@@ -788,7 +788,7 @@ Please provide a comprehensive answer using the context above."""
         }
 
 
-def _build_advanced_filters(entities: dict[str, Any]) -> Optional[dict[str, Any]]:
+def _build_advanced_filters(entities: dict[str, Any]) -> dict[str, Any] | None:
     """Build advanced Pinecone filters from entities.
 
     Args:
