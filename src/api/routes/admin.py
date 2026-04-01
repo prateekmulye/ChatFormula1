@@ -7,10 +7,11 @@ and configuration validation.
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Security, status
 from pydantic import BaseModel, Field
 
 from src.config.settings import get_settings
+from src.security.authentication import APIKey, verify_api_key
 
 logger = structlog.get_logger(__name__)
 
@@ -189,7 +190,9 @@ async def detailed_health_check() -> HealthCheckResponse:
     summary="Vector store statistics",
     description="Get statistics about the vector store index",
 )
-async def get_vector_store_stats() -> VectorStoreStatsResponse:
+async def get_vector_store_stats(
+    api_key: APIKey = Security(verify_api_key),
+) -> VectorStoreStatsResponse:
     """Get vector store statistics.
 
     Returns:
@@ -254,6 +257,7 @@ async def get_vector_store_stats() -> VectorStoreStatsResponse:
 async def ingest_data(
     request: IngestionRequest,
     background_tasks: BackgroundTasks,
+    api_key: APIKey = Security(verify_api_key),
 ) -> IngestionResponse:
     """Ingest data into vector store.
 
@@ -663,7 +667,9 @@ async def get_prometheus_metrics():
     summary="Reset metrics",
     description="Reset all collected metrics (use with caution)",
 )
-async def reset_metrics() -> dict[str, str]:
+async def reset_metrics(
+    api_key: APIKey = Security(verify_api_key),
+) -> dict[str, str]:
     """Reset all metrics.
 
     Returns:
@@ -891,7 +897,10 @@ class APIKeyResponse(BaseModel):
     summary="Create API key",
     description="Generate a new API key for authentication",
 )
-async def create_api_key(request: APIKeyCreateRequest) -> APIKeyResponse:
+async def create_api_key(
+    request: APIKeyCreateRequest,
+    api_key: APIKey = Security(verify_api_key),
+) -> APIKeyResponse:
     """Create a new API key.
 
     Args:
@@ -940,7 +949,10 @@ async def create_api_key(request: APIKeyCreateRequest) -> APIKeyResponse:
     summary="List API keys",
     description="List all API keys (without raw key values)",
 )
-async def list_api_keys(include_inactive: bool = False) -> list[APIKeyResponse]:
+async def list_api_keys(
+    include_inactive: bool = False,
+    api_key: APIKey = Security(verify_api_key),
+) -> list[APIKeyResponse]:
     """List all API keys.
 
     Args:
@@ -976,7 +988,10 @@ async def list_api_keys(include_inactive: bool = False) -> list[APIKeyResponse]:
     summary="Revoke API key",
     description="Revoke an API key (makes it inactive)",
 )
-async def revoke_api_key(key_id: str) -> dict[str, str]:
+async def revoke_api_key(
+    key_id: str,
+    api_key: APIKey = Security(verify_api_key),
+) -> dict[str, str]:
     """Revoke an API key.
 
     Args:
@@ -1016,7 +1031,10 @@ async def revoke_api_key(key_id: str) -> dict[str, str]:
     summary="Rotate API key",
     description="Generate a new API key with the same settings and revoke the old one",
 )
-async def rotate_api_key(key_id: str) -> APIKeyResponse:
+async def rotate_api_key(
+    key_id: str,
+    api_key: APIKey = Security(verify_api_key),
+) -> APIKeyResponse:
     """Rotate an API key.
 
     Args:
