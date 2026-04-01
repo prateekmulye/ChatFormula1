@@ -32,8 +32,13 @@ Example Usage:
         doc = create_mock_document("Custom content", {"year": 2024})
         assert doc.page_content == "Custom content"
 """
-
 import os
+
+os.environ["ENVIRONMENT"] = "development"
+os.environ.setdefault("OPENAI_API_KEY", "dummy_openai_key")
+os.environ.setdefault("PINECONE_API_KEY", "dummy_pinecone_key")
+os.environ.setdefault("TAVILY_API_KEY", "dummy_tavily_key")
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
