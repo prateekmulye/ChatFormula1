@@ -1,6 +1,5 @@
 """Ingestion pipeline orchestration for F1 knowledge base."""
 
-import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 

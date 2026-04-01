@@ -7,7 +7,6 @@ This module provides utilities for tracking application metrics including:
 - User satisfaction
 """
 
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime

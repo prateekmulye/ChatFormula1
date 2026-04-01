@@ -5,7 +5,6 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
 from typing import Optional
 
 import structlog

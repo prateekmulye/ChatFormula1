@@ -35,7 +35,7 @@ Example Usage:
 
 import os
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from langchain_core.documents import Document

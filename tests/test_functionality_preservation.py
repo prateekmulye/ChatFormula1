@@ -12,10 +12,9 @@ correctly after the UI redesign, including:
 Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
 """
 
-import sys
 from datetime import datetime
 from importlib import import_module
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -686,7 +685,7 @@ class TestAgentInitializationAndProcessing:
         # This is tested through the components that interact with session state
 
         # The session state should have these keys for agent functionality
-        expected_keys = ["agent_graph", "agent_state", "vector_store", "tavily_client"]
+        _expected_keys = ["agent_graph", "agent_state", "vector_store", "tavily_client"]
 
         # This structure is verified through the execute_prompt and render_settings_panel tests
         # which interact with session state

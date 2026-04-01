@@ -4,9 +4,9 @@ This module contains prompts for query analysis, predictions, and other
 specialized tasks requiring structured outputs or specific reasoning patterns.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from langchain_core.output_parsers import PydanticOutputParser, StrOutputParser
+from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import (
     ChatPromptTemplate,
     FewShotPromptTemplate,

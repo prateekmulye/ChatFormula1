@@ -9,7 +9,6 @@ import pytest
 from src.ingestion.data_loader import (
     DataLoader,
     DataLoadError,
-    DataValidationError,
     DriverSchema,
     RaceResultSchema,
     RaceSchema,
@@ -209,7 +208,7 @@ class TestDataLoader:
         """Test path resolution with absolute path."""
         loader = DataLoader(temp_data_dir)
 
-        absolute_path = Path("/tmp/test.csv")
+        absolute_path = Path("/tmp/test.csv")  # noqa: S108
         resolved = loader._resolve_path(absolute_path)
 
         assert resolved == absolute_path

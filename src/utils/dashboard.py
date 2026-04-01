@@ -4,8 +4,8 @@ This module provides utilities for creating monitoring dashboards
 and visualizations of application metrics.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List
 
 import structlog
 

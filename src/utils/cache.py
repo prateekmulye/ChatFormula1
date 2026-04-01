@@ -12,7 +12,6 @@ import hashlib
 import json
 import time
 from collections import OrderedDict
-from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 
 import structlog
@@ -116,7 +115,7 @@ class TTLCache:
         # Clean up expired entries periodically (throttle O(N) scan to at most once per minute)
         if len(self._cache) > self.max_size * 0.9:
             current_time = time.time()
-            if current_time - getattr(self, "_last_evict_time", 0.0) > 60:
+            if current_time - self._last_evict_time > 60:
                 self._evict_expired()
                 self._last_evict_time = current_time
 
