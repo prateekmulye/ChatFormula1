@@ -8,7 +8,7 @@ import re
 from typing import Optional
 
 import structlog
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
 

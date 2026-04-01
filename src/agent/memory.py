@@ -5,7 +5,6 @@ MemorySaver for persistence, sliding window for history management,
 and context summarization for long conversations.
 """
 
-import json
 from datetime import datetime
 from typing import Any, Optional
 

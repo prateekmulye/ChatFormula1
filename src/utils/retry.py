@@ -4,7 +4,6 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Any, Callable, Type, TypeVar
@@ -19,7 +18,6 @@ from tenacity import (
 )
 
 from ..config.logging import get_logger
-from ..exceptions import RateLimitError, TimeoutError
 
 logger = get_logger(__name__)
 

@@ -18,7 +18,7 @@ from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
 from src.vector_store.manager import VectorStoreManager
 
-from .state import AgentState, QueryAnalysis, SearchDecision
+from .state import AgentState, QueryAnalysis
 
 logger = structlog.get_logger(__name__)
 
