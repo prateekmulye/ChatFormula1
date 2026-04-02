@@ -4,8 +4,8 @@ This module provides utilities for creating monitoring dashboards
 and visualizations of application metrics.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 import structlog
 
@@ -21,12 +21,12 @@ class MonitoringDashboard:
     that can be consumed by frontend visualization libraries.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize monitoring dashboard."""
         self.metrics_collector = get_metrics_collector()
         logger.info("monitoring_dashboard_initialized")
 
-    def get_dashboard_summary(self) -> Dict[str, Any]:
+    def get_dashboard_summary(self) -> dict[str, Any]:
         """Get high-level dashboard summary.
 
         Returns:
@@ -76,7 +76,7 @@ class MonitoringDashboard:
 
         return summary
 
-    def get_latency_dashboard(self) -> Dict[str, Any]:
+    def get_latency_dashboard(self) -> dict[str, Any]:
         """Get latency metrics dashboard data.
 
         Returns:
@@ -103,7 +103,7 @@ class MonitoringDashboard:
 
         return dashboard
 
-    def get_cost_dashboard(self) -> Dict[str, Any]:
+    def get_cost_dashboard(self) -> dict[str, Any]:
         """Get cost tracking dashboard data.
 
         Returns:
@@ -134,7 +134,7 @@ class MonitoringDashboard:
 
         return dashboard
 
-    def get_api_health_dashboard(self) -> Dict[str, Any]:
+    def get_api_health_dashboard(self) -> dict[str, Any]:
         """Get API health dashboard data.
 
         Returns:
@@ -176,7 +176,7 @@ class MonitoringDashboard:
 
         return dashboard
 
-    def get_user_satisfaction_dashboard(self) -> Dict[str, Any]:
+    def get_user_satisfaction_dashboard(self) -> dict[str, Any]:
         """Get user satisfaction dashboard data.
 
         Returns:
@@ -199,7 +199,7 @@ class MonitoringDashboard:
 
         return dashboard
 
-    def get_error_rate_dashboard(self) -> Dict[str, Any]:
+    def get_error_rate_dashboard(self) -> dict[str, Any]:
         """Get error rate visualization dashboard data.
 
         Returns:
@@ -234,9 +234,9 @@ class MonitoringDashboard:
 
     def _calculate_health_status(
         self,
-        latency_stats: Dict[str, Any],
+        latency_stats: dict[str, Any],
         api_success_rate: float,
-        satisfaction_stats: Dict[str, Any],
+        satisfaction_stats: dict[str, Any],
     ) -> str:
         """Calculate overall health status.
 
@@ -267,7 +267,7 @@ class MonitoringDashboard:
         else:
             return "degraded"
 
-    def _format_percentile_chart(self, stats: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_percentile_chart(self, stats: dict[str, Any]) -> dict[str, Any]:
         """Format percentile data for charting.
 
         Args:
@@ -291,8 +291,8 @@ class MonitoringDashboard:
         }
 
     def _format_operation_comparison_chart(
-        self, by_operation: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, by_operation: dict[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         """Format operation comparison data for charting.
 
         Args:
@@ -312,8 +312,8 @@ class MonitoringDashboard:
         }
 
     def _format_cost_by_model_chart(
-        self, by_model: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, by_model: dict[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         """Format cost by model data for charting.
 
         Args:
@@ -331,8 +331,8 @@ class MonitoringDashboard:
         }
 
     def _format_tokens_by_model_chart(
-        self, by_model: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, by_model: dict[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         """Format tokens by model data for charting.
 
         Args:
@@ -350,8 +350,8 @@ class MonitoringDashboard:
         }
 
     def _calculate_cost_projections(
-        self, token_stats: Dict[str, Any]
-    ) -> Dict[str, float]:
+        self, token_stats: dict[str, Any]
+    ) -> dict[str, float]:
         """Calculate cost projections.
 
         Args:
@@ -384,8 +384,8 @@ class MonitoringDashboard:
         }
 
     def _format_success_rate_chart(
-        self, api_stats: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, api_stats: dict[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         """Format success rate data for charting.
 
         Args:
@@ -405,8 +405,8 @@ class MonitoringDashboard:
         }
 
     def _format_call_volume_chart(
-        self, api_stats: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, api_stats: dict[str, dict[str, Any]]
+    ) -> dict[str, Any]:
         """Format call volume data for charting.
 
         Args:
@@ -426,8 +426,8 @@ class MonitoringDashboard:
         }
 
     def _format_satisfaction_chart(
-        self, satisfaction_stats: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, satisfaction_stats: dict[str, Any]
+    ) -> dict[str, Any]:
         """Format satisfaction data for charting.
 
         Args:
@@ -445,8 +445,8 @@ class MonitoringDashboard:
         }
 
     def _generate_satisfaction_insights(
-        self, satisfaction_stats: Dict[str, Any]
-    ) -> List[str]:
+        self, satisfaction_stats: dict[str, Any]
+    ) -> list[str]:
         """Generate insights from satisfaction data.
 
         Args:
@@ -483,8 +483,8 @@ class MonitoringDashboard:
         return insights
 
     def _format_error_category_chart(
-        self, by_category: Dict[str, int]
-    ) -> Dict[str, Any]:
+        self, by_category: dict[str, int]
+    ) -> dict[str, Any]:
         """Format error category data for charting.
 
         Args:
@@ -502,8 +502,8 @@ class MonitoringDashboard:
         }
 
     def _format_error_severity_chart(
-        self, by_severity: Dict[str, int]
-    ) -> Dict[str, Any]:
+        self, by_severity: dict[str, int]
+    ) -> dict[str, Any]:
         """Format error severity data for charting.
 
         Args:
