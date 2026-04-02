@@ -47,7 +47,7 @@ async def _process_background_tasks():
                     app_state["task_queue"].get(),
                     timeout=1.0,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # No tasks in queue, continue loop
                 continue
 
@@ -127,9 +127,9 @@ async def _process_background_tasks():
 
 async def submit_background_task(
     task_type: str,
-    task_func,
-    *args,
-    **kwargs,
+    task_func: Any,
+    *args: Any,
+    **kwargs: Any,
 ) -> str:
     """Submit a task to the background queue.
 

@@ -476,6 +476,7 @@ Be accurate and concise."""
         Returns:
             State updates with both retrieved documents and search results
         """
+        import asyncio
         import time
 
         start_time = time.time()
