@@ -1,3 +1,10 @@
+import os
+
+os.environ["ENVIRONMENT"] = "development"
+os.environ.setdefault("OPENAI_API_KEY", "test-key-openai")
+os.environ.setdefault("PINECONE_API_KEY", "test-key-pinecone")
+os.environ.setdefault("TAVILY_API_KEY", "test-key-tavily")
+
 """Pytest configuration and fixtures.
 
 This module provides reusable fixtures and utilities for testing the F1 Slipstream Agent.
