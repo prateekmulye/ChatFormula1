@@ -34,6 +34,14 @@ Example Usage:
 """
 
 import os
+
+# Set dummy API keys BEFORE importing any project code (like src.config.settings)
+# to avoid pydantic validation errors when CI runs tests without environment variables.
+os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
+os.environ.setdefault("PINECONE_API_KEY", "test-pinecone-key")
+os.environ.setdefault("TAVILY_API_KEY", "test-tavily-key")
+os.environ["ENVIRONMENT"] = "development"
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
