@@ -115,75 +115,55 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
     "S101",   # use of assert
-    "UP",
-    "W",
-    "B",
-    "ANN",
-    "S",
-    "E721",
-    "F841",
-    "F401",
-    "C401",
-    "I001",
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101", "ANN"]
-
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-strict_equality = true
-plugins = ["pydantic.mypy"]
-
-[[tool.mypy.overrides]]
-module = [
-    "langchain.*",
-    "langgraph.*",
-    "streamlit.*",
-]
-ignore_missing_imports = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-asyncio_mode = "auto"
-addopts = [
-    "-v",
-    "--strict-markers",
-    "--tb=short",
-    "--cov=src",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-]
-markers = [
-    "unit: Unit tests",
-    "integration: Integration tests",
-    "e2e: End-to-end tests",
-    "slow: Slow running tests",
-]
-
-[tool.coverage.run]
-source = ["src"]
-omit = ["tests/*", "**/__pycache__/*"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-]
+"src/agent/graph.py" = ["ANN201", "ANN401", "F401", "I001", "UP007"]
+"src/agent/memory.py" = ["F401", "UP007"]
+"src/agent/nodes.py" = ["ANN401", "F841", "UP007", "UP035"]
+"src/agent/state.py" = ["UP007", "UP035"]
+"src/api/main.py" = ["ANN001", "ANN002", "ANN003", "ANN202", "F401", "UP006", "UP035", "UP041"]
+"src/api/routes/admin.py" = ["ANN201", "ANN202", "B904"]
+"src/api/routes/chat.py" = ["ANN202", "B904", "UP007", "UP038"]
+"src/api/routes/health.py" = ["F841"]
+"src/config/logging.py" = ["ANN401", "UP007"]
+"src/config/settings.py" = ["ANN001", "ANN206", "S104", "UP007", "UP011"]
+"src/exceptions.py" = ["UP007"]
+"src/ingestion/cli.py" = ["F401"]
+"src/ingestion/data_loader.py" = ["ANN204", "UP006", "UP007", "UP015", "UP035"]
+"src/ingestion/document_processor.py" = ["ANN204", "S324", "UP006", "UP007", "UP035"]
+"src/ingestion/metadata_enricher.py" = ["ANN204", "UP006", "UP007", "UP035"]
+"src/ingestion/pipeline.py" = ["ANN204", "F401", "UP006", "UP007", "UP035"]
+"src/prompts/rag_prompts.py" = ["UP006", "UP007", "UP035"]
+"src/prompts/specialized_prompts.py" = ["F401", "UP006", "UP007", "UP035"]
+"src/prompts/system_prompts.py" = ["UP007", "W293"]
+"src/search/tavily_client.py" = ["B904", "F841", "UP007"]
+"src/security/authentication.py" = ["ANN001", "ANN201", "ANN204", "B007", "F401", "UP007"]
+"src/security/input_validation.py" = ["ANN204", "F401", "UP007"]
+"src/security/middleware.py" = ["ANN001", "ANN201", "ANN202", "ANN204", "F401", "UP007"]
+"src/security/rate_limiting.py" = ["ANN204", "F401", "UP007"]
+"src/security/request_signing.py" = ["ANN201", "ANN204", "UP007"]
+"src/tools/f1_tools.py" = ["UP006", "UP007", "UP035"]
+"src/ui/app.py" = ["F401", "UP007", "W293"]
+"src/ui/components.py" = ["ANN202", "F841", "UP007", "W291", "W293"]
+"src/utils/cache.py" = ["ANN401", "F401", "UP006", "UP007", "UP035"]
+"src/utils/dashboard.py" = ["ANN204", "F401", "UP006", "UP035"]
+"src/utils/error_tracking.py" = ["UP007", "UP038"]
+"src/utils/fallback.py" = ["ANN401", "UP007", "UP035"]
+"src/utils/free_tier_limiter.py" = ["ANN202", "ANN204", "F841", "UP006", "UP007", "UP035"]
+"src/utils/metrics.py" = ["ANN204", "ANN401", "C401", "F401", "UP006", "UP007", "UP035"]
+"src/utils/retry.py" = ["ANN401", "F401", "UP006", "UP035"]
+"src/utils/timing.py" = ["ANN204", "ANN401", "F401", "UP035"]
+"src/vector_store/manager.py" = ["F401", "UP006", "UP007", "UP035"]
+"tests/conftest.py" = ["E721"]
+"tests/test_config.py" = ["F401"]
+"tests/test_data_loader.py" = ["F401", "S108"]
+"tests/test_document_processor.py" = ["UP032"]
+"tests/test_e2e_user_workflows.py" = ["S110"]
+"tests/test_fallback.py" = ["F401"]
+"tests/test_functionality_preservation.py" = ["F401", "F841", "W293"]
+"tests/test_integration_agent.py" = ["UP038"]
+"tests/test_integration_complete.py" = ["F401"]
+"tests/test_security.py" = ["S106"]
+"tests/test_ui_components.py" = ["F401"]

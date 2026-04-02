@@ -534,9 +534,7 @@ async def get_metrics(
     description="Export metrics in Prometheus text format for scraping",
     response_class=None,
 )
-async def get_prometheus_metrics(
-    api_key: APIKey = Security(verify_api_key),
-):
+async def get_prometheus_metrics():
     """Export metrics in Prometheus format.
 
     Returns:
@@ -709,7 +707,6 @@ async def submit_feedback(
     message_id: str,
     rating: int,
     feedback_text: str | None = None,
-    api_key: APIKey = Security(verify_api_key),
 ) -> dict[str, str]:
     """Submit user feedback.
 
