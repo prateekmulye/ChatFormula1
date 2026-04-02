@@ -191,7 +191,7 @@ async def detailed_health_check() -> HealthCheckResponse:
     description="Get statistics about the vector store index",
 )
 async def get_vector_store_stats(
-    api_key: APIKey = Security(verify_api_key)
+    api_key: APIKey = Security(verify_api_key),
 ) -> VectorStoreStatsResponse:
     """Get vector store statistics.
 
