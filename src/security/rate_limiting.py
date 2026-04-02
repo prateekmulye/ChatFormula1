@@ -131,6 +131,7 @@ class RateLimiter:
             Client identifier (IP address or user ID)
         """
         from src.config.settings import get_settings
+
         config = get_settings()
 
         # Try to get user ID from request state (if authenticated)

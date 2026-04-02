@@ -245,14 +245,19 @@ class TestAPIDocumentation:
         monkeypatch.setattr("src.config.settings.get_settings", lambda: mock_settings)
 
         # Re-initialize the rate limiter using the new settings to ensure it doesn't use stale cached config
-        monkeypatch.setattr("src.security.middleware.get_rate_limiter", lambda **kwargs: src.security.rate_limiting.RateLimiter(60, 1000))
+        monkeypatch.setattr(
+            "src.security.middleware.get_rate_limiter",
+            lambda **kwargs: src.security.rate_limiting.RateLimiter(60, 1000),
+        )
         src.security.rate_limiting._rate_limiter = None
 
         # 1. Untrusted Client (Default testclient host)
         # 127.0.0.1 or testclient is NOT in trusted_proxies.
         # So X-Forwarded-For is ignored, and the client ID will be the direct IP.
         for i in range(65):
-            response = client.get("/api/admin/health", headers={"X-Forwarded-For": f"1.2.3.{i}"})
+            response = client.get(
+                "/api/admin/health", headers={"X-Forwarded-For": f"1.2.3.{i}"}
+            )
             if response.status_code == 429:
                 break
         assert response.status_code == 429
@@ -266,7 +271,9 @@ class TestAPIDocumentation:
         mock_settings.trusted_proxies = ["testclient"]
 
         for i in range(65):
-            response = client.get("/api/admin/health", headers={"X-Forwarded-For": f"4.5.6.{i}"})
+            response = client.get(
+                "/api/admin/health", headers={"X-Forwarded-For": f"4.5.6.{i}"}
+            )
             assert response.status_code == 200
 
 
