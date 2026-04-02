@@ -120,7 +120,9 @@ class TestAdminEndpoints:
     def test_ingest_endpoint_exists(self, client: TestClient):
         """Test ingest endpoint exists."""
         # Need API key for auth now
-        response = client.post("/api/admin/ingest", json={}, headers={"X-API-Key": "test-key"})
+        response = client.post(
+            "/api/admin/ingest", json={}, headers={"X-API-Key": "test-key"}
+        )
 
         # Should not return 404 (might return 400 or 401 for auth)
         assert response.status_code != 404
