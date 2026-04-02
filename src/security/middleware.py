@@ -4,9 +4,10 @@ This module provides middleware for input validation, rate limiting,
 and request validation.
 """
 
+from typing import Optional
 
 import structlog
-from fastapi import Request, status
+from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -123,7 +124,7 @@ class InputValidationMiddleware(BaseHTTPMiddleware):
         self,
         app,
         strict_mode: bool = False,
-        validate_paths: list[str] | None = None,
+        validate_paths: Optional[list[str]] = None,
     ):
         """Initialize input validation middleware.
 

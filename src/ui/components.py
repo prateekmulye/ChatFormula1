@@ -9,7 +9,7 @@ This module provides components for:
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import streamlit as st
 import structlog
@@ -760,8 +760,8 @@ def apply_f1_theme() -> None:
 def render_message(
     role: str,
     content: str,
-    metadata: dict[str, Any] | None = None,
-    message_id: str | None = None,
+    metadata: Optional[dict[str, Any]] = None,
+    message_id: Optional[str] = None,
 ) -> None:
     """Render a chat message with role-based styling.
 
@@ -782,7 +782,7 @@ def render_message(
 
 def render_message_metadata(
     metadata: dict[str, Any],
-    message_id: str | None = None,
+    message_id: Optional[str] = None,
 ) -> None:
     """Render metadata section for assistant messages.
 
