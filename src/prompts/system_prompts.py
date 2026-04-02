@@ -4,7 +4,6 @@ This module contains system-level prompts that define the agent's persona,
 capabilities, and behavioral guardrails.
 """
 
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
@@ -235,7 +234,7 @@ CONCISE_SYSTEM_PROMPT = ChatPromptTemplate.from_messages(
     [
         SystemMessage(
             content="""You are ChatFormula1, an F1 expert. Provide concise, accurate answers about Formula 1.
-    
+
 Keep responses brief but informative. Cite specific data when relevant. Stay focused on F1 topics only."""
         )
     ]
