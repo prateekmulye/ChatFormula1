@@ -210,11 +210,8 @@ def render_sidebar() -> None:
 
         # Clear conversation button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+            from src.ui.components import confirm_clear_dialog
+            confirm_clear_dialog()
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):

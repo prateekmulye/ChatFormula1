@@ -958,6 +958,26 @@ def render_typing_indicator() -> None:
             st.empty()
 
 
+@st.dialog("Confirm Clear")
+def confirm_clear_dialog() -> None:
+    """Render a confirmation dialog for clearing the conversation."""
+    st.warning("Are you sure you want to clear the conversation? This action cannot be undone.")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Cancel", use_container_width=True):
+            st.rerun()
+    with col2:
+        if st.button("Yes, clear it", use_container_width=True, type="primary"):
+            st.session_state.messages = []
+            st.session_state.agent_state = None
+            st.session_state.feedback = {}
+            logger.info(
+                "conversation_cleared",
+                session_id=st.session_state.get("session_id", "unknown"),
+            )
+            st.rerun()
+
+
 def render_error_message(error: str, show_details: bool = False) -> None:
     """Render user-friendly error message.
 
@@ -1526,14 +1546,7 @@ def render_settings_panel() -> None:
                 key="settings_clear",
                 help="Delete all messages in the current conversation",
             ):
-                st.session_state.messages = []
-                st.session_state.agent_state = None
-                st.session_state.feedback = {}
-                logger.info(
-                    "conversation_cleared",
-                    session_id=st.session_state.get("session_id", "unknown"),
-                )
-                st.rerun()
+                confirm_clear_dialog()
 
         with col2:
             if st.button(
