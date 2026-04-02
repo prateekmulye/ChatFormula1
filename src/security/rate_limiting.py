@@ -130,19 +130,24 @@ class RateLimiter:
         Returns:
             Client identifier (IP address or user ID)
         """
+        from src.config.settings import get_settings
+        config = get_settings()
+
         # Try to get user ID from request state (if authenticated)
         user_id = getattr(request.state, "user_id", None)
         if user_id:
             return f"user:{user_id}"
 
         # Fall back to IP address
+        client_ip = request.client.host if request.client else "unknown"
+
         # Check for forwarded IP (behind proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
+        trusted_proxies = config.trusted_proxies
+
+        if forwarded_for and (client_ip in trusted_proxies or "*" in trusted_proxies):
             # Take the first IP in the chain
             client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
 
         return f"ip:{client_ip}"
 

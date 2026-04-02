@@ -223,6 +223,52 @@ class TestAPIDocumentation:
         assert response.status_code == 200
         assert "text/html" in response.headers.get("content-type", "")
 
+    def test_rate_limiter_trusted_proxies(self, client: TestClient, monkeypatch):
+        """Test that X-Forwarded-For is only respected from trusted proxies."""
+        from src.config.settings import Settings
+
+        # Mock settings to trust specific proxy
+        mock_settings = Settings(
+            openai_api_key="test_key",
+            pinecone_api_key="test_key",
+            tavily_api_key="test_key",
+            trusted_proxies=["10.0.0.1"],
+        )
+        monkeypatch.setattr("src.api.routes.admin.get_settings", lambda: mock_settings)
+        monkeypatch.setattr("src.api.main.get_settings", lambda: mock_settings)
+
+        import src.security.rate_limiting
+        import src.config.settings
+
+        # Provide a mock get_settings that returns our mock_settings for rate_limiting to use
+        # rate_limiting imports it via `from src.config.settings import get_settings`
+        monkeypatch.setattr("src.config.settings.get_settings", lambda: mock_settings)
+
+        # Re-initialize the rate limiter using the new settings to ensure it doesn't use stale cached config
+        monkeypatch.setattr("src.security.middleware.get_rate_limiter", lambda **kwargs: src.security.rate_limiting.RateLimiter(60, 1000))
+        src.security.rate_limiting._rate_limiter = None
+
+        # 1. Untrusted Client (Default testclient host)
+        # 127.0.0.1 or testclient is NOT in trusted_proxies.
+        # So X-Forwarded-For is ignored, and the client ID will be the direct IP.
+        for i in range(65):
+            response = client.get("/api/admin/health", headers={"X-Forwarded-For": f"1.2.3.{i}"})
+            if response.status_code == 429:
+                break
+        assert response.status_code == 429
+
+        # Reset rate limiter
+        src.security.rate_limiting._rate_limiter = None
+
+        # 2. Trusted Client
+        # testclient IS in trusted_proxies.
+        # X-Forwarded-For IS respected, so each request appears to come from a different IP.
+        mock_settings.trusted_proxies = ["testclient"]
+
+        for i in range(65):
+            response = client.get("/api/admin/health", headers={"X-Forwarded-For": f"4.5.6.{i}"})
+            assert response.status_code == 200
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-m", "integration"])
