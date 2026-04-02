@@ -37,6 +37,12 @@ import os
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
+import os
+os.environ.setdefault("ENVIRONMENT", "development")
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy-key-for-tests")
+os.environ.setdefault("PINECONE_API_KEY", "pc-test-dummy-key-for-tests")
+os.environ.setdefault("TAVILY_API_KEY", "tvly-test-dummy-key-for-tests")
+
 import pytest
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, HumanMessage
