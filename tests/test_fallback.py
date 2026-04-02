@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.exceptions import LLMError, SearchAPIError, VectorStoreError
+from src.exceptions import SearchAPIError
 from src.utils.fallback import (
     CachedResponse,
     FallbackChain,
