@@ -41,8 +41,9 @@ os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
 os.environ.setdefault("PINECONE_API_KEY", "test-pinecone-key")
 os.environ.setdefault("TAVILY_API_KEY", "test-tavily-key")
 
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
-from unittest.mock import AsyncMock, MagicMock, Mock
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from langchain_core.documents import Document
@@ -345,7 +346,7 @@ def mock_vector_store() -> Mock:
 
 
 @pytest.fixture
-def sample_documents() -> List[Document]:
+def sample_documents() -> list[Document]:
     """Provide sample F1 documents for testing.
 
     Use this fixture when you need consistent test documents across
@@ -397,7 +398,7 @@ def sample_documents() -> List[Document]:
 
 
 @pytest.fixture
-def sample_messages() -> List[Any]:
+def sample_messages() -> list[Any]:
     """Provide sample conversation messages.
 
     Use this fixture when testing conversation flows, memory management,
@@ -426,7 +427,7 @@ def sample_messages() -> List[Any]:
 
 
 @pytest.fixture
-def sample_search_results() -> List[Dict[str, Any]]:
+def sample_search_results() -> list[dict[str, Any]]:
     """Provide sample web search results.
 
     Use this fixture when testing search result processing without
@@ -465,7 +466,7 @@ def sample_search_results() -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def sample_agent_state() -> Dict[str, Any]:
+def sample_agent_state() -> dict[str, Any]:
     """Provide sample agent state for testing agent workflows.
 
     Use this fixture when testing agent nodes or state transitions.
@@ -636,8 +637,8 @@ def mock_async_context() -> type[MockAsyncContextManager]:
 
 def create_mock_document(
     content: str,
-    metadata: Optional[Dict[str, Any]] = None,
-    doc_id: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    doc_id: str | None = None,
 ) -> Document:
     """Create a mock document for testing.
 
@@ -667,7 +668,7 @@ def create_mock_document(
     return doc
 
 
-def create_mock_messages(conversation: List[tuple[str, str]]) -> List[Any]:
+def create_mock_messages(conversation: list[tuple[str, str]]) -> list[Any]:
     """Create mock conversation messages from simple tuples.
 
     Use this utility to quickly create message sequences for testing
@@ -702,7 +703,7 @@ def create_mock_search_result(
     url: str = "https://test.com",
     content: str = "Test content",
     score: float = 0.9,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a mock search result for testing search functionality.
 
     Use this utility when testing search result processing without
@@ -797,7 +798,7 @@ def create_mock_llm_response(content: str = "Test response") -> AIMessage:
     return AIMessage(content=content)
 
 
-def create_mock_embedding(dimension: int = 1536) -> List[float]:
+def create_mock_embedding(dimension: int = 1536) -> list[float]:
     """Create a mock embedding vector for testing.
 
     Use this utility when testing embedding-related functionality
@@ -831,7 +832,7 @@ class MockStreamingResponse:
         ...     assert chunks == ["Hello", " ", "world"]
     """
 
-    def __init__(self, chunks: List[str]):
+    def __init__(self, chunks: list[str]):
         """Initialize mock streaming response.
 
         Args:
@@ -874,7 +875,7 @@ class AsyncMockIterator:
         ...     assert items == [1, 2, 3]
     """
 
-    def __init__(self, items: List[Any]):
+    def __init__(self, items: list[Any]):
         """Initialize async iterator.
 
         Args:
