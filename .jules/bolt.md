@@ -1,0 +1,3 @@
+## 2024-05-24 - Throttled O(N) Cache Eviction
+**Learning:** The `TTLCache` in `src/utils/cache.py` uses an O(N) background eviction scan (`_evict_expired`) that blocks the O(1) read path (`get()`). Under high load and high cache utilization, this O(N) operation is called frequently, causing significant latency spikes.
+**Action:** Implemented a timestamp-based throttling mechanism (`self._last_evict_time`) to prevent the O(N) scan from running more than once per minute, ensuring `get()` remains O(1) for the vast majority of requests.
