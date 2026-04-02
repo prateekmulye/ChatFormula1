@@ -34,6 +34,12 @@ Example Usage:
 """
 
 import os
+
+os.environ["ENVIRONMENT"] = "development"
+os.environ.setdefault("OPENAI_API_KEY", "dummy")
+os.environ.setdefault("PINECONE_API_KEY", "dummy")
+os.environ.setdefault("TAVILY_API_KEY", "dummy")
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
