@@ -1,0 +1,4 @@
+## 2025-05-18 - Missing Authentication on Admin Endpoints
+**Vulnerability:** Sensitive administrative endpoints in `src/api/routes/admin.py` (e.g., `/api/admin/ingest`, `/api/admin/api-keys`, metrics and dashboards) were exposed without requiring valid API keys, even though global authentication middleware was configured.
+**Learning:** The global `AuthenticationMiddleware` can be bypassed if the application configuration sets `require_auth` to `False`, or if specific prefixes fall under public paths. In FastAPI, route-level security dependencies provide a mandatory defense-in-depth layer.
+**Prevention:** Always inject explicit security dependencies (e.g. `api_key: APIKey = Security(verify_api_key)`) at the route level for sensitive endpoints, rather than relying solely on global middleware.
