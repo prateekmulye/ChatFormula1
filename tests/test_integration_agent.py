@@ -179,7 +179,7 @@ class TestAgentErrorHandling:
             assert result is not None
         except Exception as e:
             # Should raise appropriate error
-            assert isinstance(e, (ValueError, TypeError))
+            assert isinstance(e, ValueError | TypeError)
 
     async def test_off_topic_query_handling(self, test_settings: Settings):
         """Test handling of off-topic queries."""

@@ -3,7 +3,7 @@
 import logging
 import sys
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from structlog.types import EventDict, Processor
@@ -11,8 +11,8 @@ from structlog.types import EventDict, Processor
 from .settings import Settings
 
 # Context variables for request correlation
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-session_id_var: ContextVar[Optional[str]] = ContextVar("session_id", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
+session_id_var: ContextVar[str | None] = ContextVar("session_id", default=None)
 
 
 def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
