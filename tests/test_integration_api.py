@@ -119,7 +119,9 @@ class TestAdminEndpoints:
 
     def test_ingest_endpoint_exists(self, client: TestClient):
         """Test ingest endpoint exists."""
-        response = client.post("/api/admin/ingest", json={"source_path": "test.csv", "source_type": "csv"})
+        response = client.post(
+            "/api/admin/ingest", json={"source_path": "test.csv", "source_type": "csv"}
+        )
 
         # Should not return 404 (might return 400 or 401 for auth)
         assert response.status_code != 404
