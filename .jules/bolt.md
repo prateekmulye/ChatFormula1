@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid Global Auto-Fixers on Targeted Tasks
+**Learning:** Running global code formatters or linters (like `poetry run ruff check --fix src`) on a narrowly scoped performance PR introduces massive scope creep (e.g., hundreds of unprompted type hint changes), violating the 50-line boundary constraint and risking compatibility breaks.
+**Action:** Always constrain format/lint commands to the specific file(s) modified (e.g., `poetry run ruff check --fix src/utils/cache.py`), rather than running them across the entire `src` directory, unless specifically tasked with global code health improvements.
