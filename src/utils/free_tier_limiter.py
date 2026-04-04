@@ -179,7 +179,6 @@ class FreeTierLimiter:
         with self.lock:
             self._reset_daily_if_needed(user_id)
 
-            now = time.time()
             self.user_requests[user_id] = self._clean_old_requests(
                 self.user_requests[user_id], 60
             )

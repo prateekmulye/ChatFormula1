@@ -897,7 +897,6 @@ def render_feedback_buttons(message_id: str) -> None:
     Requirements: 4.6, 5.5
     """
     # Check if feedback already given
-    feedback_key = f"feedback_{message_id}"
     current_feedback = st.session_state.feedback.get(message_id)
 
     col1, col2 = st.columns(2)
