@@ -38,6 +38,12 @@ from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
+# Provide dummy API keys to avoid validation errors in Settings during test collection
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "test_openai_key"
+os.environ["PINECONE_API_KEY"] = "test_pinecone_key"
+os.environ["TAVILY_API_KEY"] = "test_tavily_key"
+
 import pytest
 from langchain_core.documents import Document
 from langchain_core.messages import AIMessage, HumanMessage
