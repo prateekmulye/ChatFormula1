@@ -34,6 +34,14 @@ Example Usage:
 """
 
 import os
+
+# Set dummy environment variables to bypass Pydantic validation errors during test collection.
+# These must be set before any project imports occur (like src.config.settings)
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "sk-dummy-test-key-for-validation"
+os.environ["PINECONE_API_KEY"] = "dummy-pinecone-key"
+os.environ["TAVILY_API_KEY"] = "tvly-dummy-test-key"
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
