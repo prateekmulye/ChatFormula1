@@ -583,6 +583,8 @@ class TestRenderAboutModal:
 
         # Setup mock session state with show_about flag
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
 
         # Mock the dialog decorator to capture the inner function
         dialog_func = None
@@ -616,6 +618,8 @@ class TestRenderAboutModal:
 
         # Setup mock session state with show_about flag False
         mock_st.session_state = {"show_about": False}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
 
         # Track if dialog was called
         dialog_called = False
@@ -646,6 +650,8 @@ class TestRenderAboutModal:
 
         # Setup mock
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
 
         # Capture markdown calls
         markdown_calls = []
@@ -686,6 +692,8 @@ class TestRenderAboutModal:
 
         # Setup mock
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
 
         # Capture markdown calls
         markdown_calls = []
@@ -725,6 +733,8 @@ class TestRenderAboutModal:
 
         # Setup mock
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
 
         # Capture markdown calls
         markdown_calls = []
@@ -764,6 +774,8 @@ class TestRenderAboutModal:
 
         # Setup mock
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
 
         # Mock dialog decorator
         dialog_func = None
@@ -804,6 +816,8 @@ class TestRenderAboutModal:
 
         # Setup mock to raise exception
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
         mock_st.dialog = MagicMock(side_effect=Exception("Test error"))
 
         # Call function - should not raise exception
@@ -826,6 +840,8 @@ class TestRenderAboutModal:
 
         # Setup mock to raise exception
         mock_st.session_state = {"show_about": True}
+        mock_st.session_state.__setattr__ = lambda self, key, value: self.__setitem__(key, value)
+        mock_st.session_state.__getattr__ = lambda self, key: self.get(key)
         mock_st.dialog = MagicMock(side_effect=Exception("Test error"))
 
         # Capture markdown calls

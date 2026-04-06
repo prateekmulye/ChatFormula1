@@ -23,6 +23,7 @@ from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
 from src.search.tavily_client import TavilyClient
 from src.ui.components import (
     apply_f1_theme,
+    render_clear_confirmation,
     render_about_modal,
     render_error_message,
     render_input_validation_error,
@@ -210,11 +211,7 @@ def render_sidebar() -> None:
 
         # Clear conversation button
         if st.button("🗑️ Clear Conversation", use_container_width=True):
-            st.session_state.messages = []
-            st.session_state.agent_state = None
-            st.session_state.feedback = {}
-            logger.info("conversation_cleared", session_id=st.session_state.session_id)
-            st.rerun()
+            render_clear_confirmation("sidebar")
 
         # New session button
         if st.button("🆕 New Session", use_container_width=True):
