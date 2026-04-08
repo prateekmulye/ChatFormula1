@@ -47,12 +47,12 @@ from src.config.settings import Settings
 # Ensure dummy environment variables are present at import time
 # before any application code gets imported (such as src.api.main)
 # so that global Settings() initializations do not fail validation.
-os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
-os.environ.setdefault("PINECONE_API_KEY", "test-pinecone-key")
-os.environ.setdefault("PINECONE_ENVIRONMENT", "test-environment")
-os.environ.setdefault("TAVILY_API_KEY", "test-tavily-key")
-os.environ.setdefault("ENVIRONMENT", "development")
-os.environ.setdefault("LOG_LEVEL", "DEBUG")
+os.environ["OPENAI_API_KEY"] = "test-openai-key"
+os.environ["PINECONE_API_KEY"] = "test-pinecone-key"
+os.environ["PINECONE_ENVIRONMENT"] = "test-environment"
+os.environ["TAVILY_API_KEY"] = "test-tavily-key"
+os.environ["ENVIRONMENT"] = "development"
+os.environ["LOG_LEVEL"] = "DEBUG"
 
 
 @pytest.fixture
