@@ -438,6 +438,7 @@ def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
     if prompt := st.chat_input(
         "Ask me anything about Formula 1...",
         key="chat_input",
+        max_chars=500,
         disabled=agent is None,
     ):
         # Validate input

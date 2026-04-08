@@ -1,0 +1,3 @@
+## 2024-04-08 - Use Streamlit Native Character Limits
+**Learning:** Post-submission validation (like `len(prompt) > 500`) results in a poor user experience as the user spends time typing a long query only to have it rejected. Streamlit's `st.chat_input` component has a built-in `max_chars` parameter that enforces client-side validation and provides visual feedback.
+**Action:** Use `max_chars` on `st.chat_input` and `st.text_input` components instead of solely relying on python-side validation after submission.
