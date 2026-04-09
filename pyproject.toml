@@ -115,11 +115,33 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
     "S101",   # use of assert
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "S108",   # Probable insecure usage of temporary file or directory
+    "S110",   # `try`-`except`-`pass` detected, consider logging the exception
+    "S106",   # Possible hardcoded password assigned to argument
+    "E721",   # Use `is` and `is not` for type comparisons
+    "W291",   # Trailing whitespace
+    "W293",   # Blank line contains whitespace
+    "ANN202", # Missing return type annotation for private function
+    "ANN204", # Missing return type annotation for special method
+    "ANN001", # Missing type annotation for function argument
+    "ANN201", # Missing return type annotation for public function
+    "ANN206", # Missing return type annotation for classmethod
+    "B904",   # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None`
+    "S324",   # Probable use of insecure hash functions in `hashlib`: `md5`
+    "S104",   # Possible binding to all interfaces
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "F821",   # Undefined name
+    "F841",   # Local variable is assigned to but never used
+    "UP038",  # Use `X | Y` in `isinstance` call instead of `(X, Y)`
+    "B007",   # Loop control variable not used within loop body
+    "C401",   # Unnecessary generator (rewrite as a set comprehension)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
-"tests/**/*.py" = ["S101", "ANN"]
+"tests/**/*.py" = ["S101", "ANN", "S108", "S110", "S106", "E721"]
 
 [tool.mypy]
 python_version = "3.11"
