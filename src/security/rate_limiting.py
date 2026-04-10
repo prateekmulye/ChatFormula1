@@ -5,7 +5,6 @@ fair usage of the API.
 """
 
 import time
-from collections import defaultdict
 from typing import Optional
 
 import structlog
@@ -21,7 +20,7 @@ class RateLimitExceeded(HTTPException):
         self,
         detail: str = "Rate limit exceeded. Please try again later.",
         retry_after: Optional[int] = None,
-    ):
+    ) -> None:
         """Initialize rate limit exception.
 
         Args:
@@ -42,7 +41,7 @@ class RateLimitExceeded(HTTPException):
 class TokenBucket:
     """Token bucket algorithm for rate limiting."""
 
-    def __init__(self, capacity: int, refill_rate: float):
+    def __init__(self, capacity: int, refill_rate: float) -> None:
         """Initialize token bucket.
 
         Args:
@@ -100,7 +99,7 @@ class RateLimiter:
         requests_per_minute: int = 60,
         requests_per_hour: int = 1000,
         burst_size: Optional[int] = None,
-    ):
+    ) -> None:
         """Initialize rate limiter.
 
         Args:

@@ -393,7 +393,7 @@ class TavilyClient:
             )
             return results, None
 
-        except RateLimitError as e:
+        except RateLimitError:
             error_msg = (
                 "⚠️ Search rate limit reached. "
                 "Please wait a moment before trying again. "

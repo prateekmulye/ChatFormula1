@@ -12,7 +12,6 @@ import hashlib
 import json
 import time
 from collections import OrderedDict
-from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
 
 import structlog

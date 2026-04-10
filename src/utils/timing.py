@@ -2,7 +2,7 @@
 
 import time
 from contextlib import contextmanager
-from typing import Any, Generator, Optional
+from typing import Any, Generator
 
 import structlog
 
@@ -73,7 +73,7 @@ class PerformanceTimer:
         timer.finish()
     """
 
-    def __init__(self, operation: str, **context: Any):
+    def __init__(self, operation: str, **context: Any) -> None:
         """Initialize performance timer.
 
         Args:

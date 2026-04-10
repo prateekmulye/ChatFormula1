@@ -185,7 +185,7 @@ class MetadataEnricher:
         "news": ["announced", "confirmed", "reported", "breaking"],
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize MetadataEnricher."""
         self.logger = logger.bind(component="metadata_enricher")
         self._enrichment_stats = {

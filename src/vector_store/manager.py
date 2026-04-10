@@ -1,9 +1,6 @@
 """Vector store manager for Pinecone integration using langchain-pinecone."""
 
 import asyncio
-import hashlib
-import json
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog

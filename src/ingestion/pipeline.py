@@ -1,6 +1,5 @@
 """Ingestion pipeline orchestration for F1 knowledge base."""
 
-import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -48,7 +47,7 @@ class IngestionPipeline:
         self,
         config: Optional[Settings] = None,
         data_dir: Optional[Union[str, Path]] = None,
-    ):
+    ) -> None:
         """Initialize IngestionPipeline.
 
         Args:

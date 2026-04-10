@@ -51,7 +51,7 @@ async def health_check() -> HealthResponse:
     if app_state.get("vector_store"):
         try:
             # Try to ping vector store
-            vector_store = app_state["vector_store"]
+            app_state["vector_store"]
             # Simple check - if it's initialized, consider it healthy
             dependencies["vector_store"] = "healthy"
         except Exception as e:

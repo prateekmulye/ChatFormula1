@@ -4,8 +4,8 @@ This module provides utilities for creating monitoring dashboards
 and visualizations of application metrics.
 """
 
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List
 
 import structlog
 
@@ -21,7 +21,7 @@ class MonitoringDashboard:
     that can be consumed by frontend visualization libraries.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize monitoring dashboard."""
         self.metrics_collector = get_metrics_collector()
         logger.info("monitoring_dashboard_initialized")

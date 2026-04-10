@@ -12,11 +12,11 @@ from typing import Any, AsyncGenerator, Dict
 
 import structlog
 import uvicorn
-from fastapi import BackgroundTasks, FastAPI, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.config.settings import Settings, get_settings
+from src.config.settings import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -31,7 +31,7 @@ app_state = {
 }
 
 
-async def _process_background_tasks():
+async def _process_background_tasks() -> None:
     """Process background tasks from the queue.
 
     This coroutine runs continuously, processing tasks from the queue
