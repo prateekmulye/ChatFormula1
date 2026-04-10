@@ -7,12 +7,11 @@ and optional JWT token support.
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, Security, status
 from fastapi.responses import JSONResponse
-from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import APIKeyHeader, HTTPBearer
 from pydantic import BaseModel, Field
 
 logger = structlog.get_logger(__name__)
@@ -25,7 +24,7 @@ class APIKey(BaseModel):
     key_hash: str = Field(..., description="Hashed API key")
     name: str = Field(..., description="Key name/description")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    expires_at: Optional[datetime] = Field(None, description="Expiration date")
+    expires_at: datetime | None = Field(None, description="Expiration date")
     is_active: bool = Field(default=True, description="Whether key is active")
     scopes: list[str] = Field(default_factory=list, description="Allowed scopes")
     rate_limit_multiplier: float = Field(
@@ -46,8 +45,8 @@ class APIKeyManager:
     def generate_key(
         self,
         name: str,
-        scopes: Optional[list[str]] = None,
-        expires_in_days: Optional[int] = None,
+        scopes: list[str] | None = None,
+        expires_in_days: int | None = None,
         rate_limit_multiplier: float = 1.0,
     ) -> tuple[str, APIKey]:
         """Generate a new API key.
@@ -98,7 +97,7 @@ class APIKeyManager:
 
         return raw_key, api_key
 
-    def validate_key(self, raw_key: str) -> Optional[APIKey]:
+    def validate_key(self, raw_key: str) -> APIKey | None:
         """Validate an API key.
 
         Args:
@@ -148,7 +147,7 @@ class APIKeyManager:
         logger.warning("api_key_not_found_for_revocation", key_id=key_id)
         return False
 
-    def rotate_key(self, key_id: str) -> Optional[tuple[str, APIKey]]:
+    def rotate_key(self, key_id: str) -> tuple[str, APIKey] | None:
         """Rotate an API key (generate new key with same settings).
 
         Args:
@@ -216,7 +215,7 @@ class APIKeyManager:
 
 
 # Global API key manager
-_api_key_manager: Optional[APIKeyManager] = None
+_api_key_manager: APIKeyManager | None = None
 
 
 def get_api_key_manager() -> APIKeyManager:
@@ -239,8 +238,8 @@ bearer_auth = HTTPBearer(auto_error=False)
 
 
 async def verify_api_key(
-    api_key: Optional[str] = Security(api_key_header),
-) -> Optional[APIKey]:
+    api_key: str | None = Security(api_key_header),
+) -> APIKey | None:
     """Verify API key from header.
 
     Args:
@@ -276,8 +275,8 @@ async def verify_api_key(
 
 
 async def verify_api_key_optional(
-    api_key: Optional[str] = Security(api_key_header),
-) -> Optional[APIKey]:
+    api_key: str | None = Security(api_key_header),
+) -> APIKey | None:
     """Verify API key from header (optional).
 
     Args:
@@ -340,7 +339,7 @@ class AuthenticationMiddleware:
         self,
         app,
         require_auth: bool = False,
-        public_paths: Optional[list[str]] = None,
+        public_paths: list[str] | None = None,
     ):
         """Initialize authentication middleware.
 
