@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator, Generator
+
 """Pytest configuration and fixtures.
 
 This module provides reusable fixtures and utilities for testing the F1 Slipstream Agent.
@@ -35,7 +36,6 @@ Example Usage:
 """
 
 import os
-
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 
