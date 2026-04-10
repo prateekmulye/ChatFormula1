@@ -28,10 +28,10 @@ def mock_settings():
         openai_temperature=0.7,
         openai_embedding_model="text-embedding-3-small",
         pinecone_api_key="test-key",
-        pinecone_environment="test",
+        pinecone_environment="development",
         pinecone_index_name="test-index",
         tavily_api_key="test-key",
-        environment="test",
+        environment="development",
     )
 
 
@@ -140,7 +140,7 @@ async def test_tavily_client_with_cache(mock_settings):
         }
     ]
 
-    with patch.object(client, "search_tool") as mock_tool:
+    with patch.object(client, "_search_tool") as mock_tool:
         mock_tool.ainvoke = AsyncMock(return_value=mock_results)
 
         # First call should hit the API
