@@ -1,0 +1,3 @@
+## 2024-05-24 - O(N) Cache Eviction Blocking O(1) Reads
+**Learning:** The `TTLCache` periodically scanned the entire cache for expired entries during `get()` calls whenever the cache size exceeded 90% of `max_size`. Because this check runs on every `get()`, it caused repeated O(N) background eviction scans that blocked fast O(1) cache read paths during high utilization.
+**Action:** Always implement a timestamp-based throttling mechanism (e.g., `_last_evict_time`) for background eviction scans in custom cache implementations to ensure O(N) cleanup operations do not continuously block O(1) read paths under heavy load.
