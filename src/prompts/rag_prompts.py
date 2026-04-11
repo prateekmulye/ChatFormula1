@@ -4,7 +4,6 @@ This module contains prompts for combining retrieved context from vector stores
 and search results with user queries to generate informed responses.
 """
 
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
