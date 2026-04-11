@@ -112,14 +112,14 @@ class TestAdminEndpoints:
 
     def test_stats_endpoint_exists(self, client: TestClient):
         """Test stats endpoint exists."""
-        response = client.get("/stats")
+        response = client.get("/api/admin/stats")
 
         # Should not return 404
         assert response.status_code != 404
 
     def test_ingest_endpoint_exists(self, client: TestClient):
         """Test ingest endpoint exists."""
-        response = client.post("/ingest", json={})
+        response = client.post("/api/admin/ingest", json={})
 
         # Should not return 404 (might return 400 or 401 for auth)
         assert response.status_code != 404
