@@ -1,8 +1,9 @@
 """Performance timing utilities for observability."""
 
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator, Optional
+from typing import Any
 
 import structlog
 
