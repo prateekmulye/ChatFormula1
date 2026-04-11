@@ -265,7 +265,6 @@ async def route_with_branching(
         State updates with routing decision
     """
     intent = state.intent
-    entities = state.entities
     metadata = state.metadata
 
     logger.info(

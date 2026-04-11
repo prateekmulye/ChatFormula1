@@ -36,7 +36,7 @@ class APIKey(BaseModel):
 class APIKeyManager:
     """Manager for API keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize API key manager."""
         # In production, store keys in a database
         self.keys: dict[str, APIKey] = {}
@@ -138,7 +138,7 @@ class APIKeyManager:
         Returns:
             True if key was revoked, False if not found
         """
-        for key_hash, api_key in self.keys.items():
+        for _key_hash, api_key in self.keys.items():
             if api_key.key_id == key_id:
                 api_key.is_active = False
                 logger.info("api_key_revoked", key_id=key_id)
@@ -158,7 +158,7 @@ class APIKeyManager:
         """
         # Find existing key
         old_key = None
-        for key_hash, api_key in self.keys.items():
+        for _key_hash, api_key in self.keys.items():
             if api_key.key_id == key_id:
                 old_key = api_key
                 break
@@ -340,7 +340,7 @@ class AuthenticationMiddleware:
         app,
         require_auth: bool = False,
         public_paths: list[str] | None = None,
-    ):
+    ) -> None:
         """Initialize authentication middleware.
 
         Args:

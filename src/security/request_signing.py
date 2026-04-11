@@ -17,7 +17,7 @@ logger = structlog.get_logger(__name__)
 class RequestSigner:
     """Request signer for sensitive operations."""
 
-    def __init__(self, secret_key: str, max_age_seconds: int = 300):
+    def __init__(self, secret_key: str, max_age_seconds: int = 300) -> None:
         """Initialize request signer.
 
         Args:

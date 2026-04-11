@@ -21,7 +21,7 @@ class MonitoringDashboard:
     that can be consumed by frontend visualization libraries.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize monitoring dashboard."""
         self.metrics_collector = get_metrics_collector()
         logger.info("monitoring_dashboard_initialized")

@@ -32,7 +32,7 @@ app_state = {
 }
 
 
-async def _process_background_tasks():
+async def _process_background_tasks() -> None:
     """Process background tasks from the queue.
 
     This coroutine runs continuously, processing tasks from the queue
