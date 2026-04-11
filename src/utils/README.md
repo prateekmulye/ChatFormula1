@@ -91,12 +91,12 @@ async def search_f1_data(query: str):
         vector_search_fn=vector_store.search,
         query=query
     )
-    
+
     # Show degraded mode message to user if needed
     if mode != ServiceMode.FULL:
         message = get_degraded_mode_message(mode, "tavily")
         print(message)
-    
+
     return results
 
 # Vector search with cache fallback
@@ -251,16 +251,16 @@ class F1SearchService:
     def __init__(self, tavily_client, vector_store):
         self.tavily_client = tavily_client
         self.vector_store = vector_store
-    
+
     @retry_with_backoff(**TAVILY_RETRY_CONFIG, exceptions=(SearchAPIError,))
     async def _tavily_search(self, query: str):
         """Tavily search with retry logic."""
         return await self.tavily_client.search(query)
-    
+
     async def _vector_search(self, query: str):
         """Vector store search."""
         return await self.vector_store.search(query)
-    
+
     async def search(self, query: str, user_id: str = None):
         """Search with full error handling and fallbacks."""
         try:
@@ -270,18 +270,18 @@ class F1SearchService:
                 vector_search_fn=self._vector_search,
                 query=query
             )
-            
+
             # Prepare response with degraded mode message
             response = {
                 "results": results,
                 "mode": mode.value,
             }
-            
+
             if mode != ServiceMode.FULL:
                 response["message"] = get_degraded_mode_message(mode, "tavily")
-            
+
             return response
-            
+
         except Exception as e:
             # Log error with comprehensive context
             log_error_with_context(
@@ -294,7 +294,7 @@ class F1SearchService:
                 },
                 include_traceback=True
             )
-            
+
             # Re-raise or return error response
             raise
 
@@ -382,7 +382,7 @@ app = FastAPI()
 @app.get("/health")
 async def health_check():
     error_summary = create_error_summary()
-    
+
     return {
         "status": "healthy" if error_summary["error_rate_5min"] < 5 else "degraded",
         "errors": error_summary
@@ -411,7 +411,7 @@ from src.utils import retry_with_backoff, get_circuit_breaker
 @pytest.mark.asyncio
 async def test_retry_with_backoff():
     call_count = 0
-    
+
     @retry_with_backoff(max_attempts=3, initial_delay=0.1)
     async def failing_function():
         nonlocal call_count
@@ -419,7 +419,7 @@ async def test_retry_with_backoff():
         if call_count < 3:
             raise ConnectionError("Simulated failure")
         return "success"
-    
+
     result = await failing_function()
     assert result == "success"
     assert call_count == 3
@@ -427,17 +427,17 @@ async def test_retry_with_backoff():
 @pytest.mark.asyncio
 async def test_circuit_breaker():
     cb = get_circuit_breaker("test_service")
-    
+
     async def failing_function():
         raise ConnectionError("Simulated failure")
-    
+
     # Trigger circuit breaker
     for _ in range(5):
         try:
             await cb.call_async(failing_function)
         except:
             pass
-    
+
     # Circuit should be open
     from src.utils import CircuitState
     assert cb.state == CircuitState.OPEN

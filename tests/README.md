@@ -187,7 +187,7 @@ from src.module import MyClass
 @pytest.mark.unit
 class TestMyClass:
     """Unit tests for MyClass."""
-    
+
     def test_basic_functionality(self, test_settings):
         """Test basic functionality."""
         obj = MyClass(test_settings)
@@ -204,12 +204,12 @@ import pytest
 @pytest.mark.asyncio
 class TestMyIntegration:
     """Integration tests for my feature."""
-    
+
     async def test_integration(self, test_settings):
         """Test integration."""
         if test_settings.api_key.startswith("test-"):
             pytest.skip("Skipping - no real API key")
-        
+
         # Test code here
         assert True
 ```
@@ -223,7 +223,7 @@ import pytest
 @pytest.mark.asyncio
 class TestUserWorkflow:
     """E2E tests for user workflow."""
-    
+
     async def test_complete_workflow(self, agent):
         """Test complete user workflow."""
         # Simulate user interaction

@@ -129,7 +129,7 @@ Response with Citations
    ```bash
    # Option 1: Streamlit UI (recommended for testing)
    poetry run streamlit run src/ui/app.py
-   
+
    # Option 2: FastAPI backend
    poetry run uvicorn src.api.main:app --reload
    ```

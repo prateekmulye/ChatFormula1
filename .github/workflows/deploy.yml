@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_deploy: ${{ steps.check.outputs.should_deploy }}
-    
+
     steps:
       - name: Check commit message
         id: check
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-deploy
     if: needs.check-deploy.outputs.should_deploy == 'true'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,24 +51,24 @@ jobs:
           RENDER_URL="${{ secrets.RENDER_URL }}"
           MAX_RETRIES=15
           RETRY_COUNT=0
-          
+
           echo "🔍 Starting health checks for $RENDER_URL"
-          
+
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES"
-            
+
             # Try to reach the application
             if curl -f -s -o /dev/null -w "%{http_code}" "$RENDER_URL" | grep -q "200\|301\|302"; then
               echo "✅ Application is responding!"
               echo "🎉 Deployment successful!"
               exit 0
             fi
-            
+
             echo "⏳ Not ready yet, waiting 20 seconds..."
             sleep 20
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
-          
+
           echo "⚠️  Health check timeout - deployment may still be in progress"
           echo "Check Render dashboard: https://dashboard.render.com"
           exit 0  # Don't fail the workflow

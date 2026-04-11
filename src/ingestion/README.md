@@ -97,7 +97,7 @@ async def main():
     # Initialize pipeline
     config = get_settings()
     pipeline = IngestionPipeline(config=config, data_dir="data")
-    
+
     # Ingest all data
     stats = await pipeline.ingest_all(
         race_results_file="historical_features.csv",
@@ -106,9 +106,9 @@ async def main():
         batch_size=100,
         show_progress=True,
     )
-    
+
     print(f"Ingested {stats['documents_ingested']} documents")
-    
+
     # Cleanup
     await pipeline.close()
 

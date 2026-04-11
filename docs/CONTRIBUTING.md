@@ -140,21 +140,21 @@ def process_race_data(
 ) -> Optional[dict]:
     """
     Process race data and return structured results.
-    
+
     Args:
         race_id: Unique identifier for the race
         drivers: List of driver codes (e.g., ['VER', 'HAM'])
         include_weather: Whether to include weather data
-        
+
     Returns:
         Dictionary with processed race data, or None if processing fails
-        
+
     Raises:
         ValueError: If race_id is invalid
     """
     if not race_id:
         raise ValueError("race_id cannot be empty")
-    
+
     # Implementation here
     return result
 ```
@@ -180,10 +180,10 @@ def test_agent_graph_creation():
     """Test that agent graph is created successfully."""
     # Arrange
     config = {"model": "gpt-3.5-turbo"}
-    
+
     # Act
     graph = create_agent_graph(config)
-    
+
     # Assert
     assert graph is not None
     assert graph.nodes is not None
@@ -194,10 +194,10 @@ async def test_agent_query():
     # Arrange
     agent = create_agent()
     query = "Who won the 2023 championship?"
-    
+
     # Act
     response = await agent.process(query)
-    
+
     # Assert
     assert response is not None
     assert "verstappen" in response.lower()

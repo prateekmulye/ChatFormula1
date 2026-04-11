@@ -195,16 +195,16 @@ async def ingest_latest_f1_news():
         "technical developments",
         "championship standings"
     ]
-    
+
     all_documents = []
     for topic in topics:
         results = await client.get_latest_f1_news(topic, max_results=3)
         documents = client.convert_to_documents(results)
         all_documents.extend(documents)
-    
+
     # Ingest into Pinecone
     # vector_store.add_documents(all_documents)
-    
+
     return len(all_documents)
 ```
 
@@ -290,7 +290,7 @@ class CachedTavilyClient(TavilyClient):
         super().__init__(settings)
         self._cache = {}
         self._cache_ttl = timedelta(minutes=15)
-    
+
     async def search(self, query: str, **kwargs):
         # Check cache
         cache_key = f"{query}:{kwargs}"
@@ -298,7 +298,7 @@ class CachedTavilyClient(TavilyClient):
             cached_time, cached_result = self._cache[cache_key]
             if datetime.now() - cached_time < self._cache_ttl:
                 return cached_result
-        
+
         # Fetch fresh data
         result = await super().search(query, **kwargs)
         self._cache[cache_key] = (datetime.now(), result)
@@ -317,20 +317,20 @@ from src.config import get_settings
 async def ingest_f1_news_to_vector_db():
     """Complete pipeline: Search -> Extract -> Embed -> Store"""
     settings = get_settings()
-    
+
     # Initialize clients
     tavily = TavilyClient(settings)
     pinecone = PineconeClient(settings)
-    
+
     # Search for latest F1 content
     results = await tavily.get_latest_f1_news(max_results=10)
-    
+
     # Convert to documents
     documents = tavily.convert_to_documents(results)
-    
+
     # Add to vector store (will be embedded automatically)
     await pinecone.add_documents(documents)
-    
+
     return len(documents)
 ```
 

@@ -83,26 +83,26 @@ from src.utils.timing import PerformanceTimer
 
 async def rag_pipeline(query: str):
     timer = PerformanceTimer("rag_pipeline", query=query)
-    
+
     # Analyze query
     timer.checkpoint("query_analysis")
     intent = await analyze_query(query)
-    
+
     # Search vector store
     timer.checkpoint("vector_search", docs_retrieved=5)
     docs = await vector_store.search(query)
-    
+
     # Search Tavily
     timer.checkpoint("tavily_search", results_found=3)
     search_results = await tavily.search(query)
-    
+
     # Generate response
     timer.checkpoint("llm_generation", tokens=150)
     response = await llm.generate(query, docs, search_results)
-    
+
     # Finish timing
     total_time = timer.finish(success=True)
-    
+
     return response
 ```
 

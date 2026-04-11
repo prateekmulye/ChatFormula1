@@ -14,7 +14,7 @@
    ```
    GitHub Repo → Settings → Secrets and variables → Actions → New secret
    ```
-   
+
    Add these secrets:
    - `RENDER_DEPLOY_HOOK_URL`: Your deploy hook URL
    - `RENDER_URL`: Your app URL (e.g., `https://f1-slipstream-ui.onrender.com`)

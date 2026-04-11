@@ -61,12 +61,12 @@ echo ""
 set_secret() {
     local name=$1
     local value=$2
-    
+
     if [ -z "$value" ]; then
         echo -e "${YELLOW}⏭️  Skipping $name (empty value)${NC}"
         return
     fi
-    
+
     echo "$value" | gh secret set "$name" --repo "$REPO"
     echo -e "${GREEN}✅ Set $name${NC}"
 }
@@ -77,7 +77,7 @@ prompt_secret() {
     local description=$2
     local example=$3
     local required=$4
-    
+
     echo ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${BLUE}$name${NC}"
@@ -86,15 +86,15 @@ prompt_secret() {
         echo -e "${YELLOW}Example: $example${NC}"
     fi
     echo ""
-    
+
     if [ "$required" = "true" ]; then
         echo -n "Enter value (required): "
     else
         echo -n "Enter value (optional, press Enter to skip): "
     fi
-    
+
     read -r value
-    
+
     if [ -n "$value" ]; then
         set_secret "$name" "$value"
     elif [ "$required" = "true" ]; then

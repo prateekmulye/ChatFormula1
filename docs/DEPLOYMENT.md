@@ -97,39 +97,39 @@ Follow the prompts to enter your API keys.
    - **Branch**: `main`
    - **Root Directory**: Leave empty (or specify if in subdirectory)
    - **Runtime**: `Python 3`
-   - **Build Command**: 
+   - **Build Command**:
      ```
      pip install poetry && poetry install --no-dev
      ```
-   - **Start Command**: 
+   - **Start Command**:
      ```
      poetry run streamlit run src/ui/app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
      ```
    - **Instance Type**: **Free**
 
 4. **Add Environment Variables**
-   
+
    Click **"Environment"** tab and add:
-   
+
    ```
    OPENAI_API_KEY=sk-your-key-here
    OPENAI_MODEL=gpt-3.5-turbo
    OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-   
+
    PINECONE_API_KEY=pcsk-your-key-here
    PINECONE_INDEX_NAME=f1-knowledge-free
-   
+
    TAVILY_API_KEY=tvly-your-key-here
    TAVILY_MAX_RESULTS=3
-   
+
    ENVIRONMENT=production
    LOG_LEVEL=INFO
-   
+
    # Rate Limiting (stay in free tier)
    MAX_REQUESTS_PER_MINUTE=3
    MAX_REQUESTS_PER_DAY=100
    ENABLE_RATE_LIMITING=true
-   
+
    # Caching (reduce API calls)
    ENABLE_CACHING=true
    CACHE_TTL_SECONDS=3600
@@ -399,12 +399,12 @@ Add **Google Analytics**:
 
 ## Success Criteria
 
-✅ Application is live and accessible  
-✅ Rate limiting is working  
-✅ All API integrations working  
-✅ Monitoring is set up  
-✅ Usage alerts configured  
-✅ Shareable link ready  
+✅ Application is live and accessible
+✅ Rate limiting is working
+✅ All API integrations working
+✅ Monitoring is set up
+✅ Usage alerts configured
+✅ Shareable link ready
 
 ---
 

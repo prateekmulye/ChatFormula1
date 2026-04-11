@@ -734,7 +734,7 @@ def send_streaming_message(message, session_id):
         },
         stream=True
     )
-    
+
     for line in response.iter_lines():
         if line:
             line = line.decode('utf-8')
@@ -770,7 +770,7 @@ async def chat():
         session_id="user123"
     )
     print(response["response"])
-    
+
     # Access sources
     for source in response["sources"]:
         print(f"- {source['title']}: {source['url']}")
@@ -796,11 +796,11 @@ async function sendMessage(message: string, sessionId: string) {
       stream: false,
     }),
   });
-  
+
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
-  
+
   return await response.json();
 }
 
