@@ -6,7 +6,7 @@ This module provides tools that the LangGraph agent can use to:
 3. Generate race predictions combining historical and current data
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -24,11 +24,11 @@ class QueryF1HistoryInput(BaseModel):
     """Input schema for query_f1_history tool."""
 
     query: str = Field(description="The search query for historical F1 data")
-    year_range: Optional[str] = Field(
+    year_range: str | None = Field(
         default=None,
         description="Year range filter in format 'YYYY-YYYY' or single year 'YYYY'",
     )
-    category: Optional[str] = Field(
+    category: str | None = Field(
         default=None,
         description="Category filter (e.g., 'race_result', 'driver_stats', 'technical')",
     )
@@ -44,21 +44,21 @@ class PredictRaceOutcomeInput(BaseModel):
         description="Name of the race or Grand Prix (e.g., 'Monaco Grand Prix')"
     )
     season: int = Field(description="Season year for the prediction")
-    factors: Optional[List[str]] = Field(
+    factors: list[str] | None = Field(
         default=None,
         description="Specific factors to consider (e.g., 'weather', 'driver_form', 'circuit_history')",
     )
 
 
 # Tool instances will be created by the factory function
-_tavily_client: Optional[TavilyClient] = None
-_vector_store_manager: Optional[VectorStoreManager] = None
+_tavily_client: TavilyClient | None = None
+_vector_store_manager: VectorStoreManager | None = None
 
 
 def initialize_tools(
     settings: Settings,
     vector_store: VectorStoreManager,
-    tavily_client: Optional[TavilyClient] = None,
+    tavily_client: TavilyClient | None = None,
 ) -> None:
     """Initialize tool dependencies.
 
@@ -157,7 +157,7 @@ async def search_current_f1_data(query: str) -> str:
         )
 
 
-def _format_search_results(results: List[Dict[str, Any]], query: str) -> str:
+def _format_search_results(results: list[dict[str, Any]], query: str) -> str:
     """Format Tavily search results into readable text.
 
     Args:
@@ -187,8 +187,8 @@ def _format_search_results(results: List[Dict[str, Any]], query: str) -> str:
 @tool
 async def query_f1_history(
     query: str,
-    year_range: Optional[str] = None,
-    category: Optional[str] = None,
+    year_range: str | None = None,
+    category: str | None = None,
     max_results: int = 5,
 ) -> str:
     """Query historical F1 data from the knowledge base.
@@ -276,9 +276,9 @@ async def query_f1_history(
 
 
 def _build_metadata_filters(
-    year_range: Optional[str],
-    category: Optional[str],
-) -> Optional[Dict[str, Any]]:
+    year_range: str | None,
+    category: str | None,
+) -> dict[str, Any] | None:
     """Build Pinecone metadata filters from parameters.
 
     Args:
@@ -317,10 +317,10 @@ def _build_metadata_filters(
 
 
 def _format_history_results(
-    results: List[tuple],
+    results: list[tuple],
     query: str,
-    year_range: Optional[str],
-    category: Optional[str],
+    year_range: str | None,
+    category: str | None,
 ) -> str:
     """Format vector store results into readable text with citations.
 
@@ -367,7 +367,7 @@ def _format_history_results(
 async def predict_race_outcome(
     race: str,
     season: int,
-    factors: Optional[List[str]] = None,
+    factors: list[str] | None = None,
 ) -> str:
     """Generate race predictions based on current form and historical data.
 
@@ -457,7 +457,7 @@ async def predict_race_outcome(
         )
 
 
-async def _gather_historical_data(race: str, season: int) -> Dict[str, Any]:
+async def _gather_historical_data(race: str, season: int) -> dict[str, Any]:
     """Gather historical data for the race from vector store.
 
     Args:
@@ -510,8 +510,8 @@ async def _gather_historical_data(race: str, season: int) -> Dict[str, Any]:
 async def _gather_current_data(
     race: str,
     season: int,
-    factors: List[str],
-) -> Dict[str, Any]:
+    factors: list[str],
+) -> dict[str, Any]:
     """Gather current season data from Tavily search.
 
     Args:
@@ -574,9 +574,9 @@ async def _gather_current_data(
 def _generate_prediction(
     race: str,
     season: int,
-    historical_data: Dict[str, Any],
-    current_data: Dict[str, Any],
-    factors: List[str],
+    historical_data: dict[str, Any],
+    current_data: dict[str, Any],
+    factors: list[str],
 ) -> str:
     """Generate structured prediction output.
 
