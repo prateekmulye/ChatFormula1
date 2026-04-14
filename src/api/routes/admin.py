@@ -7,7 +7,7 @@ and configuration validation.
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Security
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Security, status
 from pydantic import BaseModel, Field
 
 from src.config.settings import get_settings
