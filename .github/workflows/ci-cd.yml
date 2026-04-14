@@ -101,6 +101,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          ENVIRONMENT: "development"
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
