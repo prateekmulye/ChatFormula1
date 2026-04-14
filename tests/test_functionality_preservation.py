@@ -12,9 +12,10 @@ correctly after the UI redesign, including:
 Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7
 """
 
+import sys
 from datetime import datetime
 from importlib import import_module
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 

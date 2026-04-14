@@ -5,8 +5,9 @@ MemorySaver for persistence, sliding window for history management,
 and context summarization for long conversations.
 """
 
+import json
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import structlog
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
@@ -40,7 +41,7 @@ class ConversationMemoryManager:
     def __init__(
         self,
         config: Settings,
-        checkpointer: MemorySaver | None = None,
+        checkpointer: Optional[MemorySaver] = None,
     ) -> None:
         """Initialize conversation memory manager.
 
@@ -70,7 +71,7 @@ class ConversationMemoryManager:
     def create_session(
         self,
         session_id: str,
-        system_message: BaseMessage | None = None,
+        system_message: Optional[BaseMessage] = None,
     ) -> ConversationContext:
         """Create a new conversation session.
 
@@ -101,7 +102,7 @@ class ConversationMemoryManager:
 
         return context
 
-    def get_session(self, session_id: str) -> ConversationContext | None:
+    def get_session(self, session_id: str) -> Optional[ConversationContext]:
         """Get existing conversation session.
 
         Args:
@@ -115,7 +116,7 @@ class ConversationMemoryManager:
     def get_or_create_session(
         self,
         session_id: str,
-        system_message: BaseMessage | None = None,
+        system_message: Optional[BaseMessage] = None,
     ) -> ConversationContext:
         """Get existing session or create new one.
 
@@ -211,7 +212,7 @@ class ConversationMemoryManager:
     async def summarize_conversation(
         self,
         session_id: str,
-    ) -> str | None:
+    ) -> Optional[str]:
         """Summarize conversation history for long conversations.
 
         Uses LLM to create a concise summary of the conversation so far,
@@ -447,7 +448,7 @@ Summary:"""
     def load_checkpoint(
         self,
         session_id: str,
-    ) -> dict[str, Any] | None:
+    ) -> Optional[dict[str, Any]]:
         """Load conversation state from checkpoint.
 
         Args:
@@ -477,7 +478,7 @@ Summary:"""
             )
             return None
 
-    def get_session_stats(self, session_id: str) -> dict[str, Any] | None:
+    def get_session_stats(self, session_id: str) -> Optional[dict[str, Any]]:
         """Get statistics about a conversation session.
 
         Args:
@@ -513,7 +514,7 @@ Summary:"""
         """
         return list(self._sessions.keys())
 
-    def export_session(self, session_id: str) -> dict[str, Any] | None:
+    def export_session(self, session_id: str) -> Optional[dict[str, Any]]:
         """Export session data for backup or analysis.
 
         Args:
@@ -587,7 +588,7 @@ Summary:"""
 
 def create_memory_manager(
     config: Settings,
-    checkpointer: MemorySaver | None = None,
+    checkpointer: Optional[MemorySaver] = None,
 ) -> ConversationMemoryManager:
     """Factory function to create a ConversationMemoryManager.
 

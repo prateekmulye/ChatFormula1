@@ -7,7 +7,7 @@ to retrieve the latest and most accurate F1 news and updates.
 import asyncio
 import time
 from collections import deque
-from typing import Any
+from typing import Any, Optional
 
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.documents import Document
@@ -54,7 +54,7 @@ class TavilyClient:
             enable_cache: Whether to enable result caching
         """
         self.settings = settings
-        self._search_tool: TavilySearchResults | None = None
+        self._search_tool: Optional[TavilySearchResults] = None
 
         # Rate limiting using token bucket algorithm
         self._rate_limit_requests = rate_limit_requests
@@ -66,7 +66,7 @@ class TavilyClient:
         self._fallback_mode = False
         self._consecutive_failures = 0
         self._max_consecutive_failures = 3
-        self._last_failure_time: float | None = None
+        self._last_failure_time: Optional[float] = None
         self._fallback_cooldown = 300.0  # 5 minutes
 
         # Caching
@@ -221,10 +221,10 @@ class TavilyClient:
     async def search(
         self,
         query: str,
-        max_results: int | None = None,
-        include_answer: bool | None = None,
-        include_raw_content: bool | None = None,
-        search_depth: str | None = None,
+        max_results: Optional[int] = None,
+        include_answer: Optional[bool] = None,
+        include_raw_content: Optional[bool] = None,
+        search_depth: Optional[str] = None,
         use_cache: bool = True,
     ) -> list[dict[str, Any]]:
         """Search for F1 information using Tavily with rate limiting and caching.
@@ -349,11 +349,11 @@ class TavilyClient:
     async def safe_search(
         self,
         query: str,
-        max_results: int | None = None,
-        include_answer: bool | None = None,
-        include_raw_content: bool | None = None,
-        search_depth: str | None = None,
-    ) -> tuple[list[dict[str, Any]], str | None]:
+        max_results: Optional[int] = None,
+        include_answer: Optional[bool] = None,
+        include_raw_content: Optional[bool] = None,
+        search_depth: Optional[str] = None,
+    ) -> tuple[list[dict[str, Any]], Optional[str]]:
         """Search with graceful degradation - returns empty results on failure.
 
         This method never raises exceptions, making it safe for use in agent
@@ -393,7 +393,7 @@ class TavilyClient:
             )
             return results, None
 
-        except RateLimitError:
+        except RateLimitError as e:
             error_msg = (
                 "⚠️ Search rate limit reached. "
                 "Please wait a moment before trying again. "
@@ -430,7 +430,7 @@ class TavilyClient:
     async def search_with_context(
         self,
         query: str,
-        context: str | None = None,
+        context: Optional[str] = None,
     ) -> dict[str, Any]:
         """Search with additional context for more relevant results.
 
@@ -490,7 +490,7 @@ class TavilyClient:
 
     async def get_latest_f1_news(
         self,
-        topic: str | None = None,
+        topic: Optional[str] = None,
         max_results: int = 5,
     ) -> list[dict[str, Any]]:
         """Get the latest F1 news articles.
@@ -518,7 +518,7 @@ class TavilyClient:
     async def crawl_f1_source(
         self,
         url: str,
-        max_depth: int | None = None,
+        max_depth: Optional[int] = None,
     ) -> list[Document]:
         """Crawl an F1 website for comprehensive content extraction.
 
@@ -589,7 +589,7 @@ class TavilyClient:
     async def map_f1_domain(
         self,
         domain: str,
-        query: str | None = None,
+        query: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """Map an F1 domain to discover relevant pages.
 
@@ -642,7 +642,7 @@ class TavilyClient:
     def _parse_and_normalize_result(
         self,
         result: dict[str, Any],
-    ) -> dict[str, Any] | None:
+    ) -> Optional[dict[str, Any]]:
         """Parse and normalize a single Tavily search result.
 
         Args:

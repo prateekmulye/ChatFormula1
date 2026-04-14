@@ -7,17 +7,16 @@ providing endpoints for chat interactions, health checks, and admin operations.
 import asyncio
 import time
 import uuid
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, AsyncGenerator, Dict
 
 import structlog
 import uvicorn
-from fastapi import FastAPI, Request, status
+from fastapi import BackgroundTasks, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.config.settings import get_settings
+from src.config.settings import Settings, get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -48,7 +47,7 @@ async def _process_background_tasks():
                     app_state["task_queue"].get(),
                     timeout=1.0,
                 )
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 # No tasks in queue, continue loop
                 continue
 
@@ -172,7 +171,7 @@ async def submit_background_task(
     return task_id
 
 
-def get_task_status(task_id: str) -> dict[str, Any]:
+def get_task_status(task_id: str) -> Dict[str, Any]:
     """Get the status of a background task.
 
     Args:
