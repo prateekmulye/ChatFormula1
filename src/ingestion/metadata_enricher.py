@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
@@ -259,7 +259,7 @@ class MetadataEnricher:
 
         return Document(page_content=doc.page_content, metadata=enriched_metadata)
 
-    def enrich_documents(self, documents: List[Document]) -> List[Document]:
+    def enrich_documents(self, documents: list[Document]) -> list[Document]:
         """Enrich multiple documents' metadata.
 
         Args:
@@ -281,8 +281,8 @@ class MetadataEnricher:
         return enriched_docs
 
     def _extract_dates(
-        self, text: str, existing_metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, text: str, existing_metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Extract and normalize dates from text and metadata.
 
         Args:
@@ -292,7 +292,7 @@ class MetadataEnricher:
         Returns:
             Dictionary with date-related metadata
         """
-        date_info: Dict[str, Any] = {}
+        date_info: dict[str, Any] = {}
 
         # Check existing metadata for season/year
         if "season" in existing_metadata:
@@ -323,7 +323,7 @@ class MetadataEnricher:
 
         return date_info
 
-    def _identify_drivers(self, text: str) -> Set[str]:
+    def _identify_drivers(self, text: str) -> set[str]:
         """Identify driver names in text.
 
         Args:
@@ -342,7 +342,7 @@ class MetadataEnricher:
 
         return identified
 
-    def _identify_teams(self, text: str) -> Set[str]:
+    def _identify_teams(self, text: str) -> set[str]:
         """Identify team/constructor names in text.
 
         Args:
@@ -361,7 +361,7 @@ class MetadataEnricher:
 
         return identified
 
-    def _identify_circuits(self, text: str) -> Set[str]:
+    def _identify_circuits(self, text: str) -> set[str]:
         """Identify circuit names in text.
 
         Args:
@@ -380,7 +380,7 @@ class MetadataEnricher:
 
         return identified
 
-    def _classify_category(self, text: str, metadata: Dict[str, Any]) -> Optional[str]:
+    def _classify_category(self, text: str, metadata: dict[str, Any]) -> str | None:
         """Classify document category based on content and metadata.
 
         Args:
@@ -401,7 +401,7 @@ class MetadataEnricher:
             return "race_info"
 
         # Check content for category keywords
-        category_scores: Dict[str, int] = {}
+        category_scores: dict[str, int] = {}
 
         for category, keywords in self.CATEGORY_KEYWORDS.items():
             score = sum(1 for keyword in keywords if keyword in text)
@@ -444,7 +444,7 @@ class MetadataEnricher:
         self.KNOWN_CIRCUITS.add(normalized)
         self.logger.info("custom_circuit_added", circuit=normalized)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get enrichment statistics.
 
         Returns:
