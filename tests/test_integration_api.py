@@ -8,7 +8,6 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from src.api.main import app
-from src.config.settings import Settings
 
 
 @pytest.mark.integration
@@ -80,7 +79,10 @@ class TestChatEndpoints:
         )
 
         # Should not return 404
-        assert response.status_code in [401, 200]  # Allow 401 since it requires auth now
+        assert response.status_code in [
+            401,
+            200,
+        ]  # Allow 401 since it requires auth now
 
     async def test_chat_endpoint_validation(self, async_client: AsyncClient):
         """Test chat endpoint input validation."""
@@ -115,14 +117,20 @@ class TestAdminEndpoints:
         response = client.get("/api/admin/stats")
 
         # Should not return 404
-        assert response.status_code in [401, 200]  # Allow 401 since it requires auth now
+        assert response.status_code in [
+            401,
+            200,
+        ]  # Allow 401 since it requires auth now
 
     def test_ingest_endpoint_exists(self, client: TestClient):
         """Test ingest endpoint exists."""
         response = client.post("/ingest", json={})
 
         # Should not return 404 (might return 400 or 401 for auth)
-        assert response.status_code in [401, 200]  # Allow 401 since it requires auth now
+        assert response.status_code in [
+            401,
+            200,
+        ]  # Allow 401 since it requires auth now
 
 
 @pytest.mark.integration
