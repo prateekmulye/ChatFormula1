@@ -4,7 +4,6 @@ This module contains prompts for combining retrieved context from vector stores
 and search results with user queries to generate informed responses.
 """
 
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import (
     ChatPromptTemplate,
@@ -144,13 +143,15 @@ CONVERSATIONAL_RAG_PROMPT = ChatPromptTemplate.from_messages(
     [
         SystemMessage(content="You are ChatFormula1, an expert Formula 1 analyst."),
         MessagesPlaceholder(variable_name="chat_history", optional=True),
-        HumanMessagePromptTemplate.from_template("""**Retrieved Context:**
+        HumanMessagePromptTemplate.from_template(
+            """**Retrieved Context:**
 {context}
 
 **Current Question:**
 {query}
 
-Use the context above and our conversation history to answer the question."""),
+Use the context above and our conversation history to answer the question."""
+        ),
     ]
 )
 
