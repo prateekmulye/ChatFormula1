@@ -3,9 +3,16 @@
 These tests start the FastAPI application and test endpoints end-to-end.
 """
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
+os.environ["ENVIRONMENT"] = "development"
 
 from src.api.main import app
 

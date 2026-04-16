@@ -34,6 +34,11 @@ Example Usage:
 """
 
 import os
+
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
+os.environ["ENVIRONMENT"] = "development"
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 from unittest.mock import AsyncMock, Mock
@@ -768,7 +773,7 @@ def assert_message_equal(msg1: Any, msg2: Any) -> None:
         >>> msg2 = HumanMessage(content="Hello")
         >>> assert_message_equal(msg1, msg2)  # Passes
     """
-    assert type(msg1) == type(msg2)
+    assert type(msg1) is type(msg2)
     assert msg1.content == msg2.content
 
 
