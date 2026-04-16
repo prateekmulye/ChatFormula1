@@ -2,7 +2,7 @@
 
 import json
 from functools import lru_cache
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         le=2.0,
         description="Temperature for LLM generation",
     )
-    openai_max_tokens: Optional[int] = Field(
+    openai_max_tokens: int | None = Field(
         default=1000,
         ge=100,
         le=4000,
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     # Pinecone Configuration
     pinecone_api_key: str = Field(..., description="Pinecone API key")
-    pinecone_environment: Optional[str] = Field(
+    pinecone_environment: str | None = Field(
         default=None,
         description="Pinecone environment (deprecated in v3.0+, kept for compatibility)",
     )
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
         default="advanced",
         description="Tavily search depth (advanced includes more sources)",
     )
-    tavily_include_domains: Union[str, list[str]] = Field(
+    tavily_include_domains: str | list[str] = Field(
         default_factory=lambda: [
             "formula1.com",
             "fia.com",
@@ -86,7 +86,7 @@ class Settings(BaseSettings):
         ],
         description="Preferred domains for F1 news (empty list = all domains)",
     )
-    tavily_exclude_domains: Union[str, list[str]] = Field(
+    tavily_exclude_domains: str | list[str] = Field(
         default_factory=list,
         description="Domains to exclude from search results",
     )
@@ -203,7 +203,7 @@ class Settings(BaseSettings):
         default=True,
         description="Enable CORS middleware",
     )
-    cors_allow_origins: Union[str, list[str]] = Field(
+    cors_allow_origins: str | list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://localhost:8501",
@@ -282,7 +282,7 @@ class Settings(BaseSettings):
         return self.environment == "production"
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance.
 
