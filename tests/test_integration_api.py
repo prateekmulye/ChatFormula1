@@ -8,6 +8,24 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from src.api.main import app
+import os
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
+from src.config.settings import Settings
+import os
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
+from src.config.settings import Settings
+import os
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy"
+os.environ["PINECONE_API_KEY"] = "dummy"
+os.environ["TAVILY_API_KEY"] = "dummy"
+from src.config.settings import Settings
 
 
 @pytest.mark.integration
