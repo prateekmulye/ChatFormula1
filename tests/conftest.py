@@ -767,7 +767,7 @@ def assert_message_equal(msg1: Any, msg2: Any) -> None:
         >>> msg2 = HumanMessage(content="Hello")
         >>> assert_message_equal(msg1, msg2)  # Passes
     """
-    assert type(msg1) == type(msg2)
+    assert type(msg1) is type(msg2)
     assert msg1.content == msg2.content
 
 
