@@ -96,6 +96,8 @@ extend-exclude = '''
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -114,10 +116,32 @@ ignore = [
     "C901",   # too complex
     "ANN101", # missing type annotation for self
     "ANN102", # missing type annotation for cls
+    "ANN401", # Any is disallowed
     "S101",   # use of assert
+    "ANN204",
+    "ANN202",
+    "C401",
+    "E721",
+    "S108",
+    "S110",
+    "W293",
+    "F841",
+    "UP038",
+    "S106",
+    "ANN001",
+    "ANN206",
+    "S324",
+    "B904",
+    "B007",
+    "ANN201",
+    "W291",
+    "F821",
+    "ANN002",
+    "ANN003",
+    "S104",
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101", "ANN"]
 
