@@ -1,0 +1,4 @@
+## 2026-04-17 - Unprotected Admin Router
+**Vulnerability:** The entire `APIRouter` for administrative endpoints (`src/api/routes/admin.py`) was exposed without any authentication, allowing unauthenticated access to sensitive operations like API key creation, revocation, and data ingestion.
+**Learning:** While the project has a `SecurityMiddleware`, defense in depth was missing for the `admin` router. A developer might assume middleware handles all auth, but route-level dependencies provide a necessary fallback and more explicit security boundary.
+**Prevention:** Always explicitly define security requirements directly on sensitive routers (e.g., `router = APIRouter(dependencies=[Security(verify_api_key)])`) rather than relying entirely on global middleware, which could be bypassed or misconfigured.
