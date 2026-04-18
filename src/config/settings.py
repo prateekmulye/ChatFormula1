@@ -121,7 +121,7 @@ class Settings(BaseSettings):
         le=50,
         description="Maximum conversation history to maintain",
     )
-    environment: Literal["development", "staging", "production"] = Field(
+    environment: Literal["development", "staging", "production", "test"] = Field(
         default="development",
         description="Application environment",
     )
