@@ -8,6 +8,7 @@ from typing import Any, Literal, Optional
 
 import structlog
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+import asyncio
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
