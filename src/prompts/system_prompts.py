@@ -4,7 +4,6 @@ This module contains system-level prompts that define the agent's persona,
 capabilities, and behavioral guardrails.
 """
 
-
 from langchain_core.messages import SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
