@@ -22,7 +22,7 @@ def test_settings_default_values(test_settings: Settings):
     assert test_settings.openai_model == "gpt-4-turbo"
     assert test_settings.openai_embedding_model == "text-embedding-3-small"
     assert test_settings.pinecone_index_name == "f1-knowledge"
-    assert test_settings.app_name == "F1-Slipstream"
+    assert test_settings.app_name == "ChatFormula1"
     assert test_settings.log_level == "DEBUG"
     assert test_settings.max_conversation_history == 10
 
