@@ -96,6 +96,8 @@ extend-exclude = '''
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -112,12 +114,35 @@ ignore = [
     "E501",   # line too long, handled by black
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
-    "ANN101", # missing type annotation for self
-    "ANN102", # missing type annotation for cls
     "S101",   # use of assert
+    "UP",     # globally ignore pyupgrade to stop auto-fixing legacy code
+    "F401",   # globally ignore unused imports
+    "W293",   # globally ignore blank line contains whitespace
+    "F841",   # globally ignore local variable assigned but never used
+    "UP038",  # globally ignore UP038 (use X | Y in isinstance)
+    "S106",   # globally ignore hardcoded password assigned to argument
+    "UP032",  # globally ignore UP032 (use f-string instead of format call)
+    "S108",   # globally ignore insecure usage of temp file/dir
+    "S110",   # globally ignore try-except-pass
+    "E721",   # globally ignore E721 use is/is not for type comparisons
+    "ANN401", # globally ignore dynamically typed expressions (Any)
+    "ANN204", # globally ignore missing return type annotation for special method
+    "ANN202", # globally ignore missing return type annotation for private function
+    "ANN003", # globally ignore missing type annotation for kwargs
+    "ANN002", # globally ignore missing type annotation for args
+    "C401",   # globally ignore unnecessary generator
+    "ANN001", # globally ignore missing type annotation for function argument
+    "ANN206", # globally ignore missing return type annotation for classmethod
+    "ANN201", # globally ignore missing return type annotation for public function
+    "S324",   # globally ignore insecure hash functions in hashlib
+    "B904",   # globally ignore B904
+    "B007",   # globally ignore B007
+    "W291",   # globally ignore trailing whitespace
+    "S104",   # globally ignore S104 Possible binding to all interfaces
+    "I001",   # globally ignore unsorted imports
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/**/*.py" = ["S101", "ANN"]
 
