@@ -864,9 +864,7 @@ Provide a concise, accurate answer using the context. Cite sources."""
             },
         }
 
-    def _build_vector_filters(
-        self, entities: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _build_vector_filters(self, entities: dict[str, Any]) -> dict[str, Any] | None:
         """Build Pinecone metadata filters from extracted entities.
 
         Args:
