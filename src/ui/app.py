@@ -10,11 +10,11 @@ This module implements the main Streamlit application with:
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import streamlit as st
 import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agent.graph import F1AgentGraph
 from src.agent.state import create_initial_state
@@ -103,7 +103,7 @@ def initialize_session_state() -> None:
         st.session_state.last_error = None
 
 
-def initialize_agent() -> Optional[F1AgentGraph]:
+def initialize_agent() -> F1AgentGraph | None:
     """Initialize the agent graph and dependencies.
 
     Returns:
@@ -339,7 +339,7 @@ def render_header() -> None:
             st.rerun()
 
 
-def render_chat_interface(agent: Optional[F1AgentGraph]) -> None:
+def render_chat_interface(agent: F1AgentGraph | None) -> None:
     """Render the main chat interface with message history and input.
 
     This function implements the ChatGPT/Anthropic UX pattern where:

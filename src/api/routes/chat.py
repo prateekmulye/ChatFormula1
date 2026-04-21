@@ -5,7 +5,7 @@ streaming responses, and conversation management.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
@@ -27,14 +27,14 @@ class ChatMessage(BaseModel):
 
     role: str = Field(..., description="Message role: 'user' or 'assistant'")
     content: str = Field(..., description="Message content")
-    timestamp: Optional[str] = Field(None, description="Message timestamp")
+    timestamp: str | None = Field(None, description="Message timestamp")
 
 
 class ChatRequest(BaseModel):
     """Chat request model."""
 
     message: str = Field(..., description="User message", min_length=1, max_length=2000)
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Session ID for conversation continuity"
     )
     stream: bool = Field(default=False, description="Enable streaming response")
@@ -199,7 +199,7 @@ async def chat(request: ChatRequest, http_request: Request) -> ChatResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process message: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -403,7 +403,7 @@ async def get_conversation_history(session_id: str) -> ConversationHistoryRespon
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve conversation history: {str(e)}",
-        )
+        ) from e
 
 
 @router.delete(
@@ -455,7 +455,7 @@ async def clear_session(session_id: str) -> SessionClearResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to clear session: {str(e)}",
-        )
+        ) from e
 
 
 @router.get(
