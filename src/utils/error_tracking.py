@@ -4,7 +4,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from ..config.logging import get_logger
 from ..exceptions import (
@@ -68,7 +68,7 @@ class ErrorMetrics:
         error: Exception,
         category: ErrorCategory,
         severity: ErrorSeverity,
-        context: Optional[dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> None:
         """Record an error occurrence.
 
@@ -98,7 +98,7 @@ class ErrorMetrics:
         if len(self._recent_errors) > self._max_recent_errors:
             self._recent_errors = self._recent_errors[-self._max_recent_errors :]
 
-    def get_error_count(self, error_type: Optional[str] = None) -> int:
+    def get_error_count(self, error_type: str | None = None) -> int:
         """Get total error count or count for specific error type.
 
         Args:
@@ -201,7 +201,7 @@ def categorize_error(error: Exception) -> ErrorCategory:
             return category
 
     # Check for common network errors
-    if isinstance(error, (ConnectionError, OSError)):
+    if isinstance(error, ConnectionError | OSError):
         return ErrorCategory.NETWORK
 
     return ErrorCategory.UNKNOWN
@@ -218,7 +218,7 @@ def determine_severity(error: Exception, category: ErrorCategory) -> ErrorSeveri
         Error severity
     """
     # Critical errors that require immediate attention
-    if isinstance(error, (ConfigurationError, AuthenticationError)):
+    if isinstance(error, ConfigurationError | AuthenticationError):
         return ErrorSeverity.CRITICAL
 
     # High priority errors
@@ -239,7 +239,7 @@ def determine_severity(error: Exception, category: ErrorCategory) -> ErrorSeveri
 
 def log_error_with_context(
     error: Exception,
-    context: Optional[dict[str, Any]] = None,
+    context: dict[str, Any] | None = None,
     include_traceback: bool = True,
 ) -> None:
     """Log error with comprehensive context and categorization.

@@ -1,8 +1,9 @@
 """Performance timing utilities for observability."""
 
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Generator, Optional
+from typing import Any
 
 import structlog
 
@@ -73,7 +74,7 @@ class PerformanceTimer:
         timer.finish()
     """
 
-    def __init__(self, operation: str, **context: Any):
+    def __init__(self, operation: str, **context: Any) -> None:
         """Initialize performance timer.
 
         Args:

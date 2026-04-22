@@ -1,8 +1,7 @@
 """Ingestion pipeline orchestration for F1 knowledge base."""
 
-import asyncio
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
@@ -46,9 +45,9 @@ class IngestionPipeline:
 
     def __init__(
         self,
-        config: Optional[Settings] = None,
-        data_dir: Optional[Union[str, Path]] = None,
-    ):
+        config: Settings | None = None,
+        data_dir: str | Path | None = None,
+    ) -> None:
         """Initialize IngestionPipeline.
 
         Args:
@@ -62,7 +61,7 @@ class IngestionPipeline:
         self.data_loader = DataLoader(data_dir)
         self.document_processor = DocumentProcessor(self.config)
         self.metadata_enricher = MetadataEnricher()
-        self.vector_store: Optional[VectorStoreManager] = None
+        self.vector_store: VectorStoreManager | None = None
 
         # Track ingestion progress
         self._progress = {
@@ -93,12 +92,12 @@ class IngestionPipeline:
 
     async def ingest_all(
         self,
-        race_results_file: Optional[str] = "historical_features.csv",
-        drivers_file: Optional[str] = "drivers.json",
-        races_file: Optional[str] = "races.json",
+        race_results_file: str | None = "historical_features.csv",
+        drivers_file: str | None = "drivers.json",
+        races_file: str | None = "races.json",
         batch_size: int = 100,
         show_progress: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ingest all F1 data sources into vector store.
 
         Args:
@@ -125,7 +124,7 @@ class IngestionPipeline:
         if self.vector_store is None:
             await self.initialize_vector_store()
 
-        all_documents: List[Document] = []
+        all_documents: list[Document] = []
 
         # Ingest race results
         if race_results_file:
@@ -203,7 +202,7 @@ class IngestionPipeline:
         source_type: str = "auto",
         batch_size: int = 100,
         overwrite: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ingest data from a specific source file or directory.
 
         Args:
@@ -240,7 +239,7 @@ class IngestionPipeline:
             else:
                 source_type = "text"
 
-        all_documents: List[Document] = []
+        all_documents: list[Document] = []
 
         try:
             # Process based on source type and file name
@@ -294,9 +293,9 @@ class IngestionPipeline:
 
     async def ingest_incremental(
         self,
-        file_paths: List[str],
+        file_paths: list[str],
         batch_size: int = 100,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ingest only files that have been modified since last load.
 
         Args:
@@ -317,7 +316,7 @@ class IngestionPipeline:
         if self.vector_store is None:
             await self.initialize_vector_store()
 
-        all_documents: List[Document] = []
+        all_documents: list[Document] = []
         files_updated = 0
 
         for file_path in file_paths:
@@ -383,7 +382,7 @@ class IngestionPipeline:
         self,
         file_path: str,
         show_progress: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Ingest race results from CSV file.
 
         Args:
@@ -426,7 +425,7 @@ class IngestionPipeline:
         self,
         file_path: str,
         show_progress: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Ingest driver data from JSON file.
 
         Args:
@@ -470,7 +469,7 @@ class IngestionPipeline:
         self,
         file_path: str,
         show_progress: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Ingest race information from JSON file.
 
         Args:
@@ -510,7 +509,7 @@ class IngestionPipeline:
 
         return documents
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get ingestion pipeline statistics.
 
         Returns:

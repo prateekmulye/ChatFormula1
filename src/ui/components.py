@@ -9,7 +9,7 @@ This module provides components for:
 """
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import streamlit as st
 import structlog
@@ -137,7 +137,7 @@ def apply_f1_theme() -> None:
         margin-top: {theme.spacing_sm};
         line-height: 1.4;
     }}
-    
+
     /* Welcome description styling */
     .welcome-description {{
         text-align: center;
@@ -179,7 +179,7 @@ def apply_f1_theme() -> None:
         transform: scale(0.98);
         transition: all {theme.transition_fast};
     }}
-    
+
     /* Recommendation prompt specific styling with hover effects */
     .stButton > button[kind="secondary"] {{
         min-height: 80px;
@@ -269,29 +269,29 @@ def apply_f1_theme() -> None:
         outline: none;
         transition: all {theme.transition_fast};
     }}
-    
+
     /* Persistent search bar on welcome screen - ChatGPT/Anthropic UX pattern */
     .stChatInput {{
         margin-top: {theme.spacing_xl};
         margin-bottom: {theme.spacing_md};
         animation: fadeIn 0.6s ease-in;
     }}
-    
+
     .stChatInput > div {{
         border-radius: {theme.radius_md};
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         transition: box-shadow {theme.transition_normal};
     }}
-    
+
     .stChatInput > div:hover {{
         box-shadow: 0 4px 12px rgba(225, 6, 0, 0.2);
         transition: box-shadow {theme.transition_normal};
     }}
-    
+
     .stChatInput > div > div {{
         border-radius: {theme.radius_md};
     }}
-    
+
     /* Welcome screen specific spacing for search bar */
     .stChatInput + div {{
         margin-top: {theme.spacing_lg};
@@ -760,8 +760,8 @@ def apply_f1_theme() -> None:
 def render_message(
     role: str,
     content: str,
-    metadata: Optional[dict[str, Any]] = None,
-    message_id: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    message_id: str | None = None,
 ) -> None:
     """Render a chat message with role-based styling.
 
@@ -782,7 +782,7 @@ def render_message(
 
 def render_message_metadata(
     metadata: dict[str, Any],
-    message_id: Optional[str] = None,
+    message_id: str | None = None,
 ) -> None:
     """Render metadata section for assistant messages.
 
@@ -897,7 +897,6 @@ def render_feedback_buttons(message_id: str) -> None:
     Requirements: 4.6, 5.5
     """
     # Check if feedback already given
-    feedback_key = f"feedback_{message_id}"
     current_feedback = st.session_state.feedback.get(message_id)
 
     col1, col2 = st.columns(2)
@@ -1244,7 +1243,7 @@ def render_welcome_screen() -> None:
     st.markdown(
         """
         <div style='text-align: center; margin: 1.5rem auto; max-width: 600px; color: #888888; font-size: 1.1rem; line-height: 1.6;'>
-            Get instant answers about F1 standings, race results, and predictions powered by advanced AI. 
+            Get instant answers about F1 standings, race results, and predictions powered by advanced AI.
             Access real-time data and historical statistics to explore everything Formula 1.
         </div>
         """,
@@ -1278,7 +1277,7 @@ def render_about_modal() -> None:
     try:
 
         @st.dialog("About ChatFormula1")
-        def show_about():
+        def show_about() -> None:
             """Inner function to display about modal content."""
             # Project title with F1 emoji
             st.markdown("## 🏎️ ChatFormula1")
@@ -1286,8 +1285,8 @@ def render_about_modal() -> None:
             # Project description
             st.markdown(
                 """
-            An AI-powered Formula 1 expert assistant that combines real-time 
-            data, historical knowledge, and advanced language models to provide 
+            An AI-powered Formula 1 expert assistant that combines real-time
+            data, historical knowledge, and advanced language models to provide
             comprehensive answers about Formula 1 racing.
             """
             )
@@ -1360,16 +1359,16 @@ def render_about_modal() -> None:
         st.markdown(
             """
         ### 🏎️ ChatFormula1
-        
-        An AI-powered Formula 1 expert assistant combining real-time data, 
+
+        An AI-powered Formula 1 expert assistant combining real-time data,
         historical knowledge, and advanced language models.
-        
+
         **Created by:** Prateek Mulye
-        
+
         **Connect:**
         - LinkedIn: https://www.linkedin.com/in/prateekmulye/
         - GitHub: https://github.com/prateekmulye
-        
+
         **Built with:** LangChain, LangGraph, OpenAI, Pinecone, Tavily, and Streamlit
         """
         )
@@ -1384,23 +1383,23 @@ def render_welcome_message() -> None:
     st.markdown(
         """
     ### Welcome to ChatFormula1! 🏎️
-    
+
     I'm your AI-powered Formula 1 expert assistant. I can help you with:
-    
+
     - 📊 **Current Standings**: Latest driver and constructor standings
     - 🏁 **Race Results**: Recent and historical race outcomes
     - 📈 **Predictions**: Data-driven race and championship predictions
     - 📚 **History**: F1 statistics, records, and historical information
     - ⚙️ **Technical**: Regulations, car specifications, and technical details
     - 👤 **Drivers & Teams**: Information about drivers, teams, and personnel
-    
+
     **Try asking:**
     - "Who is leading the championship?"
     - "What happened in the last race?"
     - "Predict the winner of the next race"
     - "Tell me about Lewis Hamilton's career"
     - "What are the current technical regulations?"
-    
+
     Just type your question below to get started! 🚀
     """
     )

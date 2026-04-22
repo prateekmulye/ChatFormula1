@@ -7,7 +7,6 @@ and prevent tampering.
 import hashlib
 import hmac
 import time
-from typing import Optional
 
 import structlog
 from fastapi import HTTPException, Request, status
@@ -18,7 +17,7 @@ logger = structlog.get_logger(__name__)
 class RequestSigner:
     """Request signer for sensitive operations."""
 
-    def __init__(self, secret_key: str, max_age_seconds: int = 300):
+    def __init__(self, secret_key: str, max_age_seconds: int = 300) -> None:
         """Initialize request signer.
 
         Args:
@@ -36,8 +35,8 @@ class RequestSigner:
         self,
         method: str,
         path: str,
-        body: Optional[str] = None,
-        timestamp: Optional[int] = None,
+        body: str | None = None,
+        timestamp: int | None = None,
     ) -> str:
         """Sign a request.
 
@@ -88,7 +87,7 @@ class RequestSigner:
         signature: str,
         method: str,
         path: str,
-        body: Optional[str] = None,
+        body: str | None = None,
     ) -> bool:
         """Verify a request signature.
 
@@ -198,10 +197,10 @@ class RequestSigner:
 
 
 # Global request signer
-_request_signer: Optional[RequestSigner] = None
+_request_signer: RequestSigner | None = None
 
 
-def get_request_signer(secret_key: Optional[str] = None) -> RequestSigner:
+def get_request_signer(secret_key: str | None = None) -> RequestSigner:
     """Get or create global request signer.
 
     Args:
