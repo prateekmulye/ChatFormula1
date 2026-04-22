@@ -34,6 +34,13 @@ Example Usage:
 """
 
 import os
+
+# Set dummy API keys for tests to prevent Pydantic validation errors
+os.environ["ENVIRONMENT"] = "development"
+os.environ["OPENAI_API_KEY"] = "dummy-key-for-tests"
+os.environ["PINECONE_API_KEY"] = "dummy-key-for-tests"
+os.environ["TAVILY_API_KEY"] = "dummy-key-for-tests"
+
 from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock
 
