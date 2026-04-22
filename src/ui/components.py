@@ -1244,7 +1244,7 @@ def render_welcome_screen() -> None:
     st.markdown(
         """
         <div style='text-align: center; margin: 1.5rem auto; max-width: 600px; color: #888888; font-size: 1.1rem; line-height: 1.6;'>
-            Get instant answers about F1 standings, race results, and predictions powered by advanced AI. 
+            Get instant answers about F1 standings, race results, and predictions powered by advanced AI.
             Access real-time data and historical statistics to explore everything Formula 1.
         </div>
         """,
@@ -1286,8 +1286,8 @@ def render_about_modal() -> None:
             # Project description
             st.markdown(
                 """
-            An AI-powered Formula 1 expert assistant that combines real-time 
-            data, historical knowledge, and advanced language models to provide 
+            An AI-powered Formula 1 expert assistant that combines real-time
+            data, historical knowledge, and advanced language models to provide
             comprehensive answers about Formula 1 racing.
             """
             )
@@ -1361,7 +1361,7 @@ def render_about_modal() -> None:
             """
         ### 🏎️ ChatFormula1
         
-        An AI-powered Formula 1 expert assistant combining real-time data, 
+        An AI-powered Formula 1 expert assistant combining real-time data,
         historical knowledge, and advanced language models.
         
         **Created by:** Prateek Mulye
