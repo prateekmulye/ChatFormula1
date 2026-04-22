@@ -7,14 +7,16 @@ and configuration validation.
 from typing import Any, Optional
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Security, status
 from pydantic import BaseModel, Field
 
 from src.config.settings import get_settings
+from src.security.authentication import verify_api_key
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter()
+# CRITICAL: Require API key authentication for all admin endpoints
+router = APIRouter(dependencies=[Security(verify_api_key)])
 
 
 # Request/Response Models
