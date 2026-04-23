@@ -8,6 +8,7 @@ from typing import Any
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Security, status
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
 from src.config.settings import get_settings
@@ -243,7 +244,7 @@ async def get_vector_store_stats() -> VectorStoreStatsResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve vector store statistics: {str(e)}",
-        )
+        ) from e
 
 
 @router.post(
@@ -293,7 +294,7 @@ async def ingest_data(
     task_id = str(uuid.uuid4())
 
     # Define background task
-    async def run_ingestion():
+    async def run_ingestion() -> None:
         """Background task for data ingestion."""
         try:
             logger.info(
@@ -524,7 +525,7 @@ async def get_metrics() -> dict[str, Any]:
     description="Export metrics in Prometheus text format for scraping",
     response_class=None,
 )
-async def get_prometheus_metrics():
+async def get_prometheus_metrics() -> PlainTextResponse:
     """Export metrics in Prometheus format.
 
     Returns:
