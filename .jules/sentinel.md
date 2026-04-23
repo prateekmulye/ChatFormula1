@@ -1,0 +1,4 @@
+## 2024-04-23 - Admin Endpoints Missing Authentication
+**Vulnerability:** The admin router in `src/api/routes/admin.py` lacks comprehensive security/authentication requirements, leaving sensitive endpoints (like `/api-keys` generation/deletion and dashboard data) fully exposed without authorization.
+**Learning:** For defense in depth, relying solely on global authentication middleware is insufficient and prone to bypasses or misconfiguration. Applying the `Security` dependency at the router initialization level ensures all grouped endpoints inherit the protection securely without explicit repetition.
+**Prevention:** Always inject explicit security dependencies directly into the `APIRouter` declaration (`APIRouter(dependencies=[Security(verify_api_key)])`) for any module exposing administrative or sensitive functionality, even if a global middleware exists.
