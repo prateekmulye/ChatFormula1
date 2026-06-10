@@ -1,98 +1,42 @@
-version: '3.8'
-
+# Local development: Postgres 16 (for the Phase 2 gateway) + the agent
+# service. The gateway runs natively via `mix` once it lands.
 services:
-  # API service
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: development
-    container_name: f1-slipstream-api
-    ports:
-      - "${API_PORT:-8000}:8000"
-    env_file:
-      - .env
+  postgres:
+    image: postgres:16
+    container_name: chatf1-postgres
     environment:
-      - ENVIRONMENT=${ENVIRONMENT:-development}
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
-      - API_RELOAD=${API_RELOAD:-true}
+      POSTGRES_USER: ${POSTGRES_USER:-chatf1}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chatf1_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-chatf1_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - ./src:/app/src:cached
-      - ./data:/app/data:cached
-      - ./tests:/app/tests:cached
-      - poetry-cache:/home/appuser/.cache/pypoetry
-    command: poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - f1-network
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-chatf1}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # UI service
-  ui:
+  agent:
     build:
-      context: .
+      context: ./agent
       dockerfile: Dockerfile
-      target: ui
-    container_name: f1-slipstream-ui
+      target: production
+    container_name: chatf1-agent
     ports:
-      - "${UI_PORT:-8501}:8501"
+      - "${AGENT_PORT:-8000}:8000"
     env_file:
-      - .env
+      - agent/.env
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - API_BASE_URL=http://api:8000
-    volumes:
-      - ./src:/app/src:cached
-      - poetry-cache:/home/appuser/.cache/pypoetry
-    command: streamlit run src/ui/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
-    depends_on:
-      api:
-        condition: service_healthy
     restart: unless-stopped
-    networks:
-      - f1-network
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
-
-  # Development service for DevContainer (optional)
-  dev:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    container_name: f1-slipstream-dev
-    volumes:
-      - .:/workspace:cached
-      - poetry-cache:/home/appuser/.cache/pypoetry
-    env_file:
-      - .env
-    environment:
-      - ENVIRONMENT=development
-    working_dir: /workspace
-    command: sleep infinity
-    networks:
-      - f1-network
-    profiles:
-      - devcontainer
 
 volumes:
-  poetry-cache:
+  postgres-data:
     driver: local
-
-networks:
-  f1-network:
-    name: f1-slipstream-network
-    driver: bridge

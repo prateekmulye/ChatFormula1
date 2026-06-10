@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Environment files (passed at runtime, never baked in)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Test files
+tests/
+
+# Temporary files
+tmp/
+*.tmp
