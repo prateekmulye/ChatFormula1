@@ -1,19 +1,34 @@
 defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
   @moduledoc """
-  Resolver functions for conversation queries and mutations.
+  Resolver functions for conversation queries, mutations, and subscriptions.
+
+  ## Phase 3 sendMessage semantics
+
+  `sendMessage` is now **async**:
+
+  1. Validates conversation ownership (IDOR guard).
+  2. Validates input (changeset-level: length, control chars, repetition).
+  3. `Ecto.Multi` inserts user message + assistant placeholder atomically.
+  4. Ensures the `Conversation.Server` is running (`ensure_started/1`).
+  5. Calls `Conversation.Server.begin_stream/2` — kicks off `StreamRunner`
+     under `Task.Supervisor`.
+  6. Returns `{userMessage, assistantMessageId}` in < 50 ms (no LLM work).
+
+  The caller then subscribes to `agentStream(messageId: <id>)` to receive
+  streaming events.
 
   ## IDOR prevention
 
   Every resolver that returns conversation data passes `viewer_id` from the
   Absinthe context into `Conversations.get_conversation/2`.  The context
-  module adds `WHERE viewer_id = $1` to every query, so a valid token for
-  viewer A cannot retrieve viewer B's data.
+  module adds `WHERE viewer_id = $1` to every query.
   """
 
   require Logger
 
-  alias ChatF1.Agents.Client, as: AgentClient
+  alias ChatF1.Agents.Breaker
   alias ChatF1.Conversations
+  alias ChatF1.Conversations.Server, as: ConvServer
   alias ChatF1.RateLimit.Server, as: RateLimitServer
 
   # ── Queries ──────────────────────────────────────────────────────────────────
@@ -43,6 +58,12 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
     {:error, :internal}
   end
 
+  @doc "Resolves the `systemHealth` query — current gateway + agent health."
+  def system_health(_parent, _args, _context) do
+    health = Breaker.system_health()
+    {:ok, health}
+  end
+
   # ── Mutations ────────────────────────────────────────────────────────────────
 
   @doc """
@@ -53,17 +74,13 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
   end
 
   @doc """
-  `sendMessage` — the synchronous Phase 2 implementation.
+  `sendMessage` — Phase 3 async implementation.
 
-  1. Validates the conversation belongs to the viewer (IDOR guard).
-  2. Validates the input content (changeset-level).
-  3. Atomically inserts user message + assistant placeholder (Ecto.Multi).
-  4. Calls the agent with a last-10 history window.
-  5. Updates the assistant placeholder with the aggregated result.
-  6. Returns `{userMessage, assistantMessageId}`.
+  Persists the message pair and immediately kicks off the streaming pipeline.
+  Returns `{userMessage, assistantMessageId}` in < 50 ms.
 
-  On agent failure the placeholder is marked `:failed` and a normalized
-  UPSTREAM_UNAVAILABLE error is returned.  The two DB rows always exist.
+  The caller subscribes to `agentStream(messageId: <assistantMessageId>)` for
+  events.  This resolver no longer blocks on the LLM call.
   """
   def send_message(_parent, %{conversation_id: conv_id, content: content}, %{
         context: %{viewer_id: viewer_id}
@@ -71,74 +88,35 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
     with {:conv, %{} = conversation} <-
            {:conv, Conversations.get_conversation(conv_id, viewer_id)},
          {:multi, {:ok, %{user_message: user_msg, assistant_message: asst_msg}}} <-
-           {:multi, Conversations.insert_message_pair(conversation.id, content)} do
-      # Build the last-10 turns history window for the agent.
-      # We include the new user message in the history.
-      history =
-        conversation.id
-        |> Conversations.list_messages()
-        |> Enum.take(-10)
-        |> Enum.map(fn m ->
-          %{role: to_string(m.role), content: m.content}
-        end)
-
-      request_id = Ecto.UUID.generate()
-
-      start_ms = System.monotonic_time(:millisecond)
-
-      result =
-        :telemetry.span(
-          [:chatf1, :agent, :stream],
-          %{request_id: request_id},
-          fn ->
-            r = AgentClient.chat(content, history, request_id)
-            {r, %{cached: match?({:ok, %{cached: true}}, r)}}
-          end
-        )
-
-      elapsed_ms = System.monotonic_time(:millisecond) - start_ms
-
-      case result do
-        {:ok, agent_result} ->
-          sources = encode_sources(agent_result.sources)
-
-          {:ok, updated_msg} =
-            Conversations.update_assistant_message(asst_msg, %{
-              content: agent_result.content,
-              status: :complete,
-              sources: sources,
-              cached: agent_result.cached,
-              latency_ms: elapsed_ms,
-              intent: agent_result.intent
-            })
-
-          {:ok,
-           %{
-             user_message: user_msg,
-             assistant_message_id: updated_msg.id
-           }}
-
-        {:error, {:agent_error, code, _message}} when code in ["validation"] ->
-          mark_failed(asst_msg, "Input rejected by agent validation.")
-          {:error, %{message: "Message rejected by agent", extensions: %{code: "VALIDATION"}}}
-
-        {:error, _} ->
-          mark_failed(asst_msg, "Agent service unavailable.")
-
-          {:error,
-           %{
-             message: "Upstream service unavailable",
-             extensions: %{code: "UPSTREAM_UNAVAILABLE"}
-           }}
-      end
+           {:multi, Conversations.insert_message_pair(conversation.id, content)},
+         {:server, {:ok, _pid}} <-
+           {:server, ConvServer.ensure_started(conversation.id)},
+         {:stream, :ok} <-
+           {:stream, ConvServer.begin_stream(conversation.id, to_string(asst_msg.id))} do
+      {:ok,
+       %{
+         user_message: user_msg,
+         assistant_message_id: to_string(asst_msg.id)
+       }}
     else
       {:conv, nil} ->
         {:error, %{message: "Conversation not found", extensions: %{code: "NOT_FOUND"}}}
 
       {:multi, {:error, step, changeset, _changes}} ->
         Logger.error("sendMessage multi failed at #{step}: #{inspect(changeset)}")
-
         {:error, %{message: "Validation failed", extensions: %{code: "VALIDATION"}}}
+
+      {:server, {:error, reason}} ->
+        Logger.error("sendMessage failed to start ConvServer: #{inspect(reason)}")
+
+        {:error,
+         %{message: "Upstream service unavailable", extensions: %{code: "UPSTREAM_UNAVAILABLE"}}}
+
+      {:stream, {:error, reason}} ->
+        Logger.error("sendMessage failed to begin stream: #{inspect(reason)}")
+
+        {:error,
+         %{message: "Upstream service unavailable", extensions: %{code: "UPSTREAM_UNAVAILABLE"}}}
     end
   end
 
@@ -149,23 +127,4 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
       {:error, :not_found} -> {:error, :not_found}
     end
   end
-
-  # ─── Private helpers ─────────────────────────────────────────────────────────
-
-  defp mark_failed(message, error_content) do
-    Conversations.update_assistant_message(message, %{
-      status: :failed,
-      content: error_content
-    })
-  end
-
-  # Encode source list as a map for the JSONB column.
-  # Schema stores sources as %{"items" => [...]} to keep a versioned envelope.
-  defp encode_sources(sources) when is_list(sources) do
-    %{"items" => Enum.map(sources, &Map.from_struct/1)}
-  rescue
-    _ -> %{"items" => []}
-  end
-
-  defp encode_sources(_), do: %{"items" => []}
 end

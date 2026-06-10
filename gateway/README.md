@@ -13,7 +13,7 @@ rate limiting, and a synchronous proxy to the Python agent service.
 | Database | Postgres 16 via Ecto 3 (Ecto.Multi, Ecto.Enum, migrations) |
 | Association batching | Dataloader 2.0 Ecto source — N+1 free |
 | Rate limiting | Hand-rolled ETS dual-window token bucket (per-minute + per-hour) |
-| Agent proxy | Req 0.5 synchronous NDJSON aggregation |
+| Agent proxy | Req 0.5 async NDJSON streaming — per-conversation GenServer + Task |
 | Viewer identity | Anonymous Phoenix.Token (UUID scoped, 30-day TTL) |
 | Telemetry | Phoenix/Ecto/Absinthe instrumentation + LiveDashboard at `/dev/dashboard` |
 
@@ -64,15 +64,63 @@ make lint-gateway
 | `PGHOST` | dev/test | `localhost` | Postgres host |
 | `POOL_SIZE` | prod only | `5` | Ecto connection pool size |
 
-## Architecture notes
+## Phase 3 streaming (graphql-ws)
+
+`sendMessage` is now **async**: it persists the message pair and returns
+`{userMessage, assistantMessageId}` in < 50 ms.  The client then opens a
+GraphQL subscription over the `graphql-ws` sub-protocol to receive events.
+
+### WebSocket connection
+
+```
+wss://chatformula1.com/socket/websocket
+sub-protocol: graphql-ws
+```
+
+`connection_init` payload **must** carry the viewer token:
+
+```json
+{ "token": "<viewer_token>" }
+```
+
+### Subscribe to a stream
+
+```graphql
+subscription AgentStream($mid: ID!) {
+  agentStream(messageId: $mid) {
+    ... on TokenDelta    { messageId seq text }
+    ... on NodeTransition { messageId node startedAt }
+    ... on SourcesResolved { messageId sources { kind title url snippet score } }
+    ... on MessageCompleted { messageId cached usage { promptTokens completionTokens } }
+    ... on AgentError     { messageId code message retryable }
+  }
+}
+```
+
+### Reconnect / replay
+
+Reconnecting subscribers receive buffered events (up to 32 KB per message)
+from the `Conversation.Server` replay buffer.  Events carry a monotonically-
+increasing `seq` field; deduplicate by seq in the Apollo `InMemoryCache` reducer.
+
+### System health
+
+```graphql
+query { systemHealth { mode gateway agentService database breakerState } }
+subscription { systemHealthChanged { mode breakerState } }
+```
+
+### Architecture notes
 
 - Every conversation is scoped to a `viewer_id` derived from the signed Phoenix.Token.
   IDOR is structurally prevented: every `Conversations` query includes `WHERE viewer_id = $1`.
 - Rate limiter is a `GenServer`-owned ETS table (`ChatF1.RateLimit.Bucket`): writes are
   serialized through the GenServer for atomic check-and-consume; reads are direct ETS
   lookups (`public` table) for zero-copy hot-path access.
-- `sendMessage` is synchronous in Phase 2: it blocks until the agent responds (30 s timeout),
-  aggregates the NDJSON stream, and returns the completed assistant message in one response.
-  Phase 3 upgrades this to async + Phoenix Channel streaming.
-- Supervision tree: `one_for_one` with `Repo → PubSub → Finch → RateLimit.Server → Telemetry → Endpoint`.
+- Per-conversation `Conversation.Server` GenServers live under `ChatF1.ConversationSupervisor`
+  (DynamicSupervisor).  A crash in one conversation never affects others (`one_for_one`).
+- Circuit breaker `ChatF1.Agents.Breaker` guards the Python agent.  After 3 consecutive
+  failures it opens; a health probe after 30 s closes it or re-opens.
+- Supervision tree: `one_for_one` with
+  `Repo → PubSub → Finch → RateLimit.Server → Telemetry → Breaker → ConvPipelineSupervisor → Endpoint`.
   See `lib/chat_f1/application.ex` for the annotated tree.

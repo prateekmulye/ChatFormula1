@@ -2,54 +2,57 @@ defmodule ChatF1.Application do
   @moduledoc """
   OTP application entry point for the ChatFormula1 gateway.
 
-  ## Supervision tree (Phase 2)
+  ## Supervision tree (Phase 3)
 
-  All children run under a single `:one_for_one` supervisor.  Each child is
-  isolated — a crash in one does not affect siblings.  Phase 3 adds
-  `ChatF1.ConversationSupervisor` (DynamicSupervisor), a per-conversation
-  Registry, and a `Task.Supervisor` for streaming workers; they slot in
-  between `RateLimit.Server` and `Endpoint`.
+  All top-level children run under a `:one_for_one` supervisor.  The three
+  conversation-pipeline processes (`ConvRegistry`, `ConversationSupervisor`,
+  `StreamTaskSupervisor`) are grouped under a dedicated `:rest_for_one`
+  supervisor so a `ConvRegistry` crash cascades only to the DynamicSupervisor
+  — which must re-register its children on restart.
 
   ```
   ChatF1.Supervisor  [:one_for_one]
-  ├── ChatF1.Repo                   Ecto.Repo — Postgres connection pool
-  ├── {DNSCluster, ...}             DNS-based peer discovery (no-op on single node; ADR-000)
-  ├── {Phoenix.PubSub, ...}         Local PubSub (PG2 transport; single node, no Redis)
-  ├── {Finch, name: ChatF1.Finch}   HTTP connection pool for agent proxy calls
-  ├── ChatF1.RateLimit.Server       GenServer owning the ETS token-bucket table
-  ├── ChatF1Web.Telemetry           Telemetry supervisor (metrics + poller)
-  └── ChatF1Web.Endpoint            Phoenix HTTP endpoint (Bandit adapter)
+  ├── ChatF1.Repo                       Ecto.Repo — Postgres connection pool
+  ├── {DNSCluster, ...}                 DNS-based peer discovery (no-op, ADR-000)
+  ├── {Phoenix.PubSub, ...}             Local PG2 PubSub (no Redis, ADR-000)
+  ├── {Finch, name: ChatF1.Finch}       HTTP pool for agent proxy calls
+  ├── ChatF1.RateLimit.Server           ETS token-bucket GenServer
+  ├── ChatF1Web.Telemetry               Telemetry supervisor
+  ├── ChatF1.Agents.Breaker             Circuit breaker GenServer (Phase 3)
+  ├── ChatF1.ConvPipelineSupervisor     [:rest_for_one] (Phase 3)
+  │   ├── {Registry, name: ChatF1.ConvRegistry}
+  │   │     Per-conversation lookup; via-tuple process registration.
+  │   │     `:rest_for_one` ensures a registry crash cascades to the
+  │   │     DynamicSupervisor, which re-registers its children on restart.
+  │   ├── {DynamicSupervisor,           One supervisor per conversation.
+  │   │     name: ChatF1.ConversationSupervisor}
+  │   └── {Task.Supervisor,             Supervised streaming workers.
+  │         name: ChatF1.StreamTaskSupervisor}
+  └── ChatF1Web.Endpoint                Phoenix HTTP + WS endpoint
   ```
 
-  ### Why this order?
+  ### Why `:rest_for_one` for the conversation pipeline?
 
-  * **Repo first** — downstream processes may need DB connectivity at startup
-    (seeds, warm-up queries).
-  * **PubSub before Endpoint** — the endpoint registers PubSub topics on init;
-    if PubSub isn't up yet, topic registration fails.
-  * **Finch before RateLimit.Server** — RateLimit.Server does not use Finch,
-    but placing the HTTP pool early makes all downstream processes able to make
-    outbound calls the moment they start.
-  * **Endpoint last** — we don't accept traffic until the full tree is healthy.
-    Bandit's acceptors only open after `start_link/2` returns `:ok`.
+  * `ConvRegistry` is the naming anchor for `Conversation.Server`s.  If the
+    registry crashes, all via-tuple lookups break until it restarts, so the
+    DynamicSupervisor must also restart (killing all in-flight conversations
+    cleanly rather than leaving orphan processes with stale registration).
+  * `StreamTaskSupervisor` depends on `ConversationSupervisor` being alive
+    (tasks cast to their owning server), so it also cascades.
+  * The `[:rest_for_one]` sub-supervisor keeps this failure domain isolated:
+    a single broken conversation never affects `RateLimit.Server`, `Finch`,
+    or the `Endpoint`.
 
-  ### Restart strategy
+  ### Phase-3-specific design notes
 
-  `:one_for_one` is correct here because children are independent.  The only
-  dependency chain (PubSub → Endpoint) is handled by start order, not by a
-  `:rest_for_one` supervisor — Phoenix tolerates transient PubSub restarts
-  gracefully via its reconnect logic.
-
-  ### Phase 3 additions (do not scaffold yet)
-
-  * `ChatF1.ConvRegistry` — `{Registry, keys: :unique, name: ChatF1.ConvRegistry}`
-  * `ChatF1.ConversationSupervisor` — `{DynamicSupervisor, name: ChatF1.ConversationSupervisor}`
-  * `ChatF1.StreamTaskSupervisor` — `{Task.Supervisor, name: ChatF1.StreamTaskSupervisor}`
-
-  These require a phase-3 supervision sub-tree with a `:rest_for_one` strategy
-  so a ConvRegistry crash cascades to the DynamicSupervisor (which re-registers
-  its children on restart).  See docs/ARCHITECTURE.md §5 item 2 for the full
-  design.
+  * `Agents.Breaker` starts before `ConvPipelineSupervisor` so that the
+    first `begin_stream` call can always check breaker state.
+  * `Absinthe.Subscription` is started as a child inside `Endpoint` (via
+    `use Absinthe.Phoenix.Endpoint` or the explicit child call in the
+    endpoint `start_link` path — this is handled by `absinthe_phoenix`'s
+    `Absinthe.Phoenix.Endpoint` behaviour).
+  * The endpoint still goes last so we don't accept traffic until the full
+    tree is healthy.
   """
 
   use Application
@@ -58,44 +61,38 @@ defmodule ChatF1.Application do
   def start(_type, _args) do
     children = [
       # ── Ecto repo ────────────────────────────────────────────────────────────
-      # Manages the PostgreSQL connection pool (Postgrex under the hood).
-      # pool_size is set per environment; prod uses POOL_SIZE env var (default 5
-      # on a 256 MB Fly machine — keep it low to avoid Supabase connection limits).
       ChatF1.Repo,
 
       # ── DNS cluster ──────────────────────────────────────────────────────────
-      # Resolves peer nodes for Erlang distribution.  Single-node on Fly (ADR-000
-      # pins machine count to 1), so this resolves to :ignore and is a no-op.
-      # We keep it in the tree so the prod release config is identical to a
-      # future multi-node upgrade path.
       {DNSCluster, query: Application.get_env(:chat_f1, :dns_cluster_query) || :ignore},
 
       # ── Phoenix PubSub ───────────────────────────────────────────────────────
-      # Local PG2-backed PubSub.  Single-node invariant (ADR-000): no Redis, no
-      # distributed PubSub.  Phase 3 Absinthe subscriptions publish here.
+      # Absinthe.Subscription uses this for subscription fan-out.
+      # Single-node invariant (ADR-000): no Redis, no distributed PubSub.
       {Phoenix.PubSub, name: ChatF1.PubSub},
 
       # ── Finch HTTP pool ──────────────────────────────────────────────────────
-      # Connection pool used by ChatF1.Agents.Client (Req → Finch).
-      # Pool size: 10 for the agent host.  On a 256 MB machine each persistent
-      # connection costs ~8 KB; 10 is well under budget.
       {Finch, name: ChatF1.Finch},
 
       # ── Rate-limit GenServer ─────────────────────────────────────────────────
-      # Creates and owns an ETS table for the dual-window token-bucket limiter.
-      # Must start before the Endpoint so that the rate-limit Absinthe middleware
-      # and Plug can reference the table.
       ChatF1.RateLimit.Server,
 
       # ── Telemetry supervisor ─────────────────────────────────────────────────
-      # Attaches Phoenix, Ecto, Absinthe, and Finch telemetry handlers;
-      # runs a periodic poller emitting VM metrics.
       ChatF1Web.Telemetry,
 
+      # ── Circuit breaker (Phase 3) ─────────────────────────────────────────────
+      # Must start before ConversationSupervisor so begin_stream calls can
+      # always check breaker state.
+      ChatF1.Agents.Breaker,
+
+      # ── Conversation pipeline sub-supervisor (Phase 3) ───────────────────────
+      # ChatF1.ConvPipelineSupervisor uses :rest_for_one internally so a
+      # ConvRegistry crash cascades to DynamicSupervisor.  See module doc.
+      ChatF1.ConvPipelineSupervisor,
+
       # ── Phoenix Endpoint ─────────────────────────────────────────────────────
-      # Starts the Bandit HTTP server.  Acceptors only open after all children
-      # above are running — early traffic gets a TCP-level connection refused
-      # rather than an application-level error, which is safer.
+      # Starts last; Bandit acceptors open after all children above are running.
+      # absinthe_phoenix wires Absinthe.Subscription into the endpoint on start.
       ChatF1Web.Endpoint
     ]
 
