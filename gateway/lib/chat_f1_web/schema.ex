@@ -14,6 +14,9 @@ defmodule ChatF1Web.Schema do
 
   Nested object fields run only their own resolver + `ErrorHandler`.
 
+  Subscription fields are NOT rate-limited per-event (that would be
+  prohibitive); the subscription start is gated by viewer-token auth only.
+
   ## Query limits
 
   * **Max depth: 7** — prevents infinite nesting on the Driver→results→race→results path.
@@ -27,6 +30,17 @@ defmodule ChatF1Web.Schema do
   The Dataloader Ecto source batches all association lookups.  It is initialized
   in `context/1` (called once per operation) and passed to the resolution
   context so Absinthe's middleware extracts it automatically.
+
+  ## Subscriptions (Phase 3)
+
+  * `agentStream(messageId: ID!)` — per-message topic `agent:<message_id>`;
+    delivers the `AgentEvent` union (TokenDelta | NodeTransition | ...).
+    Subscription-time auth checks viewer token owns the message's conversation.
+    On subscribe, buffered replay events are sent to the subscriber before
+    the live publish path starts.
+
+  * `systemHealthChanged` — delivered on every breaker state transition;
+    lets the React UI flip LIVE/DEGRADED badges without polling.
   """
 
   use Absinthe.Schema
@@ -38,6 +52,7 @@ defmodule ChatF1Web.Schema do
   import_types(Absinthe.Type.Custom)
   import_types(ChatF1Web.Schema.Types.F1Types)
   import_types(ChatF1Web.Schema.Types.ConversationTypes)
+  import_types(ChatF1Web.Schema.Types.AgentTypes)
 
   # ─── Dataloader context ──────────────────────────────────────────────────────
 
@@ -55,10 +70,6 @@ defmodule ChatF1Web.Schema do
 
   # ─── Middleware stack ────────────────────────────────────────────────────────
 
-  # ViewerAuth and RateLimit apply ONLY to root query/mutation fields: one
-  # GraphQL operation consumes one rate-limit token, regardless of how many
-  # nested fields it selects.  ErrorHandler wraps every field so errors raised
-  # anywhere in the tree are normalized.
   def middleware(middleware, _field, %{identifier: id}) when id in [:query, :mutation] do
     [ViewerAuth, RateLimit] ++ middleware ++ [ErrorHandler]
   end
@@ -121,6 +132,11 @@ defmodule ChatF1Web.Schema do
     field :rate_limit_status, non_null(:rate_limit_status) do
       resolve(&ConversationResolvers.rate_limit_status/3)
     end
+
+    @desc "Current system health — gateway, agent, database, and circuit breaker state."
+    field :system_health, non_null(:system_health) do
+      resolve(&ConversationResolvers.system_health/3)
+    end
   end
 
   # ─── Mutations ────────────────────────────────────────────────────────────────
@@ -134,9 +150,10 @@ defmodule ChatF1Web.Schema do
     @desc """
     Send a message in a conversation.
 
-    Phase 2: synchronous — blocks until the agent responds and returns the
-    completed assistant message.  Phase 3 upgrades this to async with a
-    subscription-based streaming response.
+    Phase 3: **async** — persists the message pair and immediately returns
+    `{userMessage, assistantMessageId}` (< 50 ms, no LLM work).  The caller
+    subscribes to `agentStream(messageId: <assistantMessageId>)` to receive
+    streaming events.
 
     Input validation: 1–2000 chars, no control characters, no excessive
     character repetition.
@@ -154,4 +171,123 @@ defmodule ChatF1Web.Schema do
       resolve(&ConversationResolvers.delete_conversation/3)
     end
   end
+
+  # ─── Subscriptions ────────────────────────────────────────────────────────────
+
+  subscription do
+    @desc """
+    Subscribe to streaming events for a single assistant message.
+
+    Topic: `agent:<message_id>`.  The subscription delivers the `AgentEvent`
+    union: TokenDelta batches, NodeTransition (pipeline telemetry), SourcesResolved
+    (citation chips), MessageCompleted (final state), and AgentError.
+
+    **Authorization:** the viewer token must own the message's conversation.
+    Cross-viewer subscriptions are rejected at subscribe time with an
+    `UNAUTHORIZED` error — this is enforced in the `config/2` callback below,
+    not in the resolver.
+
+    **Replay on reconnect:** buffered events (with original seq values) are
+    sent to a re-subscribing client before the live publish path starts.
+    The Apollo reducer deduplicates by seq.
+    """
+    field :agent_stream, :agent_event do
+      arg(:message_id, non_null(:id))
+
+      config(fn args, %{context: context} ->
+        message_id = args.message_id
+        viewer_id = Map.get(context, :viewer_id)
+
+        # Authorization: verify the viewer owns this message's conversation.
+        case authorize_subscription(message_id, viewer_id) do
+          {:ok, conversation_id} ->
+            # Replay buffered events before going live.
+            replay_buffered_events(conversation_id, message_id, context)
+
+            {:ok, topic: "agent:#{message_id}"}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+      end)
+
+      resolve(fn payload, _args, _context ->
+        # The payload arrives as %{token_delta: event} | %{node_transition: event} etc.
+        # Unwrap to the concrete event map so Absinthe resolves the union type.
+        {:ok, unwrap_payload(payload)}
+      end)
+    end
+
+    @desc """
+    Subscribe to circuit breaker state changes.
+
+    Published on every breaker transition (closed → open → half_open → closed).
+    Lets the React UI flip LIVE/DEGRADED service badges in real time.
+    No message_id argument needed — this is a global gateway health topic.
+    """
+    field :system_health_changed, :system_health do
+      config(fn _args, _context ->
+        {:ok, topic: "system_health"}
+      end)
+
+      resolve(fn health, _args, _context ->
+        {:ok, health}
+      end)
+    end
+  end
+
+  # ─── Subscription helpers ────────────────────────────────────────────────────
+
+  defp authorize_subscription(message_id, viewer_id) when is_binary(viewer_id) do
+    import Ecto.Query
+
+    message_id_int =
+      case Integer.parse(message_id) do
+        {n, ""} -> n
+        _ -> nil
+      end
+
+    if is_nil(message_id_int) do
+      {:error, "Invalid message ID"}
+    else
+      query =
+        from m in ChatF1.Conversations.Message,
+          join: c in ChatF1.Conversations.Conversation,
+          on: c.id == m.conversation_id,
+          where: m.id == ^message_id_int and c.viewer_id == ^viewer_id,
+          select: c.id
+
+      case ChatF1.Repo.one(query) do
+        nil -> {:error, "Unauthorized — message not found or not owned by viewer"}
+        conversation_id -> {:ok, conversation_id}
+      end
+    end
+  end
+
+  defp authorize_subscription(_message_id, _viewer_id) do
+    {:error, "Unauthorized — viewer token required"}
+  end
+
+  defp replay_buffered_events(conversation_id, message_id, _context) do
+    # Fire-and-forget: replay buffered events before live events start.
+    # The subscriber will deduplicate by seq if there is overlap.
+    Task.start(fn ->
+      events = ChatF1.Conversations.Server.get_replay_buffer(conversation_id)
+
+      Enum.each(events, fn event ->
+        Absinthe.Subscription.publish(
+          ChatF1Web.Endpoint,
+          unwrap_payload(event),
+          agent_stream: "agent:#{message_id}"
+        )
+      end)
+    end)
+  end
+
+  defp unwrap_payload(%{token_delta: event}), do: event
+  defp unwrap_payload(%{node_transition: event}), do: event
+  defp unwrap_payload(%{sources_resolved: event}), do: event
+  defp unwrap_payload(%{message_completed: event}), do: event
+  defp unwrap_payload(%{agent_error: event}), do: event
+  defp unwrap_payload(other), do: other
 end

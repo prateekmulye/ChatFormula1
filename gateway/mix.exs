@@ -38,7 +38,14 @@ defmodule ChatF1.MixProject do
       # GraphQL
       {:absinthe, "~> 1.7"},
       {:absinthe_plug, "~> 1.5"},
+      {:absinthe_phoenix, "~> 2.0"},
       {:dataloader, "~> 2.0"},
+
+      # WebSocket transport for graphql-ws protocol (Apollo GraphQLWsLink)
+      # Transport spike result: absinthe_graphql_ws 0.3.6 is compatible with
+      # Phoenix 1.8 + Bandit via websock_adapter (already in the tree).
+      # Requires absinthe_phoenix for subscription fan-out.
+      {:absinthe_graphql_ws, "~> 0.3.6"},
 
       # HTTP client — agent proxy
       {:req, "~> 0.5"},

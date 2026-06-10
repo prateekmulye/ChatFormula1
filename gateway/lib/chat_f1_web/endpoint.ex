@@ -1,5 +1,24 @@
 defmodule ChatF1Web.Endpoint do
   use Phoenix.Endpoint, otp_app: :chat_f1
+  use Absinthe.Phoenix.Endpoint
+
+  # graphql-ws WebSocket transport — Apollo GraphQLWsLink connects here.
+  #
+  # Mounted at WSS://<host>/socket/websocket; sub-protocol: "graphql-ws".
+  # Auth: client sends connection_init with {"token": "<viewer_token>"}.
+  #
+  # Transport spike outcome: absinthe_graphql_ws 0.3.6 + Phoenix 1.8 + Bandit
+  # is COMPATIBLE.  The library implements Phoenix.Socket.Transport directly
+  # (not Phoenix Channels), so Bandit's WebSock support is sufficient.
+  socket "/socket", ChatF1Web.GraphqlSocket,
+    websocket: [subprotocols: ["graphql-ws"]],
+    longpoll: false
+
+  # Standard Absinthe/Phoenix Channels socket — used by GraphiQL subscription
+  # pane in dev.  Not used by the Apollo frontend (which uses /socket above).
+  socket "/absinthe/socket", Absinthe.Phoenix.Socket,
+    websocket: true,
+    longpoll: false
 
   # Static files served from priv/static.
   plug Plug.Static,
