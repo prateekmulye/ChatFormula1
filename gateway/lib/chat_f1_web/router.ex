@@ -6,6 +6,13 @@ defmodule ChatF1Web.Router do
     plug ChatF1Web.Plugs.ViewerToken
   end
 
+  # GraphiQL serves an HTML playground but still needs the viewer pipeline so
+  # playground requests are identified and rate-limited like any other client.
+  pipeline :graphiql do
+    plug :accepts, ["html", "json"]
+    plug ChatF1Web.Plugs.ViewerToken
+  end
+
   # ── GraphQL API ──────────────────────────────────────────────────────────────
   scope "/graphql" do
     pipe_through :graphql
@@ -16,10 +23,16 @@ defmodule ChatF1Web.Router do
   end
 
   # ── GraphiQL (dev + prod — public, rate-limited via schema middleware) ────────
-  forward "/graphiql", Absinthe.Plug.GraphiQL,
-    schema: ChatF1Web.Schema,
-    json_codec: Jason,
-    interface: :playground
+  # Goes through the same :graphql pipeline as the API so playground requests
+  # carry a viewer token and are rate-limited like any other client.
+  scope "/graphiql" do
+    pipe_through :graphiql
+
+    forward "/", Absinthe.Plug.GraphiQL,
+      schema: ChatF1Web.Schema,
+      json_codec: Jason,
+      interface: :playground
+  end
 
   # ── LiveDashboard (dev-only pipeline) ────────────────────────────────────────
   if Application.compile_env(:chat_f1, :dev_routes) do

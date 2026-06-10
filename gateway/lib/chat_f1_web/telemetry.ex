@@ -23,11 +23,17 @@ defmodule ChatF1Web.Telemetry do
 
   @impl true
   def init(_arg) do
-    children = [
-      {Telemetry.Metrics.ConsoleReporter, metrics: metrics()},
-      {:telemetry_poller,
-       measurements: periodic_measurements(), period: 10_000, name: :chatf1_vm_poller}
-    ]
+    children =
+      [
+        # ConsoleReporter is a dev-only debugging aid; in test it floods the
+        # output and in prod PromEx/LiveDashboard are the real consumers.
+        if Application.get_env(:chat_f1, :dev_routes) do
+          {Telemetry.Metrics.ConsoleReporter, metrics: metrics()}
+        end,
+        {:telemetry_poller,
+         measurements: periodic_measurements(), period: 10_000, name: :chatf1_vm_poller}
+      ]
+      |> Enum.reject(&is_nil/1)
 
     Supervisor.init(children, strategy: :one_for_one)
   end

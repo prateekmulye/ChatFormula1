@@ -42,6 +42,13 @@ defmodule ChatF1Web.Plugs.ViewerToken do
       conn
       |> assign(:viewer_id, viewer_id)
       |> assign(:viewer_token, token)
+      |> Absinthe.Plug.put_options(
+        context: %{
+          viewer_id: viewer_id,
+          viewer_token: token,
+          remote_ip: conn.remote_ip |> :inet.ntoa() |> to_string()
+        }
+      )
 
     if fresh? do
       put_resp_cookie(conn, @cookie_name, token,

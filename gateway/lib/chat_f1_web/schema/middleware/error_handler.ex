@@ -22,6 +22,8 @@ defmodule ChatF1Web.Schema.Middleware.ErrorHandler do
 
   @behaviour Absinthe.Middleware
 
+  require Logger
+
   alias Absinthe.Resolution
 
   @impl true
@@ -67,6 +69,9 @@ defmodule ChatF1Web.Schema.Middleware.ErrorHandler do
   end
 
   defp normalize(other) do
-    %{message: inspect(other), extensions: %{code: "INTERNAL"}}
+    # Never echo unrecognized error terms to the client — they can carry
+    # internal module names, struct contents, or upstream response bodies.
+    Logger.error("Unhandled GraphQL error term: #{inspect(other)}")
+    %{message: "Internal server error", extensions: %{code: "INTERNAL"}}
   end
 end

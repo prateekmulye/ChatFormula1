@@ -53,16 +53,13 @@ defmodule ChatF1.Conversations do
   end
 
   @spec delete_conversation(String.t(), String.t()) ::
-          {:ok, Conversation.t()} | {:error, :not_found}
+          {:ok, Conversation.t()} | {:error, :not_found | Ecto.Changeset.t()}
   def delete_conversation(id, viewer_id) do
     case get_conversation(id, viewer_id) do
       nil -> {:error, :not_found}
-      conversation -> Repo.delete(conversation) |> then(&{:ok, &1}) |> elem(1) |> wrap_ok()
+      conversation -> Repo.delete(conversation)
     end
   end
-
-  defp wrap_ok(%Conversation{} = c), do: {:ok, c}
-  defp wrap_ok({:ok, c}), do: {:ok, c}
 
   # ─── Messages ────────────────────────────────────────────────────────────────
 

@@ -98,10 +98,15 @@ defmodule ChatF1.Agents.Client do
 
   # ─── Result parsing ──────────────────────────────────────────────────────────
 
-  defp parse_result({:ok, %Req.Response{status: 200, body: body}}, elapsed_ms) do
-    # Req returns the body as a binary when no :into is specified.
-    # Parse the full NDJSON body by iterating lines.
-    ndjson = if is_binary(body), do: body, else: inspect(body)
+  defp parse_result({:ok, %Req.Response{status: 200, body: body}}, _elapsed_ms)
+       when not is_binary(body) do
+    # A 200 whose body isn't a raw binary means Req decoded something other
+    # than the NDJSON stream we expect — treat it as a broken upstream, never
+    # try to parse (or echo) the decoded term.
+    {:error, :upstream_unavailable}
+  end
+
+  defp parse_result({:ok, %Req.Response{status: 200, body: ndjson}}, elapsed_ms) do
     acc = parse_ndjson(ndjson)
 
     cond do

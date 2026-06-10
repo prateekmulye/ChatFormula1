@@ -15,26 +15,37 @@ defmodule ChatF1Web.Schema.Middleware.RateLimit do
   alias ChatF1.RateLimit.Server
 
   @impl true
-  def call(%Resolution{context: %{viewer_token: token}} = resolution, _config)
-      when is_binary(token) do
-    key = :crypto.hash(:sha256, token) |> Base.encode16(case: :lower)
+  def call(%Resolution{context: context} = resolution, _config) do
+    case bucket_key(context) do
+      nil ->
+        # No viewer token AND no IP — nothing to key a bucket on. Deny rather
+        # than wave the request through: an unkeyed request is a misconfigured
+        # pipeline, not a trusted caller.
+        deny(resolution, 60)
 
-    case Server.check_and_consume(key) do
-      :allow ->
-        resolution
-
-      {:deny, {:retry_after_seconds, t}} ->
-        error = %{
-          message: "Rate limit exceeded",
-          extensions: %{code: "RATE_LIMITED", retry_after: t}
-        }
-
-        Resolution.put_result(resolution, {:error, error})
+      key ->
+        case Server.check_and_consume(key) do
+          :allow -> resolution
+          {:deny, {:retry_after_seconds, t}} -> deny(resolution, t)
+        end
     end
   end
 
-  def call(resolution, _config) do
-    # No viewer token → let ViewerAuth handle it; don't double-error.
-    resolution
+  # Prefer the viewer token; fall back to the caller's IP so requests that
+  # arrive without a token (or before one is minted) are still limited.
+  defp bucket_key(%{viewer_token: token}) when is_binary(token) do
+    :crypto.hash(:sha256, token) |> Base.encode16(case: :lower)
+  end
+
+  defp bucket_key(%{remote_ip: ip}) when is_binary(ip), do: "ip:" <> ip
+  defp bucket_key(_), do: nil
+
+  defp deny(resolution, retry_after) do
+    error = %{
+      message: "Rate limit exceeded",
+      extensions: %{code: "RATE_LIMITED", retry_after: retry_after}
+    }
+
+    Resolution.put_result(resolution, {:error, error})
   end
 end

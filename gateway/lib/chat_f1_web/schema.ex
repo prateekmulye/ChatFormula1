@@ -2,13 +2,17 @@ defmodule ChatF1Web.Schema do
   @moduledoc """
   Absinthe root schema for the ChatFormula1 GraphQL API.
 
-  ## Middleware stack (per field, in order)
+  ## Middleware stack
+
+  Root query/mutation fields (one rate-limit token per operation):
 
   1. `ViewerAuth` — asserts `context.viewer_id` is set.
-  2. `RateLimit` — enforces ETS token-bucket limits on mutations.
-  3. `Absinthe.Middleware.MapGet` (built-in) — resolves struct fields.
-  4. Field-specific resolver.
-  5. `ErrorHandler` — normalizes all errors into `{code, message}` shape.
+  2. `RateLimit` — enforces ETS token-bucket limits, keyed by viewer token
+     (IP fallback).
+  3. Field-specific resolver.
+  4. `ErrorHandler` — normalizes all errors into `{code, message}` shape.
+
+  Nested object fields run only their own resolver + `ErrorHandler`.
 
   ## Query limits
 
@@ -51,10 +55,16 @@ defmodule ChatF1Web.Schema do
 
   # ─── Middleware stack ────────────────────────────────────────────────────────
 
-  # Applied to every field.  Per-field resolvers run between RateLimit and
-  # ErrorHandler.
-  def middleware(middleware, _field, _object) do
+  # ViewerAuth and RateLimit apply ONLY to root query/mutation fields: one
+  # GraphQL operation consumes one rate-limit token, regardless of how many
+  # nested fields it selects.  ErrorHandler wraps every field so errors raised
+  # anywhere in the tree are normalized.
+  def middleware(middleware, _field, %{identifier: id}) when id in [:query, :mutation] do
     [ViewerAuth, RateLimit] ++ middleware ++ [ErrorHandler]
+  end
+
+  def middleware(middleware, _field, _object) do
+    middleware ++ [ErrorHandler]
   end
 
   # ─── Queries ─────────────────────────────────────────────────────────────────
