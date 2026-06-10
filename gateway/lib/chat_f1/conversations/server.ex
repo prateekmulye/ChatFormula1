@@ -248,8 +248,13 @@ defmodule ChatF1.Conversations.Server do
 
   @impl true
   def handle_call(:get_replay_buffer, _from, state) do
-    events = Enum.map(state.replay_buffer, & &1.event)
-    {:reply, events, state, @idle_timeout_ms}
+    # Return events in the same wrapped shape the live publish path uses
+    # (%{token_delta: event} etc.) so replay publishes are byte-identical to
+    # live publishes and the subscription resolver unwraps both uniformly.
+    payloads =
+      Enum.map(state.replay_buffer, fn %{type: type, event: event} -> %{type => event} end)
+
+    {:reply, payloads, state, @idle_timeout_ms}
   end
 
   # ─── Cast handlers ────────────────────────────────────────────────────────────
@@ -375,9 +380,19 @@ defmodule ChatF1.Conversations.Server do
     # Done inline (not Task.start) so the GenServer's DB connection is used —
     # this also works correctly with Ecto.Adapters.SQL.Sandbox in tests.
     message_id = state.streaming_message_id
-    update_and_complete(message_id, content, cached, usage, state.conversation_id)
 
-    state
+    case update_and_complete(message_id, content, cached, usage, state.conversation_id) do
+      {:ok, completed_event} ->
+        # Buffered like every other event so a client reconnecting after
+        # completion still learns the message finished (instead of hanging
+        # in a streaming state until it refetches).
+        state
+        |> append_to_buffer(:message_completed, completed_event)
+        |> publish_event(:message_completed, completed_event)
+
+      :error ->
+        state
+    end
   end
 
   defp process_agent_event(%{"event" => "error"} = raw, state) do
@@ -427,15 +442,16 @@ defmodule ChatF1.Conversations.Server do
 
   defp flush_token_batch(state) do
     text = state.token_batch |> Enum.reverse() |> Enum.join()
-    seq = state.next_seq
 
+    # The payload seq mirrors the buffer entry seq assigned (and incremented)
+    # by append_to_buffer below — every buffered event consumes exactly one.
     event = %{
       message_id: state.streaming_message_id,
-      seq: seq,
+      seq: state.next_seq,
       text: text
     }
 
-    state = %{state | token_batch: [], next_seq: seq + 1}
+    state = %{state | token_batch: []}
 
     state
     |> append_to_buffer(:token_delta, event)
@@ -444,44 +460,48 @@ defmodule ChatF1.Conversations.Server do
 
   # ─── Replay buffer management ─────────────────────────────────────────────────
 
-  defp append_to_buffer(state, _type, event) do
-    # Serialize the event to measure its byte size.
-    entry_bytes = event |> Jason.encode!() |> byte_size()
-    new_entry = %{seq: state.next_seq, event: event}
+  defp append_to_buffer(state, type, event) do
+    entry_bytes = entry_size(event)
+    new_entry = %{seq: state.next_seq, type: type, event: event}
 
     # Buffer is maintained oldest-first (append to tail).
-    current_buffer = state.replay_buffer
-    current_bytes = state.replay_buffer_bytes
-
-    new_total = current_bytes + entry_bytes
+    new_total = state.replay_buffer_bytes + entry_bytes
 
     {trimmed_buffer, trimmed_bytes} =
       if new_total > @replay_buf_max_bytes do
-        truncate_buffer(current_buffer, current_bytes, new_total - @replay_buf_max_bytes)
+        truncate_buffer(state.replay_buffer, state.replay_buffer_bytes)
       else
-        {current_buffer, current_bytes}
+        {state.replay_buffer, state.replay_buffer_bytes}
       end
 
     %{
       state
       | replay_buffer: trimmed_buffer ++ [new_entry],
-        replay_buffer_bytes: trimmed_bytes + entry_bytes
+        replay_buffer_bytes: trimmed_bytes + entry_bytes,
+        next_seq: state.next_seq + 1
     }
   end
 
-  # Truncate oldest token events until we've freed `bytes_to_free` bytes.
-  # Non-token events (NodeTransition, SourcesResolved, AgentError) are never
-  # removed — they carry structural state the client needs for reconstruction.
-  defp truncate_buffer(buffer, total_bytes, _bytes_to_free) do
-    Enum.reduce_while(buffer, {[], total_bytes}, fn entry, {kept, remaining} ->
-      if remaining > @replay_buf_max_bytes and token_entry?(entry) do
-        freed = entry.event |> Jason.encode!() |> byte_size()
-        {:cont, {kept, remaining - freed}}
-      else
-        {:halt, {kept ++ [entry], remaining}}
-      end
-    end)
+  # Drop the OLDEST token events until the buffer is back under the cap,
+  # preserving every newer entry. Non-token events (NodeTransition,
+  # SourcesResolved, MessageCompleted, AgentError) are never removed — they
+  # carry structural state the client needs for reconstruction.
+  defp truncate_buffer(buffer, total_bytes) do
+    {kept_reversed, bytes} =
+      Enum.reduce(buffer, {[], total_bytes}, fn entry, {kept, bytes} ->
+        if bytes > @replay_buf_max_bytes and token_entry?(entry) do
+          {kept, bytes - entry_size(entry.event)}
+        else
+          {[entry | kept], bytes}
+        end
+      end)
+
+    {Enum.reverse(kept_reversed), bytes}
   end
+
+  # external_size handles any term (including Ecto structs in
+  # MessageCompleted) and is far cheaper than JSON-encoding per event.
+  defp entry_size(event), do: :erlang.external_size(event)
 
   defp token_entry?(%{event: %{text: _}}), do: true
   defp token_entry?(_), do: false
@@ -496,6 +516,7 @@ defmodule ChatF1.Conversations.Server do
         :token_delta -> %{token_delta: event}
         :node_transition -> %{node_transition: event}
         :sources_resolved -> %{sources_resolved: event}
+        :message_completed -> %{message_completed: event}
         :agent_error -> %{agent_error: event}
       end
 
@@ -543,10 +564,9 @@ defmodule ChatF1.Conversations.Server do
     case Repo.get(Conversations.Message, message_id_int) do
       nil ->
         Logger.error("[ConvServer] message #{message_id} not found for completion update")
+        :error
 
       message ->
-        sources_map = Map.get(message.sources, "items", [])
-
         {:ok, updated} =
           Conversations.update_assistant_message(message, %{
             content: content,
@@ -556,24 +576,13 @@ defmodule ChatF1.Conversations.Server do
             latency_ms: nil
           })
 
-        completed_event = %{
-          message_id: message_id,
-          message: updated,
-          cached: cached,
-          usage: usage
-        }
-
-        try do
-          Absinthe.Subscription.publish(
-            ChatF1Web.Endpoint,
-            %{message_completed: completed_event},
-            agent_stream: "agent:#{message_id}"
-          )
-        rescue
-          ArgumentError -> :ok
-        end
-
-        _ = sources_map
+        {:ok,
+         %{
+           message_id: message_id,
+           message: updated,
+           cached: cached,
+           usage: usage
+         }}
     end
   end
 

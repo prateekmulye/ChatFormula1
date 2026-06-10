@@ -156,7 +156,14 @@ defmodule ChatF1.Agents.Breaker do
 
   @impl true
   def handle_info(:probe, state) do
-    new_state = run_probe(state)
+    # Enter :half_open first — the documented trial state — then let the
+    # single probe decide whether we close or re-open. This is what makes
+    # HALF_OPEN observable in systemHealth/systemHealthChanged.
+    new_state =
+      state
+      |> transition(:half_open)
+      |> run_probe()
+
     {:noreply, new_state}
   end
 

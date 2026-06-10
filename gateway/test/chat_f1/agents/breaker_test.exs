@@ -165,4 +165,33 @@ defmodule ChatF1.Agents.BreakerTest do
 
     assert_receive {:telemetry, ^ref, %{from: :closed, to: :open}}, 1000
   end
+
+  test "probe passes through :half_open before deciding" do
+    pid = start_breaker()
+    test_pid = self()
+    ref = make_ref()
+
+    :telemetry.attach(
+      "breaker-half-open-test-#{inspect(ref)}",
+      [:chatf1, :breaker, :transition],
+      fn _event, _measurements, metadata, _ ->
+        send(test_pid, {:telemetry, ref, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("breaker-half-open-test-#{inspect(ref)}") end)
+
+    Enum.each(1..3, fn _ -> failure(pid) end)
+    sync(pid)
+    assert_receive {:telemetry, ^ref, %{from: :closed, to: :open}}, 1000
+
+    # Fire the scheduled probe immediately. Nothing listens on the test
+    # agent_url, so the trial fails: open -> half_open -> open.
+    send(pid, :probe)
+
+    assert_receive {:telemetry, ^ref, %{from: :open, to: :half_open}}, 2000
+    assert_receive {:telemetry, ^ref, %{from: :half_open, to: :open}}, 10_000
+    assert state(pid) == :open
+  end
 end

@@ -140,6 +140,49 @@ defmodule ChatF1.Conversations.ServerTest do
       assert total_bytes <= 32 * 1024 + 5000,
              "Expected buffer <= ~32KB, got #{total_bytes} bytes"
     end
+
+    @tag :slow
+    test "truncation drops only the OLDEST tokens and keeps structural events", %{
+      conversation: conv
+    } do
+      {:ok, pid} = Server.ensure_started(conv.id)
+
+      :sys.replace_state(pid, fn state ->
+        %{state | streaming_message_id: "test-msg-trunc"}
+      end)
+
+      # A structural event first, then numbered oversized tokens so we can
+      # tell exactly which entries survive truncation.
+      Server.handle_agent_event(conv.id, %{"event" => "node_started", "node" => "generate"})
+
+      Enum.each(1..50, fn i ->
+        text = "tok-#{i}-" <> String.duplicate("x", 900)
+        Server.handle_agent_event(conv.id, %{"event" => "token", "text" => text})
+        # Each event must flush as its own TokenDelta for this test, so wait
+        # out the 40ms batch window.
+        :timer.sleep(45)
+      end)
+
+      :timer.sleep(100)
+
+      buffer = Server.get_replay_buffer(conv.id)
+
+      # Payloads come back in the wrapped live-publish shape.
+      assert Enum.any?(buffer, &match?(%{node_transition: _}, &1)),
+             "structural events must never be truncated"
+
+      token_texts =
+        for %{token_delta: %{text: text}} <- buffer, do: text
+
+      assert token_texts != [], "expected surviving token events"
+
+      # The NEWEST token must survive; the OLDEST must be the one dropped.
+      assert List.last(token_texts) =~ "tok-50-",
+             "newest token event was lost by truncation"
+
+      refute hd(token_texts) =~ "tok-1-",
+             "oldest token event should have been truncated first"
+    end
   end
 
   # ─── via-tuple registration ───────────────────────────────────────────────────

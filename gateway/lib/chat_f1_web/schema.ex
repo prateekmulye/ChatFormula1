@@ -270,15 +270,25 @@ defmodule ChatF1Web.Schema do
   end
 
   defp replay_buffered_events(conversation_id, message_id, _context) do
-    # Fire-and-forget: replay buffered events before live events start.
-    # The subscriber will deduplicate by seq if there is overlap.
+    # Fire-and-forget: replay buffered events to the (re)connecting
+    # subscriber. Payloads come back from the server already in the wrapped
+    # shape the live path publishes (%{token_delta: ...} etc.), so replayed
+    # and live deliveries are indistinguishable to the resolver and the
+    # client deduplicates overlap by seq.
     Task.start(fn ->
-      events = ConvServer.get_replay_buffer(conversation_id)
+      # Absinthe registers the subscription only after config/2 returns; a
+      # publish that races ahead of registration is silently dropped. The
+      # short delay keeps the replay behind that registration. A client that
+      # still misses events detects the seq gap and refetches the message —
+      # the completed message always lives in Postgres.
+      Process.sleep(50)
 
-      Enum.each(events, fn event ->
+      conversation_id
+      |> ConvServer.get_replay_buffer()
+      |> Enum.each(fn payload ->
         Absinthe.Subscription.publish(
           ChatF1Web.Endpoint,
-          unwrap_payload(event),
+          payload,
           agent_stream: "agent:#{message_id}"
         )
       end)
