@@ -85,18 +85,20 @@ defmodule ChatF1.Conversations do
           {:ok, %{user_message: Message.t(), assistant_message: Message.t()}}
           | {:error, atom(), Ecto.Changeset.t(), map()}
   def insert_message_pair(conversation_id, content) do
-    Ecto.Multi.new()
-    |> Ecto.Multi.insert(:user_message, fn _ ->
+    user_changeset =
       Message.user_changeset(%Message{}, %{
         conversation_id: conversation_id,
         content: content
       })
-    end)
-    |> Ecto.Multi.insert(:assistant_message, fn _ ->
+
+    assistant_changeset =
       Message.assistant_placeholder_changeset(%Message{}, %{
         conversation_id: conversation_id
       })
-    end)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:user_message, user_changeset)
+    |> Ecto.Multi.insert(:assistant_message, assistant_changeset)
     |> Repo.transaction()
   end
 

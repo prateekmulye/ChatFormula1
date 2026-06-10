@@ -66,7 +66,10 @@ defmodule ChatF1.MixProject do
     [
       plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
       plt_add_apps: [:mix],
-      flags: [:error_handling, :underspecs]
+      flags: [:error_handling, :underspecs],
+      ignore_warnings: ".dialyzer_ignore.exs",
+      # Fail CI if an ignore entry stops matching — keeps the file honest.
+      list_unused_filters: true
     ]
   end
 
