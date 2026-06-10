@@ -42,25 +42,52 @@ defmodule ChatF1.Conversations.StreamRunner do
 
   require Logger
 
+  alias ChatF1.Agents.Breaker
+  alias ChatF1.Conversations
+  alias ChatF1.Conversations.Server, as: ConvServer
+
   @connect_timeout 5_000
   @recv_timeout 60_000
   @max_retry_ms 45_000
   @initial_backoff_ms 2_000
 
   @doc """
+  Builds the JSON payload for the agent HTTP request.
+
+  Called in the `Conversation.Server` process (which owns the sandbox DB
+  connection in tests) before handing off to the Task.  This avoids the
+  `DBConnection.OwnershipError` that would occur if the query ran inside the
+  `Task.Supervised` worker process.
+  """
+  @spec build_request_payload(integer(), binary()) :: map()
+  def build_request_payload(conversation_id, _assistant_message_id) do
+    messages = Conversations.list_messages(conversation_id)
+    history_window = Enum.take(messages, -11)
+
+    {history, current_message} = split_history(history_window)
+
+    %{
+      message: current_message,
+      history: history,
+      request_id: Ecto.UUID.generate()
+    }
+  end
+
+  @doc """
   Entry point called by `Task.Supervisor.async_nolink/3`.
 
-  Checks the circuit breaker, builds the agent request payload, and starts
-  streaming.  On cold-start errors, emits WARMING_UP and retries with
-  exponential backoff.
+  Accepts the pre-built payload (built by `Conversation.Server` in the
+  GenServer process so that the DB query runs on the correct sandbox
+  connection).  Checks the circuit breaker then starts streaming.
+  On cold-start errors, emits WARMING_UP and retries with exponential backoff.
   """
-  @spec run(integer(), binary()) :: :ok
-  def run(conversation_id, assistant_message_id) do
-    case ChatF1.Agents.Breaker.check() do
+  @spec run(integer(), binary(), map()) :: :ok
+  def run(conversation_id, assistant_message_id, payload) do
+    case Breaker.check() do
       {:error, :upstream_unavailable} ->
         Logger.warning("[StreamRunner #{assistant_message_id}] breaker open — short-circuit")
 
-        ChatF1.Conversations.Server.handle_stream_error(
+        ConvServer.handle_stream_error(
           conversation_id,
           assistant_message_id,
           :upstream_unavailable
@@ -69,28 +96,26 @@ defmodule ChatF1.Conversations.StreamRunner do
         :ok
 
       {:ok, :proceed} ->
-        do_stream(conversation_id, assistant_message_id, 0)
+        do_stream(conversation_id, assistant_message_id, payload, 0)
     end
   end
 
-  defp do_stream(conversation_id, assistant_message_id, attempt) do
+  defp do_stream(conversation_id, assistant_message_id, payload, attempt) do
     start_ms = System.monotonic_time(:millisecond)
 
     :telemetry.span(
       [:chatf1, :agent, :stream],
       %{message_id: assistant_message_id, conversation_id: conversation_id},
       fn ->
-        result = attempt_stream(conversation_id, assistant_message_id, attempt, start_ms)
+        result = attempt_stream(conversation_id, assistant_message_id, payload, attempt, start_ms)
         {result, %{attempt: attempt}}
       end
     )
   end
 
-  defp attempt_stream(conversation_id, assistant_message_id, attempt, start_ms) do
+  defp attempt_stream(conversation_id, assistant_message_id, payload, attempt, start_ms) do
     agent_url = Application.fetch_env!(:chat_f1, :agent_url)
     token = Application.fetch_env!(:chat_f1, :internal_api_token)
-
-    payload = build_payload(conversation_id, assistant_message_id)
 
     # State for the streaming reducer.
     reducer_state = %{
@@ -116,13 +141,14 @@ defmodule ChatF1.Conversations.StreamRunner do
 
     case result do
       {:ok, _resp} ->
-        ChatF1.Agents.Breaker.record_success()
+        Breaker.record_success()
         :ok
 
       {:error, exception} ->
         handle_stream_failure(
           conversation_id,
           assistant_message_id,
+          payload,
           attempt,
           start_ms,
           exception
@@ -133,6 +159,7 @@ defmodule ChatF1.Conversations.StreamRunner do
   defp handle_stream_failure(
          conversation_id,
          assistant_message_id,
+         payload,
          attempt,
          start_ms,
          exception
@@ -145,32 +172,34 @@ defmodule ChatF1.Conversations.StreamRunner do
     )
 
     if cold_start_error?(exception) and elapsed_ms < @max_retry_ms do
-      backoff_ms = min(@initial_backoff_ms * :math.pow(2, attempt) |> round(), 10_000)
-      remaining_ms = @max_retry_ms - elapsed_ms
-
-      if backoff_ms < remaining_ms do
-        # Emit WARMING_UP on first retry.
-        if attempt == 0 do
-          emit_warming_up(conversation_id, assistant_message_id)
-        end
-
-        Logger.info(
-          "[StreamRunner #{assistant_message_id}] cold-start detected, retrying in #{backoff_ms}ms"
-        )
-
-        Process.sleep(backoff_ms)
-        attempt_stream(conversation_id, assistant_message_id, attempt + 1, start_ms)
-      else
-        final_failure(conversation_id, assistant_message_id, :upstream_unavailable)
-      end
+      maybe_retry(conversation_id, assistant_message_id, payload, attempt, start_ms)
     else
-      ChatF1.Agents.Breaker.record_failure()
+      Breaker.record_failure()
+      final_failure(conversation_id, assistant_message_id, :upstream_unavailable)
+    end
+  end
+
+  defp maybe_retry(conversation_id, assistant_message_id, payload, attempt, start_ms) do
+    elapsed_ms = System.monotonic_time(:millisecond) - start_ms
+    backoff_ms = min((@initial_backoff_ms * :math.pow(2, attempt)) |> round(), 10_000)
+    remaining_ms = @max_retry_ms - elapsed_ms
+
+    if backoff_ms < remaining_ms do
+      if attempt == 0, do: emit_warming_up(conversation_id, assistant_message_id)
+
+      Logger.info(
+        "[StreamRunner #{assistant_message_id}] cold-start detected, retrying in #{backoff_ms}ms"
+      )
+
+      Process.sleep(backoff_ms)
+      attempt_stream(conversation_id, assistant_message_id, payload, attempt + 1, start_ms)
+    else
       final_failure(conversation_id, assistant_message_id, :upstream_unavailable)
     end
   end
 
   defp final_failure(conversation_id, assistant_message_id, reason) do
-    ChatF1.Conversations.Server.handle_stream_error(
+    ConvServer.handle_stream_error(
       conversation_id,
       assistant_message_id,
       reason
@@ -180,6 +209,11 @@ defmodule ChatF1.Conversations.StreamRunner do
   end
 
   # ─── Chunk processing ─────────────────────────────────────────────────────────
+
+  # Req 0.7+ delivers chunks as {:data, binary} tuples via the `into:` callback.
+  defp process_chunk({:data, chunk}, state) when is_binary(chunk) do
+    process_chunk(chunk, state)
+  end
 
   defp process_chunk(chunk, state) when is_binary(chunk) do
     full = state.carry <> chunk
@@ -214,7 +248,9 @@ defmodule ChatF1.Conversations.StreamRunner do
 
   defp handle_decoded_event(%{"event" => "token"} = event, state) do
     state =
-      if not state.first_token_emitted? do
+      if state.first_token_emitted? do
+        state
+      else
         ttft_ms = System.monotonic_time(:millisecond) - state.stream_start_ms
 
         :telemetry.execute(
@@ -227,33 +263,18 @@ defmodule ChatF1.Conversations.StreamRunner do
         )
 
         %{state | first_token_emitted?: true}
-      else
-        state
       end
 
-    ChatF1.Conversations.Server.handle_agent_event(state.conversation_id, event)
+    ConvServer.handle_agent_event(state.conversation_id, event)
     state
   end
 
   defp handle_decoded_event(event, state) do
-    ChatF1.Conversations.Server.handle_agent_event(state.conversation_id, event)
+    ConvServer.handle_agent_event(state.conversation_id, event)
     state
   end
 
   # ─── Helpers ──────────────────────────────────────────────────────────────────
-
-  defp build_payload(conversation_id, _assistant_message_id) do
-    messages = ChatF1.Conversations.list_messages(conversation_id)
-    history_window = Enum.take(messages, -11)
-
-    {history, current_message} = split_history(history_window)
-
-    %{
-      message: current_message,
-      history: history,
-      request_id: Ecto.UUID.generate()
-    }
-  end
 
   defp split_history([]) do
     {[], ""}
@@ -290,7 +311,7 @@ defmodule ChatF1.Conversations.StreamRunner do
   end
 
   defp emit_warming_up(conversation_id, assistant_message_id) do
-    ChatF1.Conversations.Server.handle_agent_event(conversation_id, %{
+    ConvServer.handle_agent_event(conversation_id, %{
       "event" => "node_started",
       "node" => "warming_up"
     })

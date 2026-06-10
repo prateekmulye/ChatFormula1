@@ -1,0 +1,168 @@
+defmodule ChatF1.Agents.BreakerTest do
+  @moduledoc """
+  Tests for the circuit breaker GenServer.
+
+  Each test starts an isolated GenServer instance (not the application
+  singleton at `ChatF1.Agents.Breaker`) to avoid cross-test state leakage.
+  """
+
+  use ExUnit.Case, async: true
+
+  alias ChatF1.Agents.Breaker
+
+  # Start a fresh, isolated Breaker process for each test.
+  defp start_breaker do
+    {:ok, pid} = GenServer.start(Breaker, [])
+    on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid, :normal) end)
+    pid
+  end
+
+  defp state(pid), do: GenServer.call(pid, :state)
+  defp check(pid), do: GenServer.call(pid, :check)
+  defp health(pid), do: GenServer.call(pid, :system_health)
+  defp failure(pid), do: GenServer.cast(pid, :record_failure)
+  defp success(pid), do: GenServer.cast(pid, :record_success)
+
+  # Drain the mailbox so casts are processed before the next call.
+  defp sync(pid), do: state(pid)
+
+  # ─── Initial state ────────────────────────────────────────────────────────────
+
+  test "breaker starts in :closed state" do
+    pid = start_breaker()
+    assert state(pid) == :closed
+  end
+
+  test "check returns :proceed when closed" do
+    pid = start_breaker()
+    assert check(pid) == {:ok, :proceed}
+  end
+
+  # ─── Failure accumulation ────────────────────────────────────────────────────
+
+  test "two failures below threshold keep breaker closed" do
+    pid = start_breaker()
+
+    failure(pid)
+    failure(pid)
+    sync(pid)
+
+    assert state(pid) == :closed
+    assert check(pid) == {:ok, :proceed}
+  end
+
+  test "three consecutive failures open the breaker" do
+    pid = start_breaker()
+
+    failure(pid)
+    failure(pid)
+    failure(pid)
+    sync(pid)
+
+    assert state(pid) == :open
+    assert check(pid) == {:error, :upstream_unavailable}
+  end
+
+  test "success resets failure counter" do
+    pid = start_breaker()
+
+    failure(pid)
+    failure(pid)
+    success(pid)
+    # Two more failures — counter was reset so should not open (threshold is 3)
+    failure(pid)
+    failure(pid)
+    sync(pid)
+
+    assert state(pid) == :closed
+  end
+
+  # ─── Open state ──────────────────────────────────────────────────────────────
+
+  test "check returns :upstream_unavailable when open" do
+    pid = start_breaker()
+
+    Enum.each(1..3, fn _ -> failure(pid) end)
+    sync(pid)
+
+    assert check(pid) == {:error, :upstream_unavailable}
+  end
+
+  test "additional failures when open do not change state" do
+    pid = start_breaker()
+
+    Enum.each(1..3, fn _ -> failure(pid) end)
+    sync(pid)
+
+    failure(pid)
+    failure(pid)
+    sync(pid)
+
+    assert state(pid) == :open
+  end
+
+  # ─── Open state ignores success (only probe can close) ────────────────────────
+
+  test "success cast while open does NOT close the breaker" do
+    pid = start_breaker()
+
+    # Open the breaker
+    Enum.each(1..3, fn _ -> failure(pid) end)
+    sync(pid)
+    assert state(pid) == :open
+
+    # Success while open — breaker stays open (probe must succeed to close it)
+    success(pid)
+    sync(pid)
+
+    assert state(pid) == :open
+  end
+
+  # ─── System health ────────────────────────────────────────────────────────────
+
+  test "system_health returns :live mode when closed" do
+    pid = start_breaker()
+    h = health(pid)
+
+    assert h.mode == :live
+    assert h.breaker_state == :closed
+    assert h.gateway == :healthy
+    assert h.agent_service == :healthy
+  end
+
+  test "system_health returns :degraded + :down when open" do
+    pid = start_breaker()
+
+    Enum.each(1..3, fn _ -> failure(pid) end)
+    sync(pid)
+
+    h = health(pid)
+    assert h.mode == :degraded
+    assert h.breaker_state == :open
+    assert h.agent_service == :down
+  end
+
+  # ─── Telemetry ───────────────────────────────────────────────────────────────
+
+  test "emits [:chatf1, :breaker, :transition] on failure threshold" do
+    pid = start_breaker()
+    test_pid = self()
+    ref = make_ref()
+
+    :telemetry.attach(
+      "breaker-transition-test-#{inspect(ref)}",
+      [:chatf1, :breaker, :transition],
+      fn _event, _measurements, metadata, _ ->
+        send(test_pid, {:telemetry, ref, metadata})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("breaker-transition-test-#{inspect(ref)}") end)
+
+    Enum.each(1..3, fn _ -> failure(pid) end)
+    sync(pid)
+
+    assert_receive {:telemetry, ^ref, %{from: :closed, to: :open}}, 1000
+  end
+end

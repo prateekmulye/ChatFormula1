@@ -68,7 +68,9 @@ defmodule ChatF1.Conversations.Server do
 
   require Logger
 
+  alias ChatF1.Agents.Breaker
   alias ChatF1.Conversations
+  alias ChatF1.Conversations.StreamRunner
   alias ChatF1.Repo
 
   # ─── Configuration ───────────────────────────────────────────────────────────
@@ -83,8 +85,6 @@ defmodule ChatF1.Conversations.Server do
   @flush_interval_ms 40
 
   # ─── State shape ─────────────────────────────────────────────────────────────
-
-
 
   # ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -176,7 +176,7 @@ defmodule ChatF1.Conversations.Server do
 
   # ─── GenServer lifecycle ─────────────────────────────────────────────────────
 
-  @spec start_link(keyword()) :: GenServer.on_start()
+  @spec start_link(keyword()) :: {:ok, pid()} | {:error, term()}
   def start_link(opts) do
     conversation_id = Keyword.fetch!(opts, :conversation_id)
 
@@ -209,6 +209,16 @@ defmodule ChatF1.Conversations.Server do
 
   @impl true
   def handle_call({:begin_stream, assistant_message_id}, _from, state) do
+    # Build payload here (in the GenServer process) so the DB query runs on a
+    # connection that is allowed by Ecto.Adapters.SQL.Sandbox in tests.
+    # The Task.Supervised process running StreamRunner cannot access the
+    # sandbox connection owned by the test process.
+    payload =
+      StreamRunner.build_request_payload(
+        state.conversation_id,
+        assistant_message_id
+      )
+
     # Reset buffer for the new message.
     new_state = %{
       state
@@ -221,13 +231,13 @@ defmodule ChatF1.Conversations.Server do
         stream_monitor: nil
     }
 
-    # Launch the StreamRunner task.
+    # Launch the StreamRunner task with the pre-built payload.
     task_ref =
       Task.Supervisor.async_nolink(
         ChatF1.StreamTaskSupervisor,
-        ChatF1.Conversations.StreamRunner,
+        StreamRunner,
         :run,
-        [state.conversation_id, assistant_message_id]
+        [state.conversation_id, assistant_message_id, payload]
       )
 
     new_state = %{new_state | stream_monitor: task_ref.ref}
@@ -279,7 +289,7 @@ defmodule ChatF1.Conversations.Server do
       )
       when not is_nil(msg_id) do
     Logger.warning("[ConvServer #{state.conversation_id}] StreamRunner died: #{inspect(reason)}")
-    ChatF1.Agents.Breaker.record_failure()
+    Breaker.record_failure()
     new_state = do_stream_error(msg_id, reason, state)
     {:noreply, %{new_state | stream_monitor: nil}, @idle_timeout_ms}
   end
@@ -355,18 +365,17 @@ defmodule ChatF1.Conversations.Server do
     state =
       if cached and content != "" do
         state
-        |> accumulate_token(content)
+        |> then(&accumulate_token(content, &1))
         |> flush_token_batch()
       else
         state
       end
 
-    # Persist final state to Postgres via Ecto.Multi.
+    # Persist final state to Postgres.
+    # Done inline (not Task.start) so the GenServer's DB connection is used —
+    # this also works correctly with Ecto.Adapters.SQL.Sandbox in tests.
     message_id = state.streaming_message_id
-
-    Task.start(fn ->
-      update_and_complete(message_id, content, cached, usage, state.conversation_id)
-    end)
+    update_and_complete(message_id, content, cached, usage, state.conversation_id)
 
     state
   end
@@ -383,9 +392,8 @@ defmodule ChatF1.Conversations.Server do
       retryable: retryable
     }
 
-    Task.start(fn ->
-      mark_message_failed(state.streaming_message_id, message)
-    end)
+    # Inline DB update (not Task.start) for sandbox compatibility in tests.
+    mark_message_failed(state.streaming_message_id, message)
 
     state
     |> append_to_buffer(:agent_error, error_event)
@@ -466,7 +474,7 @@ defmodule ChatF1.Conversations.Server do
   # removed — they carry structural state the client needs for reconstruction.
   defp truncate_buffer(buffer, total_bytes, _bytes_to_free) do
     Enum.reduce_while(buffer, {[], total_bytes}, fn entry, {kept, remaining} ->
-      if remaining > @replay_buf_max_bytes and is_token_entry?(entry) do
+      if remaining > @replay_buf_max_bytes and token_entry?(entry) do
         freed = entry.event |> Jason.encode!() |> byte_size()
         {:cont, {kept, remaining - freed}}
       else
@@ -475,8 +483,8 @@ defmodule ChatF1.Conversations.Server do
     end)
   end
 
-  defp is_token_entry?(%{event: %{text: _}}), do: true
-  defp is_token_entry?(_), do: false
+  defp token_entry?(%{event: %{text: _}}), do: true
+  defp token_entry?(_), do: false
 
   # ─── Publishing ───────────────────────────────────────────────────────────────
 
@@ -488,15 +496,22 @@ defmodule ChatF1.Conversations.Server do
         :token_delta -> %{token_delta: event}
         :node_transition -> %{node_transition: event}
         :sources_resolved -> %{sources_resolved: event}
-        :message_completed -> %{message_completed: event}
         :agent_error -> %{agent_error: event}
       end
 
-    Absinthe.Subscription.publish(
-      ChatF1Web.Endpoint,
-      payload,
-      agent_stream: topic
-    )
+    # Guard: Absinthe.Subscription.publish requires the endpoint's PubSub
+    # registry to be running (started by `use Absinthe.Phoenix.Endpoint`).
+    # In test mode with `server: false` the registry is not started, so we
+    # catch the ArgumentError rather than crashing the GenServer.
+    try do
+      Absinthe.Subscription.publish(
+        ChatF1Web.Endpoint,
+        payload,
+        agent_stream: topic
+      )
+    rescue
+      ArgumentError -> :ok
+    end
 
     state
   end
@@ -511,7 +526,8 @@ defmodule ChatF1.Conversations.Server do
       retryable: true
     }
 
-    Task.start(fn -> mark_message_failed(message_id, "Stream failed") end)
+    # Inline DB update for sandbox compatibility in tests.
+    mark_message_failed(message_id, "Stream failed")
 
     state
     |> append_to_buffer(:agent_error, error_event)
@@ -547,11 +563,15 @@ defmodule ChatF1.Conversations.Server do
           usage: usage
         }
 
-        Absinthe.Subscription.publish(
-          ChatF1Web.Endpoint,
-          %{message_completed: completed_event},
-          agent_stream: "agent:#{message_id}"
-        )
+        try do
+          Absinthe.Subscription.publish(
+            ChatF1Web.Endpoint,
+            %{message_completed: completed_event},
+            agent_stream: "agent:#{message_id}"
+          )
+        rescue
+          ArgumentError -> :ok
+        end
 
         _ = sources_map
     end

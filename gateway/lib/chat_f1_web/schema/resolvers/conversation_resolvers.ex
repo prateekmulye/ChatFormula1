@@ -26,6 +26,7 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
 
   require Logger
 
+  alias ChatF1.Agents.Breaker
   alias ChatF1.Conversations
   alias ChatF1.Conversations.Server, as: ConvServer
   alias ChatF1.RateLimit.Server, as: RateLimitServer
@@ -59,7 +60,7 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
 
   @doc "Resolves the `systemHealth` query — current gateway + agent health."
   def system_health(_parent, _args, _context) do
-    health = ChatF1.Agents.Breaker.system_health()
+    health = Breaker.system_health()
     {:ok, health}
   end
 
@@ -107,11 +108,15 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
 
       {:server, {:error, reason}} ->
         Logger.error("sendMessage failed to start ConvServer: #{inspect(reason)}")
-        {:error, %{message: "Upstream service unavailable", extensions: %{code: "UPSTREAM_UNAVAILABLE"}}}
+
+        {:error,
+         %{message: "Upstream service unavailable", extensions: %{code: "UPSTREAM_UNAVAILABLE"}}}
 
       {:stream, {:error, reason}} ->
         Logger.error("sendMessage failed to begin stream: #{inspect(reason)}")
-        {:error, %{message: "Upstream service unavailable", extensions: %{code: "UPSTREAM_UNAVAILABLE"}}}
+
+        {:error,
+         %{message: "Upstream service unavailable", extensions: %{code: "UPSTREAM_UNAVAILABLE"}}}
     end
   end
 

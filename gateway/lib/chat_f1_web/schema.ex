@@ -45,6 +45,7 @@ defmodule ChatF1Web.Schema do
 
   use Absinthe.Schema
 
+  alias ChatF1.Conversations.Server, as: ConvServer
   alias ChatF1Web.Schema.DataloaderSource
   alias ChatF1Web.Schema.Middleware.{ErrorHandler, RateLimit, ViewerAuth}
   alias ChatF1Web.Schema.Resolvers.{ConversationResolvers, F1Resolvers}
@@ -272,7 +273,7 @@ defmodule ChatF1Web.Schema do
     # Fire-and-forget: replay buffered events before live events start.
     # The subscriber will deduplicate by seq if there is overlap.
     Task.start(fn ->
-      events = ChatF1.Conversations.Server.get_replay_buffer(conversation_id)
+      events = ConvServer.get_replay_buffer(conversation_id)
 
       Enum.each(events, fn event ->
         Absinthe.Subscription.publish(

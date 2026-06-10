@@ -220,15 +220,20 @@ defmodule ChatF1.Agents.Breaker do
     new_state = %{state | breaker: to, consecutive_failures: 0, last_transition_at: now()}
 
     # Publish to Absinthe subscription topic so the UI updates in real time.
-    # This runs asynchronously so a PubSub hiccup never crashes the breaker.
+    # Guarded with try/rescue because in test mode with server: false the
+    # endpoint's PubSub registry is not started and publish would raise.
     Task.start(fn ->
       health = build_system_health(new_state)
 
-      Absinthe.Subscription.publish(
-        ChatF1Web.Endpoint,
-        health,
-        system_health_changed: "system_health"
-      )
+      try do
+        Absinthe.Subscription.publish(
+          ChatF1Web.Endpoint,
+          health,
+          system_health_changed: "system_health"
+        )
+      rescue
+        ArgumentError -> :ok
+      end
     end)
 
     new_state

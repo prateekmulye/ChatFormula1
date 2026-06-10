@@ -31,6 +31,7 @@ defmodule ChatF1Web.GraphqlSocket do
 
   use Absinthe.GraphqlWS.Socket, schema: ChatF1Web.Schema
 
+  alias Absinthe.GraphqlWS.Util, as: GraphqlWSUtil
   alias ChatF1.Accounts
 
   @impl true
@@ -42,7 +43,7 @@ defmodule ChatF1Web.GraphqlSocket do
     case Accounts.verify_viewer_token(token) do
       {:ok, viewer_id} ->
         socket =
-          Absinthe.GraphqlWS.Util.assign_context(socket, %{
+          GraphqlWSUtil.assign_context(socket, %{
             viewer_id: viewer_id,
             viewer_token: token
           })
@@ -55,6 +56,7 @@ defmodule ChatF1Web.GraphqlSocket do
   end
 
   def handle_init(_payload, socket) do
-    {:error, %{message: "Unauthorized — viewer token required in connection_init payload"}, socket}
+    {:error, %{message: "Unauthorized — viewer token required in connection_init payload"},
+     socket}
   end
 end
