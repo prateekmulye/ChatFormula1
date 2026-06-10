@@ -1,0 +1,50 @@
+# Path-filtered CI for the React frontend (Phase 4).
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Regenerate types from the committed schema.graphql and fail on drift —
+      # catches edits to documents/schema that skipped `npm run codegen`.
+      - name: Codegen drift check
+        run: |
+          npm run codegen
+          git diff --exit-code -- src/graphql
+
+      - name: Typecheck
+        run: npx tsc -b
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Test
+        run: npx vitest run
+
+      - name: Build
+        run: npm run build
