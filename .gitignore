@@ -19,6 +19,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# The Python packaging template above must not swallow the Elixir app:
+!gateway/lib/
 parts/
 sdist/
 var/

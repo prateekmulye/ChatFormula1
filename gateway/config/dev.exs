@@ -23,6 +23,10 @@ config :chat_f1, ChatF1Web.Endpoint,
 # Dev routes enable LiveDashboard at /dev/dashboard (dev-only pipeline).
 config :chat_f1, dev_routes: true
 
+# Origins allowed to call the GraphQL API from a browser (the Vite dev
+# server). Production sets CORS_ORIGINS in runtime.exs.
+config :chat_f1, :cors_origins, ["http://localhost:5173", "http://127.0.0.1:5173"]
+
 # Agent service defaults for local dev.
 # Override by setting AGENT_URL and INTERNAL_API_TOKEN env vars.
 config :chat_f1, :agent_url, System.get_env("AGENT_URL") || "http://localhost:8000"

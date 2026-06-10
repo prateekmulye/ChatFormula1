@@ -44,5 +44,9 @@ defmodule ChatF1Web.Endpoint do
   plug Plug.Head
   plug Plug.Session, store: :cookie, key: "_chat_f1_key", signing_salt: "chatf1salt"
 
+  # CORS + x-viewer-token echo for the cross-origin React frontend (Phase 4).
+  # Must sit before the Router so OPTIONS preflights short-circuit here.
+  plug ChatF1Web.Plugs.CORS
+
   plug ChatF1Web.Router
 end

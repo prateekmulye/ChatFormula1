@@ -44,4 +44,13 @@ if config_env() == :prod do
          :internal_api_token,
          System.get_env("INTERNAL_API_TOKEN") ||
            raise("environment variable INTERNAL_API_TOKEN is missing")
+
+  # CORS_ORIGINS — comma-separated browser origins allowed to call the
+  # GraphQL API (the Vercel frontend), e.g. "https://chatformula1.com".
+  # Empty default: no cross-origin browser access until explicitly granted.
+  config :chat_f1,
+         :cors_origins,
+         (System.get_env("CORS_ORIGINS") || "")
+         |> String.split(",", trim: true)
+         |> Enum.map(&String.trim/1)
 end
