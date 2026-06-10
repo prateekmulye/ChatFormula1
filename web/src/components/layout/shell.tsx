@@ -20,7 +20,7 @@ export function Shell({ children }: { children: ReactNode }) {
       </a>
       <div className="carbon-grain" aria-hidden />
       <Masthead />
-      <main id="main" className="relative z-10 flex-1">
+      <main id="main" className="relative z-10 flex flex-1 flex-col [&>*]:flex-1">
         {children}
       </main>
       <Footer />

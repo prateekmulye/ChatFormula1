@@ -107,6 +107,17 @@ function NodePill({
   isGenerate: boolean;
   reducedMotion: boolean;
 }) {
+  // Mobile: the strip scrolls horizontally — keep the active node in view.
+  const scrollActiveIntoView = (element: HTMLElement | null) => {
+    if (element !== null && phase === "active") {
+      element.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+    }
+  };
+
   const breathe =
     phase === "active" && !reducedMotion
       ? {
@@ -118,6 +129,7 @@ function NodePill({
 
   return (
     <motion.span
+      ref={scrollActiveIntoView}
       aria-label={`${label.toLowerCase().replace(/[⟨⟩]/g, "")} — ${phase}`}
       role="img"
       initial={false}
@@ -213,7 +225,7 @@ export function TelemetryStrip({ state }: { state: StreamState }) {
           </span>
         ) : (
           SLOTS.map((slot, index) => (
-            <span key={slot.id} className="flex min-w-0 flex-1 items-center gap-2">
+            <span key={slot.id} className="flex shrink-0 items-center gap-2 sm:min-w-0 sm:flex-1 sm:shrink">
               <NodePill
                 label={slotLabel(slot, state)}
                 phase={phases[index] ?? "idle"}

@@ -103,13 +103,16 @@ export function LightsOutLoader({
   const lines = SCRIPT.filter((entry) => entry.at <= elapsed).map((entry) => entry.line);
   if (resolved) lines.push(RESOLVED_LINE);
 
+  // Goal-gradient progression: links 1→4 climb through the tension phase,
+  // link 5 is reserved for the climax (§5.1 Zeigarnik beat).
+  const linkNumber = Math.min(4, 1 + Math.floor(elapsed / (CLIMAX_S / 4)));
   const caption = resolved
     ? "Connected, response streaming."
     : overrun
       ? "Negotiating high-latency gateway · still spooling — free tier, not broken."
       : climax
         ? "Link 5 of 5 · almost green"
-        : `Link ${Math.min(litCount + 1, LIGHT_COUNT)} of 5 · the wait is the demo`;
+        : `Link ${linkNumber} of 5 · the wait is the demo`;
 
   return (
     <section

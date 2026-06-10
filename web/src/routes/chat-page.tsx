@@ -4,11 +4,12 @@ import { Composer } from "@/components/chat/composer";
 import { LightsOutLoader } from "@/components/chat/lights-out-loader";
 import { SuggestionChips } from "@/components/chat/suggestion-chips";
 import { AssistantMessage, TokenStream } from "@/components/chat/token-stream";
-import { CautionTriangleIcon } from "@/components/icons";
+import { CountdownHero } from "@/components/standings/countdown-hero";
 import { TelemetryStrip } from "@/components/telemetry/telemetry-strip";
 import { Button } from "@/components/ui/button";
 import { type StreamPhase } from "@/features/chat/stream-reducer";
 import { useChat } from "@/features/chat/use-chat";
+import { useNextRaceQuery } from "@/graphql/generated";
 
 /**
  * Warming → streaming handoff: keep the LightsOutLoader mounted through its
@@ -48,12 +49,23 @@ function UserBubble({ content }: { content: string }) {
   );
 }
 
+function daypart(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return "Late night";
+  if (hour < 12) return "Morning";
+  if (hour < 18) return "Afternoon";
+  return "Evening";
+}
+
 function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disabled: boolean }) {
+  const { data } = useNextRaceQuery();
+  const nextRace = data?.nextRace ?? null;
+
   return (
     <div className="flex flex-col items-start gap-6 py-12">
       <div>
         <h1 className="font-display text-h1 font-medium tracking-[-0.01em] text-text">
-          Evening. The pit wall is listening.
+          {daypart()}. The pit wall is listening.
         </h1>
         <p className="mt-2 max-w-[55ch] text-body text-text-dim">
           Ask anything Formula 1 — standings, strategy, regulations. Watch the pipeline strip
@@ -61,6 +73,11 @@ function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disable
         </p>
       </div>
       <SuggestionChips onPick={onPick} disabled={disabled} />
+      {nextRace !== null ? (
+        <div className="w-full max-w-md">
+          <CountdownHero race={nextRace} compact />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -128,18 +145,10 @@ export function ChatPage() {
               <li>
                 <div ref={activeBubbleRef} tabIndex={-1} className="outline-none">
                   <TokenStream state={chat.stream} />
-                  {chat.stream.phase === "failed" && chat.stream.error !== null ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                      <p className="flex items-center gap-2 text-meta text-amber">
-                        <CautionTriangleIcon className="h-4 w-4 shrink-0" />
-                        {chat.stream.error.message}
-                      </p>
-                      {chat.canRetry ? (
-                        <Button variant="secondary" size="sm" onClick={chat.retry}>
-                          Re-send
-                        </Button>
-                      ) : null}
-                    </div>
+                  {chat.stream.phase === "failed" && chat.canRetry ? (
+                    <Button variant="secondary" size="sm" className="mt-2" onClick={chat.retry}>
+                      Re-send
+                    </Button>
                   ) : null}
                   {chat.reconciling ? (
                     <p className="instrument mt-2 text-micro text-text-faint">

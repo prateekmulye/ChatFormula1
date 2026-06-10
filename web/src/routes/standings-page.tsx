@@ -21,6 +21,14 @@ export function StandingsPage() {
           message="The standings query did not answer — the gateway may be cold-starting."
           onRetry={() => void refetch()}
         />
+      ) : (data?.standings ?? []).length === 0 ? (
+        <div className="mt-6 rounded-lg border border-hairline bg-surface-1 px-5 py-6">
+          <p className="instrument text-meta text-text-dim">No race results recorded yet</p>
+          <p className="mt-1 max-w-[55ch] text-meta leading-relaxed text-text-faint">
+            Standings aggregate from race results, and the nightly Jolpica results sync ships in
+            Phase 5 — this table fills itself the first night it runs.
+          </p>
+        </div>
       ) : (
         <div className="mt-6">
           <StandingsTable rows={data?.standings ?? []} season={SEASON} />

@@ -3,7 +3,8 @@ import { Fragment } from "react";
 
 import { CitationChip } from "@/components/chat/citation-chip";
 import { MessageBlocks } from "@/components/chat/message-blocks";
-import { ReplaySquareIcon, SignalDotIcon } from "@/components/icons";
+import { CautionTriangleIcon, ReplaySquareIcon, SignalDotIcon } from "@/components/icons";
+import { humanizeStreamError } from "@/features/chat/error-copy";
 import { type StreamState, streamText, type TokenSegment } from "@/features/chat/stream-reducer";
 import { type SourceFieldsFragment } from "@/graphql/generated";
 
@@ -171,6 +172,12 @@ export function TokenStream({ state }: { state: StreamState }) {
           ))}
           {!failed ? <LuminousCaret pulseKey={newestSeq} reducedMotion={reducedMotion} /> : null}
         </p>
+        {failed && state.error !== null ? (
+          <p className="mt-1 flex items-start gap-2 text-meta text-amber">
+            <CautionTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            {humanizeStreamError(state.error)}
+          </p>
+        ) : null}
       </div>
     </div>
   );

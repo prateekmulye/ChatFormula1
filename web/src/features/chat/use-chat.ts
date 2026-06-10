@@ -2,6 +2,7 @@ import { useApolloClient } from "@apollo/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { humanizeStreamError } from "@/features/chat/error-copy";
 import { type StreamState } from "@/features/chat/stream-reducer";
 import { useAgentStream } from "@/features/chat/use-agent-stream";
 import {
@@ -97,21 +98,26 @@ export function useChat(): ChatSession {
   const stream = useAgentStream(active?.id ?? null, onGap);
 
   // Live completion path (the gap refetch races this; finalize is idempotent).
+  // The gateway does not yet persist SourcesResolved onto the message row
+  // (Phase 5 work), so the live-stream sources are merged in — they came off
+  // the same authorized subscription, not invented client-side.
   useEffect(() => {
     if (stream.phase === "complete" && stream.completion !== null) {
-      finalize(stream.completion.message);
+      const message = stream.completion.message;
+      const sources = stream.sources !== null ? [...stream.sources] : message.sources;
+      finalize({ ...message, sources });
     }
-  }, [stream.phase, stream.completion, finalize]);
+  }, [stream.phase, stream.completion, stream.sources, finalize]);
 
   // Error surfacing: amber retryable toast / critical non-retryable (§4.2).
   useEffect(() => {
     if (stream.error === null) return;
     if (stream.error.retryable) {
       toast.warning("Pit wall reports a hiccup", {
-        description: `${stream.error.message} — you can re-send the question.`,
+        description: humanizeStreamError(stream.error),
       });
     } else {
-      toast.error("Stream failed", { description: stream.error.message });
+      toast.error("Stream failed", { description: humanizeStreamError(stream.error) });
     }
   }, [stream.error]);
 
