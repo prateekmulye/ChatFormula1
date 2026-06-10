@@ -43,8 +43,19 @@ lint-agent:
 
 # ─── gateway (Elixir / Phoenix — Phase 2) ───────────────────────────────────
 
-setup-gateway dev-gateway test-gateway lint-gateway:
-	@echo "gateway: not yet — see docs/ROADMAP.md (Phase 2)"
+setup-gateway:
+	cd gateway && mix deps.get && mix ecto.create && mix ecto.migrate
+
+dev-gateway:
+	cd gateway && mix phx.server
+
+test-gateway:
+	cd gateway && MIX_ENV=test mix ecto.create --quiet && \
+	  MIX_ENV=test mix ecto.migrate --quiet && \
+	  mix test
+
+lint-gateway:
+	cd gateway && mix format --check-formatted && mix credo --strict
 
 # ─── web (React / Apollo — Phase 4) ─────────────────────────────────────────
 
