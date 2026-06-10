@@ -1,0 +1,419 @@
+schema {
+  subscription: RootSubscriptionType
+  mutation: RootMutationType
+  query: RootQueryType
+}
+
+type RootQueryType {
+  "List all drivers, optionally filtered by season."
+  drivers(season: Int): [Driver!]
+
+  "Look up a driver by three-letter code (e.g. 'VER')."
+  driver(code: String!): Driver
+
+  "List races for a season."
+  races(season: Int!): [Race!]!
+
+  "The next upcoming race (used for homepage countdown)."
+  nextRace: Race
+
+  "Championship standings for a season. Single aggregating query — N+1 free."
+  standings(season: Int!): [StandingRow!]!
+
+  "Fetch a conversation by ID. Returns null if not found or not owned by viewer."
+  conversation(id: ID!): Conversation
+
+  "List all conversations for the current viewer."
+  conversations: [Conversation!]!
+
+  "Current rate-limit status for the viewer."
+  rateLimitStatus: RateLimitStatus!
+
+  "Current system health — gateway, agent, database, and circuit breaker state."
+  systemHealth: SystemHealth!
+}
+
+type RootMutationType {
+  "Create a new conversation for the current viewer."
+  startConversation: Conversation!
+
+  """
+  Send a message in a conversation.
+
+  Phase 3: **async** — persists the message pair and immediately returns
+  `{userMessage, assistantMessageId}` (< 50 ms, no LLM work).  The caller
+  subscribes to `agentStream(messageId: <assistantMessageId>)` to receive
+  streaming events.
+
+  Input validation: 1–2000 chars, no control characters, no excessive
+  character repetition.
+  """
+  sendMessage(conversationId: ID!, content: String!): SendMessagePayload!
+
+  "Delete a conversation owned by the viewer."
+  deleteConversation(id: ID!): Boolean!
+}
+
+type RootSubscriptionType {
+  """
+  Subscribe to streaming events for a single assistant message.
+
+  Topic: `agent:<message_id>`.  The subscription delivers the `AgentEvent`
+  union: TokenDelta batches, NodeTransition (pipeline telemetry), SourcesResolved
+  (citation chips), MessageCompleted (final state), and AgentError.
+
+  **Authorization:** the viewer token must own the message's conversation.
+  Cross-viewer subscriptions are rejected at subscribe time with an
+  `UNAUTHORIZED` error — this is enforced in the `config/2` callback below,
+  not in the resolver.
+
+  **Replay on reconnect:** buffered events (with original seq values) are
+  sent to a re-subscribing client before the live publish path starts.
+  The Apollo reducer deduplicates by seq.
+  """
+  agentStream(messageId: ID!): AgentEvent
+
+  """
+  Subscribe to circuit breaker state changes.
+
+  Published on every breaker transition (closed → open → half_open → closed).
+  Lets the React UI flip LIVE/DEGRADED service badges in real time.
+  No message_id argument needed — this is a global gateway health topic.
+  """
+  systemHealthChanged: SystemHealth
+}
+
+"LangGraph pipeline node or gateway-synthesized state transition."
+enum AgentNode {
+  "Gateway-synthesized: Render agent is cold-starting (designed UX, not an error)."
+  WARMING_UP
+
+  "LangGraph: analysing the query intent and routing decision."
+  ANALYZE_QUERY
+
+  "LangGraph: routing between retrieval strategies."
+  ROUTE
+
+  "LangGraph: Pinecone vector similarity search."
+  VECTOR_SEARCH
+
+  "LangGraph: Tavily web search."
+  WEB_SEARCH
+
+  "LangGraph: both vector and web retrieval running concurrently."
+  PARALLEL_RETRIEVAL
+
+  "LangGraph: ContextScore multi-factor re-ranking of retrieved chunks."
+  RANK_CONTEXT
+
+  "LangGraph: LLM generation (gpt-4o-mini)."
+  GENERATE
+
+  "LangGraph: formatting and safety check on the generated response."
+  FORMAT_RESPONSE
+
+  "SHOWCASE mode: token-replaying a cached answer (Phase 5 only)."
+  REPLAYING_CACHE
+}
+
+"Token-level usage statistics from the LLM provider."
+type TokenUsage {
+  promptTokens: Int!
+  completionTokens: Int!
+  estimatedCostUsd: Float!
+}
+
+"""
+One or more LLM tokens.  Delivery is micro-batched: the Conversation.Server
+accumulates tokens for 40 ms or 12 tokens (whichever comes first) before a
+single publish.  This amortises Absinthe.Subscription.publish overhead and
+PubSub frame cost on the 256 MB Fly machine.
+
+`seq` is a monotonically increasing integer scoped to the assistant message.
+Clients use it for idempotent-replay deduplication — on reconnect, replay
+from the Conversation.Server buffer overlaps with live events; duplicates
+are dropped by the seq guard in the Apollo reducer.
+"""
+type TokenDelta {
+  messageId: ID!
+  seq: Int!
+  text: String!
+}
+
+"A LangGraph pipeline node has started executing."
+type NodeTransition {
+  messageId: ID!
+  node: AgentNode!
+  startedAt: DateTime!
+}
+
+"Retrieval context has been resolved; citation chips can render before the answer finishes."
+type SourcesResolved {
+  messageId: ID!
+  sources: [Source!]!
+}
+
+"""
+The assistant message is complete.  The hydrated `message` is included so
+Apollo can write it directly to the normalized cache — no follow-up query
+needed.  On cache-hit paths the gateway synthesizes one TokenDelta before
+this event so the frontend render path is uniform.
+"""
+type MessageCompleted {
+  messageId: ID!
+  message: Message!
+  cached: Boolean!
+  usage: TokenUsage
+}
+
+"Stream-level error.  `retryable: true` means the client may call sendMessage again."
+type AgentError {
+  messageId: ID!
+  code: ErrorCode!
+  message: String!
+  retryable: Boolean!
+}
+
+"""
+Union of all event types published on the `agentStream` subscription.
+Apollo resolves the concrete type via `__typename` (returned automatically
+by Absinthe).
+"""
+union AgentEvent = TokenDelta | NodeTransition | SourcesResolved | MessageCompleted | AgentError
+
+"High-level service operating mode."
+enum ServiceMode {
+  "Live LLM inference running normally."
+  LIVE
+
+  "Circuit breaker open or partial degradation; service still operational."
+  DEGRADED
+
+  "Budget exhausted or agent down; Phase 5 cached-replay path active."
+  SHOWCASE
+}
+
+"Health of an individual service component."
+enum ServiceStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+}
+
+"Circuit breaker state for the Python agent upstream."
+enum BreakerState {
+  "Normal operation; requests pass through."
+  CLOSED
+
+  "Failures threshold exceeded; requests short-circuit with UPSTREAM_UNAVAILABLE."
+  OPEN
+
+  "Probe request allowed through to test recovery."
+  HALF_OPEN
+}
+
+"""
+Snapshot of gateway and upstream health.  Published on state transitions
+via the `systemHealthChanged` subscription.
+"""
+type SystemHealth {
+  mode: ServiceMode!
+  gateway: ServiceStatus!
+  agentService: ServiceStatus!
+  database: ServiceStatus!
+  breakerState: BreakerState!
+}
+
+"The role of a message author."
+enum MessageRole {
+  "A message sent by the viewer."
+  USER
+
+  "A response generated by the agent."
+  ASSISTANT
+}
+
+"Lifecycle status of a message."
+enum MessageStatus {
+  "Placeholder created; agent call not yet started."
+  PENDING
+
+  "Agent is actively streaming (Phase 3 only)."
+  STREAMING
+
+  "Message content is final."
+  COMPLETE
+
+  "Agent call failed; content is the error summary."
+  FAILED
+}
+
+"Source kind from retrieval pipeline."
+enum SourceKind {
+  "Pinecone vector search result."
+  VECTOR
+
+  "Tavily web search result."
+  WEB
+}
+
+"A retrieval source cited in an assistant response."
+type Source {
+  kind: SourceKind!
+  title: String!
+  url: String
+  snippet: String
+  score: Float
+}
+
+type Message {
+  "A single message in a conversation."
+  id: ID!
+
+  role: MessageRole!
+
+  content: String!
+
+  status: MessageStatus!
+
+  intent: String
+
+  sources: [Source!]!
+
+  cached: Boolean!
+
+  latencyMs: Int
+
+  insertedAt: DateTime!
+}
+
+type Conversation {
+  "A chat conversation owned by the viewer."
+  id: ID!
+
+  title: String
+
+  insertedAt: DateTime!
+
+  messages(first: Int, before: String): [Message!]!
+}
+
+"Payload returned by the sendMessage mutation."
+type SendMessagePayload {
+  userMessage: Message!
+  assistantMessageId: ID!
+}
+
+"Current rate-limit status for the authenticated viewer."
+type RateLimitStatus {
+  limitPerMinute: Int!
+  remainingMinute: Int!
+  limitPerHour: Int!
+  remainingHour: Int!
+  resetsAt: DateTime!
+}
+
+"Normalized error codes surfaced to GraphQL clients."
+enum ErrorCode {
+  "The Python inference service is unreachable or returned an error."
+  UPSTREAM_UNAVAILABLE
+
+  "The viewer has exceeded their request quota."
+  RATE_LIMITED
+
+  "Daily LLM spend limit reached; SHOWCASE mode active (Phase 5)."
+  BUDGET_EXHAUSTED
+
+  "Input failed validation (length, control chars, repetition)."
+  VALIDATION
+
+  "Unexpected gateway or agent error."
+  INTERNAL
+}
+
+type Constructor {
+  "An F1 constructor (team)."
+  id: ID!
+
+  name: String!
+
+  nationality: String
+
+  points: Float!
+
+  "All drivers belonging to this constructor. Dataloader-batched."
+  drivers: [Driver!]
+}
+
+type Driver {
+  "An F1 driver."
+  id: ID!
+
+  code: String!
+
+  number: Int
+
+  fullName: String!
+
+  nationality: String!
+
+  "The driver's constructor (team). Dataloader-batched."
+  constructor: Constructor!
+
+  "Race results, optionally filtered by season. Dataloader-batched."
+  results(season: Int): [RaceResult!]
+}
+
+type Race {
+  "An F1 race event."
+  id: ID!
+
+  season: Int!
+
+  round: Int!
+
+  name: String!
+
+  circuit: String!
+
+  country: String!
+
+  startsAt: DateTime!
+
+  "Race results in finish order. Dataloader-batched."
+  results: [RaceResult!]
+}
+
+type RaceResult {
+  "A single driver's result in one race."
+  id: ID!
+
+  gridPosition: Int
+
+  finishPosition: Int
+
+  points: Float!
+
+  podium: Boolean!
+
+  driver: Driver!
+
+  race: Race!
+}
+
+"A row in the championship standings for a given season."
+type StandingRow {
+  position: Int!
+  driver: Driver!
+  points: Float!
+  wins: Int!
+  podiums: Int!
+}
+
+"""
+The `DateTime` scalar type represents a date and time in the UTC
+timezone. The DateTime appears in a JSON response as an ISO8601 formatted
+string, including UTC timezone ("Z"). The parsed date and time string will
+be converted to UTC if there is an offset.
+"""
+scalar DateTime
