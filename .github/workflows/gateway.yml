@@ -1,0 +1,130 @@
+name: gateway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "gateway/**"
+      - ".github/workflows/gateway.yml"
+  pull_request:
+    paths:
+      - "gateway/**"
+      - ".github/workflows/gateway.yml"
+
+defaults:
+  run:
+    working-directory: gateway
+
+jobs:
+  checks:
+    name: format + credo + test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chatf1_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      MIX_ENV: test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGHOST: localhost
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.18"
+          otp-version: "28"
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: gateway/deps
+          key: gateway-deps-${{ runner.os }}-${{ hashFiles('gateway/mix.lock') }}
+          restore-keys: gateway-deps-${{ runner.os }}-
+
+      - name: Restore _build cache
+        uses: actions/cache@v4
+        with:
+          path: gateway/_build
+          key: gateway-build-${{ runner.os }}-${{ hashFiles('gateway/mix.lock') }}-${{ env.MIX_ENV }}
+          restore-keys: |
+            gateway-build-${{ runner.os }}-${{ hashFiles('gateway/mix.lock') }}-
+            gateway-build-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile (warnings as errors)
+        run: mix compile --warnings-as-errors
+
+      - name: Format check
+        run: mix format --check-formatted
+
+      - name: Credo (strict)
+        run: mix credo --strict
+
+      - name: Create test DB
+        run: mix ecto.create
+
+      - name: Run migrations
+        run: mix ecto.migrate
+
+      - name: Test
+        run: mix test
+
+  dialyzer:
+    name: dialyzer
+    runs-on: ubuntu-latest
+    # Dialyzer runs separately — it's slow (PLT build) and doesn't block merge.
+    # Failing dialyzer is informational only; remove `continue-on-error` when
+    # the PLT is stable.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.18"
+          otp-version: "28"
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: gateway/deps
+          key: gateway-deps-${{ runner.os }}-${{ hashFiles('gateway/mix.lock') }}
+          restore-keys: gateway-deps-${{ runner.os }}-
+
+      - name: Restore PLT cache
+        uses: actions/cache@v4
+        with:
+          path: gateway/priv/plts
+          key: gateway-plt-${{ runner.os }}-${{ hashFiles('gateway/mix.lock') }}
+          restore-keys: gateway-plt-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: mix deps.get
+
+      - name: Compile
+        run: mix compile
+        env:
+          MIX_ENV: dev
+
+      - name: Dialyzer
+        run: mix dialyzer
+        env:
+          MIX_ENV: dev
