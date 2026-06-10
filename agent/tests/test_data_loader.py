@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from src.ingestion.data_loader import (
+from ingestion.data_loader import (
     DataLoader,
     DataLoadError,
-    DataValidationError,
     DriverSchema,
     RaceResultSchema,
     RaceSchema,

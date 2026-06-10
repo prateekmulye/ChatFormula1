@@ -3,8 +3,9 @@
 import pytest
 from langchain_core.documents import Document
 
-from src.config.settings import Settings
-from src.ingestion.document_processor import DocumentProcessingError, DocumentProcessor
+from chatf1_agent.retrieval.vector_store import content_hash_id
+from chatf1_agent.settings import Settings
+from ingestion.document_processor import DocumentProcessingError, DocumentProcessor
 
 
 @pytest.mark.unit
@@ -65,9 +66,7 @@ class TestDocumentProcessor:
         processor = DocumentProcessor(test_settings)
 
         # Create a long document that will be chunked
-        long_text = " ".join(
-            ["This is sentence number {}.".format(i) for i in range(100)]
-        )
+        long_text = " ".join([f"This is sentence number {i}." for i in range(100)])
         docs = [Document(page_content=long_text, metadata={"source": "test"})]
 
         chunked = processor.chunk_documents(docs)
@@ -208,6 +207,46 @@ class TestDocumentProcessor:
         # Different content should have different hash
         assert hash1 != hash3
 
+    def test_hash_is_sha256_shared_with_vector_store(self, test_settings: Settings):
+        """Document hashes use the vector store's SHA-256 content-hash IDs."""
+        processor = DocumentProcessor(test_settings)
+
+        doc = Document(page_content="Shared identity", metadata={})
+        doc_hash = processor._hash_document(doc)
+
+        assert doc_hash == content_hash_id("Shared identity")
+        assert len(doc_hash) == 64  # SHA-256 hex digest, not MD5
+
+    def test_dedup_state_persists_across_instances(
+        self, test_settings: Settings, tmp_path
+    ):
+        """Seen hashes persist to disk and reload on the next run."""
+        state_path = tmp_path / "dedup_state.json"
+
+        first = DocumentProcessor(test_settings, dedup_state_path=state_path)
+        docs = [Document(page_content="Persisted doc", metadata={})]
+        assert len(first.deduplicate_documents(docs)) == 1
+        first.save_dedup_state()
+
+        second = DocumentProcessor(test_settings, dedup_state_path=state_path)
+        assert len(second.deduplicate_documents(docs)) == 0
+
+    def test_clear_dedup_cache_removes_persisted_state(
+        self, test_settings: Settings, tmp_path
+    ):
+        """Clearing the cache also deletes the persisted state file."""
+        state_path = tmp_path / "dedup_state.json"
+
+        processor = DocumentProcessor(test_settings, dedup_state_path=state_path)
+        processor.deduplicate_documents([Document(page_content="Doc", metadata={})])
+        processor.save_dedup_state()
+        assert state_path.exists()
+
+        processor.clear_deduplication_cache()
+
+        assert not state_path.exists()
+        assert len(processor._seen_hashes) == 0
+
     def test_clear_deduplication_cache(self, test_settings: Settings):
         """Test clearing deduplication cache."""
         processor = DocumentProcessor(test_settings)
@@ -246,7 +285,7 @@ class TestDocumentProcessor:
         processor = DocumentProcessor(test_settings)
 
         # Create long text that will be chunked
-        long_text = " ".join(["Sentence {}.".format(i) for i in range(200)])
+        long_text = " ".join([f"Sentence {i}." for i in range(200)])
         texts = [long_text]
 
         docs = processor.process_text_documents(texts, chunk=True)

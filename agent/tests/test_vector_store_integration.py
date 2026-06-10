@@ -1,161 +1,131 @@
-"""Integration tests for vector store operations.
+"""Tests for the vector store: deterministic IDs plus live integration.
 
-These tests require actual Pinecone credentials and will create/use a test index.
-Mark as integration tests to skip in unit test runs.
+The deterministic-ID tests run everywhere; the integration tests require
+real Pinecone credentials and skip themselves under dummy keys.
 """
 
 import pytest
 from langchain_core.documents import Document
 
-from src.config.settings import Settings
-from src.exceptions import VectorStoreError
-from src.vector_store.manager import VectorStoreManager
+from chatf1_agent.retrieval.vector_store import (
+    NAMESPACE_NEWS,
+    NAMESPACE_STATIC,
+    VectorStoreManager,
+    content_hash_id,
+)
+from chatf1_agent.settings import Settings
+
+from .conftest import has_real_api_keys
+
+
+@pytest.mark.unit
+class TestDeterministicIds:
+    """Tests for SHA-256 content-hash vector IDs."""
+
+    def test_same_content_same_id(self):
+        """Identical content always produces the same ID (idempotent upserts)."""
+        content = "Max Verstappen won the 2024 championship."
+
+        assert content_hash_id(content) == content_hash_id(content)
+
+    def test_different_content_different_id(self):
+        """Distinct content produces distinct IDs."""
+        first = content_hash_id("Hamilton won in 2020.")
+        second = content_hash_id("Verstappen won in 2021.")
+
+        assert first != second
+
+    def test_id_is_sha256_hex(self):
+        """IDs are 64-character hex SHA-256 digests."""
+        vector_id = content_hash_id("any content")
+
+        assert len(vector_id) == 64
+        assert all(c in "0123456789abcdef" for c in vector_id)
+
+    def test_known_digest(self):
+        """The hash matches a precomputed SHA-256 digest."""
+        assert content_hash_id("abc") == (
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        )
+
+
+@pytest.mark.unit
+class TestNamespaces:
+    """Tests for the namespace constants."""
+
+    def test_namespace_values(self):
+        """Namespaces match the architecture: static_corpus and news."""
+        assert NAMESPACE_STATIC == "static_corpus"
+        assert NAMESPACE_NEWS == "news"
+
+
+@pytest.mark.unit
+def test_manager_requires_credentials(monkeypatch: pytest.MonkeyPatch):
+    """Construction fails fast without Pinecone/OpenAI keys."""
+    monkeypatch.delenv("PINECONE_API_KEY", raising=False)
+    settings = Settings(_env_file=None)
+
+    with pytest.raises(ValueError, match="pinecone_api_key"):
+        VectorStoreManager(settings)
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestVectorStoreIntegration:
-    """Integration tests for VectorStoreManager."""
+    """Live Pinecone integration tests (skipped under dummy keys)."""
 
     @pytest.fixture
     async def vector_store(self, test_settings: Settings):
-        """Create vector store manager for testing."""
-        # Skip if no real API keys
-        if test_settings.pinecone_api_key.startswith("test-"):
-            pytest.skip("Skipping integration test - no real Pinecone API key")
+        """Initialized manager against the real index."""
+        if not has_real_api_keys():
+            pytest.skip("Skipping integration test - no real API keys")
 
         manager = VectorStoreManager(test_settings)
+        await manager.initialize()
+        yield manager
+        await manager.close()
 
-        try:
-            await manager.initialize()
-            yield manager
-        finally:
-            # Cleanup if needed
-            pass
+    async def test_health_check(self, vector_store: VectorStoreManager):
+        """The index reports healthy with the expected dimension."""
+        health = await vector_store.health_check()
 
-    async def test_vector_store_initialization(self, vector_store: VectorStoreManager):
-        """Test vector store can be initialized."""
-        assert vector_store is not None
-        assert vector_store.index_name is not None
+        assert health["status"] == "healthy"
+        assert health["dimension"] == vector_store.config.pinecone_dimension
 
     async def test_add_and_search_documents(self, vector_store: VectorStoreManager):
-        """Test adding documents and searching."""
-        # Create test documents
+        """Documents upsert deterministically and are searchable."""
         docs = [
             Document(
                 page_content="Lewis Hamilton won the 2020 F1 World Championship.",
-                metadata={
-                    "year": 2020,
-                    "category": "championship",
-                    "driver": "hamilton",
-                },
-            ),
-            Document(
-                page_content="Max Verstappen won the 2021 F1 World Championship.",
-                metadata={
-                    "year": 2021,
-                    "category": "championship",
-                    "driver": "verstappen",
-                },
-            ),
-        ]
-
-        # Add documents
-        doc_ids = await vector_store.add_documents(docs)
-
-        assert len(doc_ids) == 2
-
-        # Search for documents
-        results = await vector_store.similarity_search(
-            query="Who won the 2021 championship?", top_k=2
-        )
-
-        assert len(results) > 0
-        # Should find Verstappen document
-        assert any("Verstappen" in doc.page_content for doc in results)
-
-    async def test_search_with_metadata_filter(self, vector_store: VectorStoreManager):
-        """Test searching with metadata filters."""
-        # Add test documents
-        docs = [
-            Document(
-                page_content="2020 championship data",
                 metadata={"year": 2020, "category": "championship"},
             ),
             Document(
-                page_content="2021 championship data",
+                page_content="Max Verstappen won the 2021 F1 World Championship.",
                 metadata={"year": 2021, "category": "championship"},
             ),
         ]
 
-        await vector_store.add_documents(docs)
+        ids = await vector_store.add_documents(docs, namespace=NAMESPACE_STATIC)
 
-        # Search with year filter
+        assert sorted(ids) == sorted(content_hash_id(doc.page_content) for doc in docs)
+
         results = await vector_store.similarity_search(
-            query="championship", top_k=5, filters={"year": 2021}
+            query="Who won the 2021 championship?",
+            k=2,
+            namespace=NAMESPACE_STATIC,
         )
 
-        # Should only return 2021 documents
-        for doc in results:
-            if "year" in doc.metadata:
-                assert doc.metadata["year"] == 2021
+        assert len(results) > 0
+        assert any("Verstappen" in doc.page_content for doc in results)
 
-    async def test_health_check(self, vector_store: VectorStoreManager):
-        """Test health check functionality."""
-        is_healthy = await vector_store.health_check()
+    async def test_reingest_does_not_duplicate(self, vector_store: VectorStoreManager):
+        """Upserting the same document twice yields the same vector ID."""
+        doc = Document(
+            page_content="Monaco Grand Prix is held on the streets of Monte Carlo.",
+            metadata={"category": "circuit"},
+        )
 
-        assert is_healthy is True
+        first = await vector_store.add_documents([doc], namespace=NAMESPACE_STATIC)
+        second = await vector_store.add_documents([doc], namespace=NAMESPACE_STATIC)
 
-    async def test_get_stats(self, vector_store: VectorStoreManager):
-        """Test getting vector store statistics."""
-        stats = await vector_store.get_stats()
-
-        assert "total_vectors" in stats or "dimension" in stats
-        assert isinstance(stats, dict)
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-class TestVectorStoreErrorHandling:
-    """Integration tests for error handling."""
-
-    async def test_invalid_api_key(self):
-        """Test handling of invalid API key."""
-        import os
-
-        from src.config.settings import Settings
-
-        # Create settings with invalid key
-        os.environ["PINECONE_API_KEY"] = "invalid_key"
-        os.environ["OPENAI_API_KEY"] = "test-key"
-        os.environ["PINECONE_ENVIRONMENT"] = "test"
-        os.environ["TAVILY_API_KEY"] = "test-key"
-
-        from src.config.settings import get_settings
-
-        get_settings.cache_clear()
-
-        settings = Settings()
-
-        # Should raise error on initialization
-        with pytest.raises(VectorStoreError):
-            manager = VectorStoreManager(settings)
-            await manager.initialize()
-
-    async def test_search_empty_query(self, test_settings: Settings):
-        """Test searching with empty query."""
-        if test_settings.pinecone_api_key.startswith("test-"):
-            pytest.skip("Skipping integration test - no real Pinecone API key")
-
-        manager = VectorStoreManager(test_settings)
-        await manager.initialize()
-
-        # Empty query should handle gracefully
-        results = await manager.similarity_search(query="", top_k=5)
-
-        # Should return empty or handle gracefully
-        assert isinstance(results, list)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-m", "integration"])
+        assert first == second
