@@ -1,15 +1,22 @@
-"""Document processing for text chunking and metadata extraction."""
+"""Document processing for text chunking, deduplication, and metadata extraction.
 
-import hashlib
+Deduplication uses the same SHA-256 content hash as the vector store's
+deterministic IDs and persists seen hashes between runs, so repeated
+ingestion is idempotent.
+"""
+
+import json
 import re
-from typing import Any, Dict, List, Optional, Set
+from pathlib import Path
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from src.config.settings import Settings
-from src.exceptions import ChatFormula1Error
+from chatf1_agent.exceptions import ChatFormula1Error
+from chatf1_agent.retrieval.vector_store import content_hash_id
+from chatf1_agent.settings import Settings
 
 logger = structlog.get_logger(__name__)
 
@@ -26,18 +33,27 @@ class DocumentProcessor:
     Handles:
     - Text chunking with semantic overlap
     - Metadata extraction from source data
-    - Document deduplication
+    - Document deduplication with persisted state
     - Content cleaning and normalization
     """
 
-    def __init__(self, config: Settings):
+    def __init__(
+        self,
+        config: Settings,
+        dedup_state_path: str | Path | None = None,
+    ):
         """Initialize DocumentProcessor.
 
         Args:
             config: Application settings containing chunk size and overlap
+            dedup_state_path: Optional JSON file used to persist seen content
+                hashes between runs (idempotent re-ingestion)
         """
         self.config = config
         self.logger = logger.bind(component="document_processor")
+        self.dedup_state_path = (
+            Path(dedup_state_path) if dedup_state_path is not None else None
+        )
 
         # Initialize text splitter with semantic chunking
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -55,20 +71,54 @@ class DocumentProcessor:
             is_separator_regex=False,
         )
 
-        # Track seen document hashes for deduplication
-        self._seen_hashes: Set[str] = set()
+        # Track seen document hashes for deduplication (persisted if a
+        # state path is configured)
+        self._seen_hashes: set[str] = self._load_dedup_state()
 
         self.logger.info(
             "document_processor_initialized",
             chunk_size=config.chunk_size,
             chunk_overlap=config.chunk_overlap,
+            persisted_hashes=len(self._seen_hashes),
+        )
+
+    def _load_dedup_state(self) -> set[str]:
+        """Load persisted dedup hashes from disk, if configured."""
+        if self.dedup_state_path is None or not self.dedup_state_path.exists():
+            return set()
+
+        try:
+            hashes = json.loads(self.dedup_state_path.read_text(encoding="utf-8"))
+            return set(hashes)
+        except (json.JSONDecodeError, OSError) as e:
+            self.logger.warning(
+                "dedup_state_load_failed",
+                path=str(self.dedup_state_path),
+                error=str(e),
+            )
+            return set()
+
+    def save_dedup_state(self) -> None:
+        """Persist seen content hashes to disk, if configured."""
+        if self.dedup_state_path is None:
+            return
+
+        self.dedup_state_path.parent.mkdir(parents=True, exist_ok=True)
+        self.dedup_state_path.write_text(
+            json.dumps(sorted(self._seen_hashes)),
+            encoding="utf-8",
+        )
+        self.logger.info(
+            "dedup_state_saved",
+            path=str(self.dedup_state_path),
+            hashes=len(self._seen_hashes),
         )
 
     def process_race_results(
         self,
-        race_data: List[Dict[str, Any]],
+        race_data: list[dict[str, Any]],
         chunk: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Process race result data into documents.
 
         Args:
@@ -78,7 +128,7 @@ class DocumentProcessor:
         Returns:
             List of LangChain Document objects
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         self.logger.info("processing_race_results", total_records=len(race_data))
 
@@ -118,8 +168,8 @@ class DocumentProcessor:
 
     def process_driver_data(
         self,
-        driver_data: List[Dict[str, Any]],
-    ) -> List[Document]:
+        driver_data: list[dict[str, Any]],
+    ) -> list[Document]:
         """Process driver data into documents.
 
         Args:
@@ -128,7 +178,7 @@ class DocumentProcessor:
         Returns:
             List of LangChain Document objects
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         self.logger.info("processing_driver_data", total_drivers=len(driver_data))
 
@@ -164,8 +214,8 @@ class DocumentProcessor:
 
     def process_race_info(
         self,
-        race_data: List[Dict[str, Any]],
-    ) -> List[Document]:
+        race_data: list[dict[str, Any]],
+    ) -> list[Document]:
         """Process race information into documents.
 
         Args:
@@ -174,7 +224,7 @@ class DocumentProcessor:
         Returns:
             List of LangChain Document objects
         """
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         self.logger.info("processing_race_info", total_races=len(race_data))
 
@@ -210,10 +260,10 @@ class DocumentProcessor:
 
     def process_text_documents(
         self,
-        texts: List[str],
-        metadatas: Optional[List[Dict[str, Any]]] = None,
+        texts: list[str],
+        metadatas: list[dict[str, Any]] | None = None,
         chunk: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Process raw text documents.
 
         Args:
@@ -229,7 +279,7 @@ class DocumentProcessor:
                 f"Metadata count ({len(metadatas)}) must match text count ({len(texts)})"
             )
 
-        documents: List[Document] = []
+        documents: list[Document] = []
 
         for idx, text in enumerate(texts):
             metadata = metadatas[idx] if metadatas else {}
@@ -261,8 +311,8 @@ class DocumentProcessor:
 
     def chunk_documents(
         self,
-        documents: List[Document],
-    ) -> List[Document]:
+        documents: list[Document],
+    ) -> list[Document]:
         """Chunk documents using semantic text splitter.
 
         Args:
@@ -290,8 +340,8 @@ class DocumentProcessor:
 
     def deduplicate_documents(
         self,
-        documents: List[Document],
-    ) -> List[Document]:
+        documents: list[Document],
+    ) -> list[Document]:
         """Remove duplicate documents based on content hash.
 
         Args:
@@ -300,7 +350,7 @@ class DocumentProcessor:
         Returns:
             List of unique documents
         """
-        unique_docs: List[Document] = []
+        unique_docs: list[Document] = []
         duplicates_found = 0
 
         for doc in documents:
@@ -322,7 +372,7 @@ class DocumentProcessor:
 
         return unique_docs
 
-    def _create_race_result_text(self, record: Dict[str, Any]) -> str:
+    def _create_race_result_text(self, record: dict[str, Any]) -> str:
         """Create narrative text from race result record.
 
         Args:
@@ -372,7 +422,7 @@ class DocumentProcessor:
 
         return ". ".join(parts) + "."
 
-    def _create_driver_text(self, driver: Dict[str, Any]) -> str:
+    def _create_driver_text(self, driver: dict[str, Any]) -> str:
         """Create narrative text from driver data.
 
         Args:
@@ -402,7 +452,7 @@ class DocumentProcessor:
 
         return ". ".join(parts) + "."
 
-    def _create_race_info_text(self, race: Dict[str, Any]) -> str:
+    def _create_race_info_text(self, race: dict[str, Any]) -> str:
         """Create narrative text from race information.
 
         Args:
@@ -436,7 +486,7 @@ class DocumentProcessor:
 
         return ". ".join(parts) + "."
 
-    def _extract_race_metadata(self, record: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_race_metadata(self, record: dict[str, Any]) -> dict[str, Any]:
         """Extract metadata from race result record.
 
         Args:
@@ -469,7 +519,7 @@ class DocumentProcessor:
 
         return metadata
 
-    def _extract_driver_metadata(self, driver: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_driver_metadata(self, driver: dict[str, Any]) -> dict[str, Any]:
         """Extract metadata from driver data.
 
         Args:
@@ -494,7 +544,7 @@ class DocumentProcessor:
 
         return metadata
 
-    def _extract_race_info_metadata(self, race: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_race_info_metadata(self, race: dict[str, Any]) -> dict[str, Any]:
         """Extract metadata from race information.
 
         Args:
@@ -544,24 +594,28 @@ class DocumentProcessor:
         return text
 
     def _hash_document(self, doc: Document) -> str:
-        """Generate hash for document content.
+        """Generate the SHA-256 content hash for a document.
+
+        Uses the same hash as the vector store's deterministic IDs, so the
+        dedup state and the index agree on document identity.
 
         Args:
             doc: Document to hash
 
         Returns:
-            MD5 hash of document content
+            SHA-256 hash of document content
         """
-        content = doc.page_content.encode("utf-8")
-        return hashlib.md5(content).hexdigest()
+        return content_hash_id(doc.page_content)
 
     def clear_deduplication_cache(self) -> None:
-        """Clear the deduplication cache."""
+        """Clear the deduplication cache and any persisted state."""
         cache_size = len(self._seen_hashes)
         self._seen_hashes.clear()
+        if self.dedup_state_path is not None and self.dedup_state_path.exists():
+            self.dedup_state_path.unlink()
         self.logger.info("deduplication_cache_cleared", entries_removed=cache_size)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get processing statistics.
 
         Returns:

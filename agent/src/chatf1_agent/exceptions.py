@@ -1,10 +1,10 @@
-"""Base exception classes and error handling framework."""
+"""Exception hierarchy for the agent service."""
 
-from typing import Any, Optional
+from typing import Any
 
 
 class ChatFormula1Error(Exception):
-    """Base exception for all ChatFormula1 application errors.
+    """Base exception for all agent errors.
 
     Attributes:
         message: Human-readable error message
@@ -15,8 +15,8 @@ class ChatFormula1Error(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[dict[str, Any]] = None,
-        original_error: Optional[Exception] = None,
+        details: dict[str, Any] | None = None,
+        original_error: Exception | None = None,
     ) -> None:
         """Initialize the exception.
 
@@ -46,95 +46,12 @@ class ChatFormula1Error(Exception):
         )
 
 
-class ConfigurationError(ChatFormula1Error):
-    """Raised when there are configuration-related errors.
-
-    Examples:
-        - Missing required environment variables
-        - Invalid configuration values
-        - Configuration validation failures
-    """
-
-    pass
-
-
 class VectorStoreError(ChatFormula1Error):
-    """Raised when there are errors related to Pinecone vector store operations.
-
-    Examples:
-        - Connection failures
-        - Index not found
-        - Upsert/query failures
-        - Embedding generation errors
-    """
-
-    pass
+    """Raised on Pinecone vector store failures (connection, index, query)."""
 
 
 class SearchAPIError(ChatFormula1Error):
-    """Raised when there are errors related to Tavily Search API.
-
-    Examples:
-        - API connection failures
-        - Rate limit exceeded
-        - Invalid search queries
-        - Response parsing errors
-    """
-
-    pass
-
-
-class LLMError(ChatFormula1Error):
-    """Raised when there are errors related to OpenAI LLM operations.
-
-    Examples:
-        - API connection failures
-        - Rate limit exceeded
-        - Invalid prompts
-        - Generation failures
-        - Token limit exceeded
-    """
-
-    pass
-
-
-class AgentError(ChatFormula1Error):
-    """Raised when there are errors in LangGraph agent execution.
-
-    Examples:
-        - State machine errors
-        - Tool execution failures
-        - Invalid state transitions
-        - Node execution errors
-    """
-
-    pass
-
-
-class DataIngestionError(ChatFormula1Error):
-    """Raised when there are errors during data ingestion pipeline.
-
-    Examples:
-        - Data loading failures
-        - Document processing errors
-        - Metadata extraction failures
-        - Batch processing errors
-    """
-
-    pass
-
-
-class ValidationError(ChatFormula1Error):
-    """Raised when data validation fails.
-
-    Examples:
-        - Invalid input format
-        - Schema validation failures
-        - Type mismatches
-        - Constraint violations
-    """
-
-    pass
+    """Raised on Tavily Search API failures (connection, query, parsing)."""
 
 
 class RateLimitError(ChatFormula1Error):
@@ -147,9 +64,9 @@ class RateLimitError(ChatFormula1Error):
     def __init__(
         self,
         message: str,
-        retry_after: Optional[int] = None,
-        details: Optional[dict[str, Any]] = None,
-        original_error: Optional[Exception] = None,
+        retry_after: int | None = None,
+        details: dict[str, Any] | None = None,
+        original_error: Exception | None = None,
     ) -> None:
         """Initialize the rate limit error.
 
@@ -161,27 +78,3 @@ class RateLimitError(ChatFormula1Error):
         """
         super().__init__(message, details, original_error)
         self.retry_after = retry_after
-
-
-class TimeoutError(ChatFormula1Error):
-    """Raised when operations exceed timeout limits.
-
-    Examples:
-        - API request timeouts
-        - Database query timeouts
-        - Long-running operations
-    """
-
-    pass
-
-
-class AuthenticationError(ChatFormula1Error):
-    """Raised when authentication fails.
-
-    Examples:
-        - Invalid API keys
-        - Expired credentials
-        - Unauthorized access
-    """
-
-    pass

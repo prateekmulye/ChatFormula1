@@ -1,23 +1,22 @@
 """Ingestion pipeline orchestration for F1 knowledge base."""
 
-import asyncio
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import structlog
 from langchain_core.documents import Document
 
-from src.config.settings import Settings, get_settings
-from src.exceptions import ChatFormula1Error
-from src.ingestion.data_loader import (
+from chatf1_agent.exceptions import ChatFormula1Error
+from chatf1_agent.retrieval.vector_store import NAMESPACE_STATIC, VectorStoreManager
+from chatf1_agent.settings import Settings, get_settings
+from ingestion.data_loader import (
     DataLoader,
     DriverSchema,
     RaceResultSchema,
     RaceSchema,
 )
-from src.ingestion.document_processor import DocumentProcessor
-from src.ingestion.metadata_enricher import MetadataEnricher
-from src.vector_store.manager import VectorStoreManager
+from ingestion.document_processor import DocumentProcessor
+from ingestion.metadata_enricher import MetadataEnricher
 
 logger = structlog.get_logger(__name__)
 
@@ -46,8 +45,8 @@ class IngestionPipeline:
 
     def __init__(
         self,
-        config: Optional[Settings] = None,
-        data_dir: Optional[Union[str, Path]] = None,
+        config: Settings | None = None,
+        data_dir: str | Path | None = None,
     ):
         """Initialize IngestionPipeline.
 
@@ -58,14 +57,17 @@ class IngestionPipeline:
         self.config = config or get_settings()
         self.logger = logger.bind(component="ingestion_pipeline")
 
-        # Initialize components
+        # Initialize components (dedup state persists next to the data)
         self.data_loader = DataLoader(data_dir)
-        self.document_processor = DocumentProcessor(self.config)
+        dedup_state_path = self.data_loader.data_dir / ".dedup_state.json"
+        self.document_processor = DocumentProcessor(
+            self.config, dedup_state_path=dedup_state_path
+        )
         self.metadata_enricher = MetadataEnricher()
-        self.vector_store: Optional[VectorStoreManager] = None
+        self.vector_store: VectorStoreManager | None = None
 
         # Track ingestion progress
-        self._progress = {
+        self._progress: dict[str, Any] = {
             "total_files": 0,
             "files_processed": 0,
             "total_documents": 0,
@@ -93,12 +95,12 @@ class IngestionPipeline:
 
     async def ingest_all(
         self,
-        race_results_file: Optional[str] = "historical_features.csv",
-        drivers_file: Optional[str] = "drivers.json",
-        races_file: Optional[str] = "races.json",
+        race_results_file: str | None = "historical_features.csv",
+        drivers_file: str | None = "drivers.json",
+        races_file: str | None = "races.json",
         batch_size: int = 100,
         show_progress: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ingest all F1 data sources into vector store.
 
         Args:
@@ -125,7 +127,7 @@ class IngestionPipeline:
         if self.vector_store is None:
             await self.initialize_vector_store()
 
-        all_documents: List[Document] = []
+        all_documents: list[Document] = []
 
         # Ingest race results
         if race_results_file:
@@ -174,11 +176,13 @@ class IngestionPipeline:
                 assert self.vector_store is not None
                 ids = await self.vector_store.add_documents(
                     documents=all_documents,
+                    namespace=NAMESPACE_STATIC,
                     batch_size=batch_size,
                     show_progress=show_progress,
                 )
 
                 self._progress["documents_ingested"] = len(ids)
+                self.document_processor.save_dedup_state()
 
                 self.logger.info(
                     "vector_store_ingestion_complete", documents_ingested=len(ids)
@@ -203,7 +207,7 @@ class IngestionPipeline:
         source_type: str = "auto",
         batch_size: int = 100,
         overwrite: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ingest data from a specific source file or directory.
 
         Args:
@@ -240,7 +244,7 @@ class IngestionPipeline:
             else:
                 source_type = "text"
 
-        all_documents: List[Document] = []
+        all_documents: list[Document] = []
 
         try:
             # Process based on source type and file name
@@ -273,11 +277,13 @@ class IngestionPipeline:
                 assert self.vector_store is not None
                 ids = await self.vector_store.add_documents(
                     documents=all_documents,
+                    namespace=NAMESPACE_STATIC,
                     batch_size=batch_size,
                     show_progress=True,
                 )
 
                 self._progress["documents_ingested"] = len(ids)
+                self.document_processor.save_dedup_state()
 
                 self.logger.info(
                     "source_ingestion_complete",
@@ -294,9 +300,9 @@ class IngestionPipeline:
 
     async def ingest_incremental(
         self,
-        file_paths: List[str],
+        file_paths: list[str],
         batch_size: int = 100,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Ingest only files that have been modified since last load.
 
         Args:
@@ -317,7 +323,7 @@ class IngestionPipeline:
         if self.vector_store is None:
             await self.initialize_vector_store()
 
-        all_documents: List[Document] = []
+        all_documents: list[Document] = []
         files_updated = 0
 
         for file_path in file_paths:
@@ -360,11 +366,13 @@ class IngestionPipeline:
                 assert self.vector_store is not None
                 ids = await self.vector_store.add_documents(
                     documents=all_documents,
+                    namespace=NAMESPACE_STATIC,
                     batch_size=batch_size,
                     show_progress=True,
                 )
 
                 self._progress["documents_ingested"] = len(ids)
+                self.document_processor.save_dedup_state()
 
             except Exception as e:
                 error_msg = f"Failed to upsert to vector store: {e}"
@@ -383,7 +391,7 @@ class IngestionPipeline:
         self,
         file_path: str,
         show_progress: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Ingest race results from CSV file.
 
         Args:
@@ -426,7 +434,7 @@ class IngestionPipeline:
         self,
         file_path: str,
         show_progress: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Ingest driver data from JSON file.
 
         Args:
@@ -470,7 +478,7 @@ class IngestionPipeline:
         self,
         file_path: str,
         show_progress: bool = True,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Ingest race information from JSON file.
 
         Args:
@@ -510,7 +518,7 @@ class IngestionPipeline:
 
         return documents
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get ingestion pipeline statistics.
 
         Returns:

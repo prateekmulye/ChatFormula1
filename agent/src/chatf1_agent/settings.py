@@ -1,15 +1,24 @@
-"""Pydantic-based configuration management with environment variable loading."""
+"""Application settings loaded from environment variables.
+
+API keys default to empty strings so importing any module — and running the
+test suite — never requires credentials. Code that actually talks to an
+external service calls :meth:`Settings.require` at construction time.
+"""
 
 import json
 from functools import lru_cache
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Agent service settings.
+
+    Never instantiate at import time; call :func:`get_settings` inside the
+    code paths that need configuration.
+    """
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -18,11 +27,23 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # OpenAI Configuration
-    openai_api_key: str = Field(..., description="OpenAI API key")
-    openai_model: str = Field(
-        default="gpt-4-turbo",
-        description="OpenAI model to use for generation",
+    # Credentials (validated lazily via `require`, never at import time)
+    openai_api_key: str = Field(default="", description="OpenAI API key")
+    pinecone_api_key: str = Field(default="", description="Pinecone API key")
+    tavily_api_key: str = Field(default="", description="Tavily Search API key")
+    internal_api_token: str = Field(
+        default="",
+        description="Static bearer token required on all /internal routes",
+    )
+
+    # LLM configuration (gpt-4o-mini for both generation and analysis)
+    generation_model: str = Field(
+        default="gpt-4o-mini",
+        description="Model used for answer generation",
+    )
+    analysis_model: str = Field(
+        default="gpt-4o-mini",
+        description="Model used for structured query analysis",
     )
     openai_embedding_model: str = Field(
         default="text-embedding-3-small",
@@ -32,36 +53,26 @@ class Settings(BaseSettings):
         default=0.7,
         ge=0.0,
         le=2.0,
-        description="Temperature for LLM generation",
+        description="Temperature for answer generation",
     )
-    openai_max_tokens: Optional[int] = Field(
+    openai_max_tokens: int = Field(
         default=1000,
         ge=100,
         le=4000,
         description="Maximum tokens for LLM completion",
     )
-    openai_streaming: bool = Field(
-        default=True,
-        description="Enable streaming responses for faster perceived performance",
-    )
 
-    # Pinecone Configuration
-    pinecone_api_key: str = Field(..., description="Pinecone API key")
-    pinecone_environment: Optional[str] = Field(
-        default=None,
-        description="Pinecone environment (deprecated in v3.0+, kept for compatibility)",
-    )
+    # Pinecone
     pinecone_index_name: str = Field(
         default="f1-knowledge",
         description="Pinecone index name",
     )
     pinecone_dimension: int = Field(
         default=1536,
-        description="Embedding dimension for Pinecone index",
+        description="Embedding dimension for the Pinecone index",
     )
 
-    # Tavily Configuration
-    tavily_api_key: str = Field(..., description="Tavily Search API key")
+    # Tavily
     tavily_max_results: int = Field(
         default=5,
         ge=1,
@@ -70,9 +81,9 @@ class Settings(BaseSettings):
     )
     tavily_search_depth: Literal["basic", "advanced"] = Field(
         default="advanced",
-        description="Tavily search depth (advanced includes more sources)",
+        description="Tavily search depth",
     )
-    tavily_include_domains: Union[str, list[str]] = Field(
+    tavily_include_domains: str | list[str] = Field(
         default_factory=lambda: [
             "formula1.com",
             "fia.com",
@@ -86,60 +97,34 @@ class Settings(BaseSettings):
         ],
         description="Preferred domains for F1 news (empty list = all domains)",
     )
-    tavily_exclude_domains: Union[str, list[str]] = Field(
+    tavily_exclude_domains: str | list[str] = Field(
         default_factory=list,
         description="Domains to exclude from search results",
     )
-    tavily_include_answer: bool = Field(
-        default=True,
-        description="Include AI-generated answer in search results",
-    )
-    tavily_include_raw_content: bool = Field(
-        default=True,
-        description="Include raw content for ingestion into vector DB",
-    )
-    tavily_include_images: bool = Field(
-        default=False,
-        description="Include images in search results",
-    )
-    tavily_max_crawl_depth: int = Field(
-        default=2,
-        ge=1,
-        le=5,
-        description="Maximum depth for Tavily crawl operations",
-    )
 
-    # Application Configuration
+    # Application
     app_name: str = Field(default="ChatFormula1", description="Application name")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",
         description="Logging level",
     )
+    environment: Literal["development", "test", "staging", "production"] = Field(
+        default="development",
+        description="Application environment",
+    )
     max_conversation_history: int = Field(
         default=10,
         ge=1,
         le=50,
-        description="Maximum conversation history to maintain",
-    )
-    environment: Literal["development", "staging", "production"] = Field(
-        default="development",
-        description="Application environment",
+        description="Maximum history messages forwarded to the LLM",
     )
 
-    # API Configuration
-    api_host: str = Field(default="0.0.0.0", description="API host")
-    api_port: int = Field(default=8000, ge=1024, le=65535, description="API port")
-    api_reload: bool = Field(
-        default=True,
-        description="Enable auto-reload for development",
-    )
-
-    # RAG Configuration
+    # RAG
     vector_search_top_k: int = Field(
         default=5,
         ge=1,
         le=20,
-        description="Number of documents to retrieve from vector store",
+        description="Number of documents to retrieve from the vector store",
     )
     chunk_size: int = Field(
         default=1000,
@@ -154,142 +139,62 @@ class Settings(BaseSettings):
         description="Overlap between document chunks",
     )
 
-    # Retry Configuration
-    max_retries: int = Field(
-        default=3,
-        ge=1,
-        le=10,
-        description="Maximum retry attempts for API calls",
-    )
-    retry_delay: float = Field(
-        default=1.0,
-        ge=0.1,
-        le=10.0,
-        description="Initial delay between retries in seconds",
-    )
-
-    # Security Configuration
-    enable_rate_limiting: bool = Field(
-        default=True,
-        description="Enable rate limiting for API endpoints",
-    )
-    rate_limit_per_minute: int = Field(
-        default=60,
-        ge=1,
-        le=1000,
-        description="Maximum requests per minute per client",
-    )
-    rate_limit_per_hour: int = Field(
-        default=1000,
-        ge=1,
-        le=10000,
-        description="Maximum requests per hour per client",
-    )
-    enable_input_validation: bool = Field(
-        default=True,
-        description="Enable input validation and sanitization",
-    )
-    strict_input_validation: bool = Field(
-        default=False,
-        description="Use strict input validation (more restrictive)",
-    )
-    max_query_length: int = Field(
-        default=2000,
-        ge=100,
-        le=10000,
-        description="Maximum query length in characters",
-    )
-    enable_cors: bool = Field(
-        default=True,
-        description="Enable CORS middleware",
-    )
-    cors_allow_origins: Union[str, list[str]] = Field(
-        default_factory=lambda: [
-            "http://localhost:3000",
-            "http://localhost:8501",
-            "http://localhost:8000",
-        ],
-        description="Allowed CORS origins",
-    )
-    require_api_key: bool = Field(
-        default=False,
-        description="Require API key for all endpoints (except public paths)",
-    )
-    api_key_header_name: str = Field(
-        default="X-API-Key",
-        description="Header name for API key",
-    )
-
-    @field_validator("openai_api_key", "pinecone_api_key", "tavily_api_key")
-    @classmethod
-    def validate_api_keys(cls, v: str, info) -> str:
-        """Validate that API keys are not empty or placeholder values."""
-        if not v or v.startswith("your_") or v == "":
-            raise ValueError(
-                f"{info.field_name} must be set to a valid API key. "
-                f"Please update your .env file."
-            )
-        return v
-
     @field_validator(
-        "cors_allow_origins",
         "tavily_include_domains",
         "tavily_exclude_domains",
         mode="before",
     )
     @classmethod
-    def parse_string_lists(cls, v):
-        """Parse list fields from environment variables.
-
-        Supports:
-        - List objects (from code): ["item1", "item2"]
-        - JSON strings: '["item1","item2"]'
-        - Comma-separated: "item1,item2"
-        - Single string: "*" or "item1"
-        - Empty string: returns empty list
-        """
+    def parse_string_lists(cls, v: object) -> object:
+        """Parse list fields from JSON, comma-separated, or single-value env strings."""
         if isinstance(v, list):
             return v
         if isinstance(v, str):
             v = v.strip()
-            # Handle empty string
             if not v:
                 return []
-            # Handle wildcard (for CORS)
-            if v == "*":
-                return ["*"]
-            # Try parsing as JSON
             if v.startswith("["):
                 try:
                     return json.loads(v)
                 except json.JSONDecodeError:
                     pass
-            # Try comma-separated
             if "," in v:
                 return [item.strip() for item in v.split(",") if item.strip()]
-            # Single value
             return [v]
         return v if v is not None else []
 
     @property
     def is_development(self) -> bool:
-        """Check if running in development environment."""
+        """Check if running in the development environment."""
         return self.environment == "development"
 
     @property
     def is_production(self) -> bool:
-        """Check if running in production environment."""
+        """Check if running in the production environment."""
         return self.environment == "production"
 
+    def require(self, *fields: str) -> None:
+        """Raise if any of the named credential fields is unset.
 
-@lru_cache()
+        Args:
+            *fields: Settings field names that must be non-empty.
+
+        Raises:
+            ValueError: If a required credential is missing or a placeholder.
+        """
+        missing = [
+            name
+            for name in fields
+            if not getattr(self, name) or str(getattr(self, name)).startswith("your_")
+        ]
+        if missing:
+            raise ValueError(
+                f"Missing required settings: {', '.join(missing)}. "
+                "Set them in the environment or .env file."
+            )
+
+
+@lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance.
-
-    Returns:
-        Settings: Application settings instance
-
-    Raises:
-        ValidationError: If configuration is invalid
-    """
+    """Get the cached settings instance."""
     return Settings()

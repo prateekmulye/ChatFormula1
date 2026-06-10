@@ -1,91 +1,61 @@
-"""Structured logging configuration using structlog with JSON formatting."""
+"""Structured logging configuration using structlog."""
 
 import logging
 import sys
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import Any, cast
 
 import structlog
 from structlog.types import EventDict, Processor
 
-from .settings import Settings
-
-# Context variables for request correlation
-request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
-session_id_var: ContextVar[Optional[str]] = ContextVar("session_id", default=None)
+# Context variable for request correlation
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 
 def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
-    """Add application context to log entries.
-
-    Args:
-        logger: Logger instance
-        method_name: Method name being called
-        event_dict: Event dictionary
-
-    Returns:
-        EventDict: Updated event dictionary with app context
-    """
-    event_dict["app"] = "chatformula1"
+    """Add application context to log entries."""
+    event_dict["app"] = "chatf1-agent"
     return event_dict
 
 
-def add_correlation_ids(
-    logger: Any, method_name: str, event_dict: EventDict
-) -> EventDict:
-    """Add correlation IDs (request_id, session_id) to log entries.
-
-    Args:
-        logger: Logger instance
-        method_name: Method name being called
-        event_dict: Event dictionary
-
-    Returns:
-        EventDict: Updated event dictionary with correlation IDs
-    """
+def add_request_id(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
+    """Add the correlation request_id to log entries when set."""
     request_id = request_id_var.get()
     if request_id:
         event_dict["request_id"] = request_id
-
-    session_id = session_id_var.get()
-    if session_id:
-        event_dict["session_id"] = session_id
-
     return event_dict
 
 
-def setup_logging(log_level: str) -> None:
-    """Configure structured logging with JSON formatting."""
-    settings = Settings()
-    # Configure standard library logging
+def setup_logging(log_level: str, json_output: bool = True) -> None:
+    """Configure structured logging.
+
+    Args:
+        log_level: Standard logging level name (e.g. "INFO").
+        json_output: Emit JSON lines (production) instead of pretty console output.
+    """
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=getattr(logging, log_level.upper()),
     )
 
-    # Define processors based on environment
     processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
         add_app_context,
-        add_correlation_ids,
+        add_request_id,
         structlog.processors.StackInfoRenderer(),
     ]
 
-    # Add exception formatting
-    if settings.is_development:
-        # Pretty console output for development
-        processors.extend([structlog.dev.ConsoleRenderer(colors=True)])
-    else:
-        # JSON output for production
+    if json_output:
         processors.extend(
             [structlog.processors.format_exc_info, structlog.processors.JSONRenderer()]
         )
+    else:
+        processors.append(structlog.dev.ConsoleRenderer(colors=True))
 
-    # Configure structlog
     structlog.configure(
         processors=processors,
         wrapper_class=structlog.stdlib.BoundLogger,
@@ -99,33 +69,19 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     """Get a configured logger instance.
 
     Args:
-        name: Logger name (typically __name__)
+        name: Logger name (typically ``__name__``).
 
     Returns:
-        BoundLogger: Configured logger instance
+        BoundLogger: Configured logger instance.
     """
-    return structlog.get_logger(name)
+    return cast(structlog.stdlib.BoundLogger, structlog.get_logger(name))
 
 
 def set_request_id(request_id: str) -> None:
-    """Set the request ID for the current context.
-
-    Args:
-        request_id: Unique request identifier
-    """
+    """Set the request ID for the current context."""
     request_id_var.set(request_id)
 
 
-def set_session_id(session_id: str) -> None:
-    """Set the session ID for the current context.
-
-    Args:
-        session_id: Unique session identifier
-    """
-    session_id_var.set(session_id)
-
-
-def clear_context() -> None:
-    """Clear all context variables."""
+def clear_request_id() -> None:
+    """Clear the request ID for the current context."""
     request_id_var.set(None)
-    session_id_var.set(None)

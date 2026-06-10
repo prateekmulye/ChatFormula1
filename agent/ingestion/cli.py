@@ -2,15 +2,13 @@
 
 import asyncio
 import sys
-from pathlib import Path
-from typing import Optional
 
 import click
 import structlog
 
-from src.config.logging import setup_logging
-from src.config.settings import get_settings
-from src.ingestion.pipeline import IngestionPipeline
+from chatf1_agent.logging import setup_logging
+from chatf1_agent.settings import get_settings
+from ingestion.pipeline import IngestionPipeline
 
 logger = structlog.get_logger(__name__)
 
@@ -34,8 +32,8 @@ def cli(ctx: click.Context, log_level: str, data_dir: str) -> None:
 
     Ingest F1 data into Pinecone vector store for RAG pipeline.
     """
-    # Setup logging
-    setup_logging(log_level)
+    # Setup logging (pretty console output for CLI use)
+    setup_logging(log_level, json_output=False)
 
     # Store in context
     ctx.ensure_object(dict)
@@ -162,7 +160,7 @@ def ingest_incremental(
     been updated since the last ingestion.
 
     Example:
-        python -m src.ingestion.cli ingest-incremental data/*.json data/*.csv
+        python -m ingestion.cli ingest-incremental data/*.json data/*.csv
     """
     data_dir = ctx.obj["data_dir"]
 
@@ -318,7 +316,7 @@ def check_config(ctx: click.Context) -> None:
             click.echo(f"  Environment: {config.environment}")
             click.echo(f"  Log level: {config.log_level}")
             click.echo(f"  Pinecone index: {config.pinecone_index_name}")
-            click.echo(f"  OpenAI model: {config.openai_model}")
+            click.echo(f"  Generation model: {config.generation_model}")
             click.echo(f"  Chunk size: {config.chunk_size}")
             click.echo(f"  Chunk overlap: {config.chunk_overlap}")
 

@@ -1,41 +1,116 @@
-"""LangGraph state machine for ChatFormula1 agent orchestration.
+"""LangGraph pipeline: analyze → route → retrieve → rank → generate.
 
-This module implements the main agent graph that orchestrates the RAG pipeline,
-including query analysis, routing, retrieval, context ranking, and generation.
+The graph is built and compiled exactly once at application startup (no
+checkpointer — the agent is stateless; the gateway owns conversation
+state). The generation LLM is tagged ``["generation"]`` so the streaming
+server can forward only its tokens to clients.
 """
 
-from typing import Any, Literal, Optional
+import asyncio
+import time
+from datetime import datetime
+from typing import Any, Literal, cast
 
 import structlog
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.runnables import Runnable
 from langgraph.graph import END, StateGraph
+from pydantic import BaseModel, Field
 
-from src.config.settings import Settings
-from src.prompts.system_prompts import F1_EXPERT_SYSTEM_PROMPT
-from src.search.tavily_client import TavilyClient
-from src.vector_store.manager import VectorStoreManager
-
-from .state import AgentState, QueryAnalysis, SearchDecision
+from chatf1_agent.caching import get_cache_manager
+from chatf1_agent.prompts import F1_EXPERT_SYSTEM_PROMPT
+from chatf1_agent.providers import create_analysis_llm, create_generation_llm
+from chatf1_agent.retrieval.tavily import TavilyClient
+from chatf1_agent.retrieval.vector_store import VectorStoreManager
+from chatf1_agent.settings import Settings
+from chatf1_agent.state import AgentState, QueryAnalysis
 
 logger = structlog.get_logger(__name__)
 
+# Domains whose results get an authority boost during ranking.
+TRUSTED_DOMAINS = ["formula1.com", "fia.com", "autosport.com"]
+
+
+class ContextScore(BaseModel):
+    """Multi-factor score for a retrieved context item."""
+
+    relevance: float = Field(ge=0.0, le=1.0, description="Relevance to query (0-1)")
+    recency: float = Field(
+        ge=0.0, le=1.0, description="Recency score (higher for newer content)"
+    )
+    authority: float = Field(ge=0.0, le=1.0, description="Source authority score")
+    completeness: float = Field(
+        ge=0.0, le=1.0, description="Content completeness score"
+    )
+
+    @property
+    def total_score(self) -> float:
+        """Weighted total: relevance 40%, recency 30%, authority 20%, completeness 10%."""
+        return (
+            self.relevance * 0.4
+            + self.recency * 0.3
+            + self.authority * 0.2
+            + self.completeness * 0.1
+        )
+
+
+def score_context_item(item: dict[str, Any]) -> ContextScore:
+    """Score a single context item (vector document or search result).
+
+    Args:
+        item: Context item with content, source, and optional metadata.
+
+    Returns:
+        ContextScore with individual factor scores.
+    """
+    relevance = item.get("score", 0.5)
+
+    # Recency: search results are current; vector docs decay by year.
+    recency = 0.5
+    if item.get("source") == "tavily_search":
+        recency = 0.9
+    elif "metadata" in item:
+        year = item["metadata"].get("year")
+        if year:
+            current_year = datetime.now().year
+            years_old = current_year - int(year)
+            recency = max(0.1, 1.0 - (years_old * 0.1))
+
+    # Authority: curated knowledge base or trusted F1 domains rank higher.
+    authority = 0.7
+    if item.get("source") == "vector_store":
+        authority = 0.8
+    elif item.get("source") == "tavily_search":
+        url = item.get("url", "")
+        authority = 0.9 if any(domain in url for domain in TRUSTED_DOMAINS) else 0.7
+
+    # Completeness: longer content tends to be more complete.
+    content_length = len(item.get("content", ""))
+    if content_length > 500:
+        completeness = 1.0
+    elif content_length > 200:
+        completeness = 0.7
+    elif content_length > 100:
+        completeness = 0.5
+    else:
+        completeness = 0.3
+
+    return ContextScore(
+        relevance=relevance,
+        recency=recency,
+        authority=authority,
+        completeness=completeness,
+    )
+
 
 class F1AgentGraph:
-    """LangGraph-based agent for ChatFormula1.
+    """LangGraph-based RAG pipeline for ChatFormula1.
 
-    This class implements a state machine that orchestrates the complete RAG pipeline:
-    1. Query Analysis - Detect intent and extract entities
-    2. Routing - Decide which retrieval methods to use
-    3. Vector Search - Retrieve historical context from Pinecone
-    4. Tavily Search - Get real-time F1 information
-    5. Context Ranking - Score and rerank retrieved documents
-    6. LLM Generation - Generate response with context
-    7. Response Formatting - Format and validate output
-
-    The graph uses checkpointing for conversation memory and supports streaming.
+    Orchestrates: query analysis → routing → (vector / web / parallel)
+    retrieval → multi-factor context ranking → generation → formatting.
+    The compiled graph is created once in ``__init__`` and reused for
+    every request.
     """
 
     def __init__(
@@ -44,7 +119,7 @@ class F1AgentGraph:
         vector_store: VectorStoreManager,
         tavily_client: TavilyClient,
     ) -> None:
-        """Initialize F1 agent graph.
+        """Initialize the agent graph and compile it once.
 
         Args:
             config: Application settings
@@ -55,55 +130,27 @@ class F1AgentGraph:
         self.vector_store = vector_store
         self.tavily_client = tavily_client
 
-        # Initialize LLM for generation with optimized parameters
-        self.llm = ChatOpenAI(
-            api_key=config.openai_api_key,
-            model=config.openai_model,
-            temperature=config.openai_temperature,
-            max_tokens=config.openai_max_tokens,
-            streaming=config.openai_streaming,
-            request_timeout=30,  # 30 second timeout
-        )
+        self.llm = create_generation_llm(config)
+        self.analysis_llm = create_analysis_llm(config)
 
-        # Initialize LLM for structured output (query analysis)
-        self.analysis_llm = ChatOpenAI(
-            api_key=config.openai_api_key,
-            model=config.openai_model,
-            temperature=0.0,  # Deterministic for analysis
-        )
-
-        # Initialize tools
-        self._initialize_tools()
-
-        # Build the graph
         self.graph = self._build_graph()
-        self.compiled_graph = None
+        self.compiled_graph: Runnable = self.graph.compile()
 
         logger.info(
             "f1_agent_graph_initialized",
-            model=config.openai_model,
+            generation_model=config.generation_model,
+            analysis_model=config.analysis_model,
             temperature=config.openai_temperature,
         )
 
-    def _initialize_tools(self) -> None:
-        """Initialize F1 tools with dependencies."""
-        from src.tools.f1_tools import initialize_tools
-
-        # Initialize tools with vector store, settings, and tavily client
-        initialize_tools(self.config, self.vector_store, self.tavily_client)
-
-        logger.info("f1_tools_initialized")
-
     def _build_graph(self) -> StateGraph:
-        """Build the LangGraph state machine with parallel retrieval optimization.
+        """Build the LangGraph state machine with parallel retrieval.
 
         Returns:
             Configured StateGraph
         """
-        # Initialize graph with AgentState
         graph = StateGraph(AgentState)
 
-        # Add nodes
         graph.add_node("analyze_query", self.analyze_query_node)
         graph.add_node("route", self.route_node)
         graph.add_node("vector_search", self.vector_search_node)
@@ -113,71 +160,35 @@ class F1AgentGraph:
         graph.add_node("generate", self.generate_node)
         graph.add_node("format_response", self.format_response_node)
 
-        # Set entry point
         graph.set_entry_point("analyze_query")
-
-        # Add edges
         graph.add_edge("analyze_query", "route")
 
-        # Add conditional edges from route node
         graph.add_conditional_edges(
             "route",
             self.route_decision,
             {
                 "vector_only": "vector_search",
                 "search_only": "tavily_search",
-                "both": "parallel_retrieval",  # Use parallel retrieval for both
+                "both": "parallel_retrieval",
                 "direct": "generate",
             },
         )
 
-        # Vector search flows to ranking
         graph.add_edge("vector_search", "rank_context")
-
-        # Tavily search flows to ranking
         graph.add_edge("tavily_search", "rank_context")
-
-        # Parallel retrieval flows directly to ranking
         graph.add_edge("parallel_retrieval", "rank_context")
-
-        # Ranking flows to generation
         graph.add_edge("rank_context", "generate")
-
-        # Generation flows to formatting
         graph.add_edge("generate", "format_response")
-
-        # Formatting is the end
         graph.add_edge("format_response", END)
 
         logger.info("langgraph_state_machine_built", parallel_retrieval_enabled=True)
 
         return graph
 
-    def compile(self, checkpointer: Optional[MemorySaver] = None) -> Any:
-        """Compile the graph with optional checkpointing.
-
-        Args:
-            checkpointer: Optional MemorySaver for conversation persistence
-
-        Returns:
-            Compiled graph ready for execution
-        """
-        if checkpointer is None:
-            checkpointer = MemorySaver()
-
-        self.compiled_graph = self.graph.compile(checkpointer=checkpointer)
-
-        logger.info(
-            "langgraph_compiled",
-            has_checkpointer=checkpointer is not None,
-        )
-
-        return self.compiled_graph
-
     async def analyze_query_node(self, state: AgentState) -> dict[str, Any]:
-        """Analyze user query to detect intent and extract entities.
+        """Analyze the user query to detect intent and extract entities.
 
-        Uses structured output with ChatOpenAI to ensure consistent analysis format.
+        Uses structured output to ensure a consistent analysis format.
 
         Args:
             state: Current agent state
@@ -189,7 +200,6 @@ class F1AgentGraph:
 
         logger.info("analyzing_query", query=query[:100])
 
-        # Create analysis prompt
         analysis_prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(
@@ -209,10 +219,10 @@ Be accurate and concise."""
         )
 
         try:
-            # Use structured output
             structured_llm = self.analysis_llm.with_structured_output(QueryAnalysis)
-            analysis: QueryAnalysis = await structured_llm.ainvoke(
-                analysis_prompt.format_messages()
+            analysis = cast(
+                QueryAnalysis,
+                await structured_llm.ainvoke(analysis_prompt.format_messages()),
             )
 
             logger.info(
@@ -235,7 +245,7 @@ Be accurate and concise."""
 
         except Exception as e:
             logger.error("query_analysis_failed", error=str(e))
-            # Fallback to safe defaults
+            # Fall back to retrieving from both sources.
             return {
                 "intent": "general",
                 "entities": {},
@@ -247,43 +257,38 @@ Be accurate and concise."""
             }
 
     async def route_node(self, state: AgentState) -> dict[str, Any]:
-        """Determine routing strategy based on query analysis.
+        """Record the routing decision based on query analysis.
 
         Args:
             state: Current agent state
 
         Returns:
-            State updates with routing decision
+            State updates with the routing decision
         """
-        intent = state.intent
         metadata = state.metadata
-
         requires_search = metadata.get("requires_search", False)
         requires_vector = metadata.get("requires_vector_search", False)
 
         logger.info(
             "routing_query",
-            intent=intent,
+            intent=state.intent,
             requires_search=requires_search,
             requires_vector=requires_vector,
         )
 
-        # Store routing decision in metadata
-        routing_decision = {
-            "use_vector_search": requires_vector,
-            "use_tavily_search": requires_search,
-        }
-
         return {
             "metadata": {
-                "routing_decision": routing_decision,
+                "routing_decision": {
+                    "use_vector_search": requires_vector,
+                    "use_tavily_search": requires_search,
+                },
             },
         }
 
     def route_decision(
         self, state: AgentState
     ) -> Literal["vector_only", "search_only", "both", "direct"]:
-        """Conditional edge function to determine next node after routing.
+        """Conditional edge: pick the retrieval strategy after routing.
 
         Args:
             state: Current agent state
@@ -295,7 +300,6 @@ Be accurate and concise."""
         use_vector = routing.get("use_vector_search", False)
         use_search = routing.get("use_tavily_search", False)
 
-        # Check for off-topic queries
         if state.intent == "off_topic":
             logger.info("routing_to_direct_generation_off_topic")
             return "direct"
@@ -313,27 +317,8 @@ Be accurate and concise."""
             logger.info("routing_to_direct_generation")
             return "direct"
 
-    def after_vector_search_decision(
-        self, state: AgentState
-    ) -> Literal["tavily", "rank"]:
-        """Conditional edge after vector search.
-
-        Args:
-            state: Current agent state
-
-        Returns:
-            Next node name
-        """
-        routing = state.metadata.get("routing_decision", {})
-        use_search = routing.get("use_tavily_search", False)
-
-        if use_search:
-            return "tavily"
-        else:
-            return "rank"
-
     async def vector_search_node(self, state: AgentState) -> dict[str, Any]:
-        """Retrieve relevant documents from vector store with async optimization.
+        """Retrieve relevant documents from the vector store.
 
         Args:
             state: Current agent state
@@ -341,27 +326,20 @@ Be accurate and concise."""
         Returns:
             State updates with retrieved documents
         """
-        import time
-
         start_time = time.time()
-
         query = state.query
-        entities = state.entities
 
         logger.info("performing_vector_search", query=query[:100])
 
         try:
-            # Build metadata filters from entities
-            filters = self._build_vector_filters(entities)
+            filters = self._build_vector_filters(state.entities)
 
-            # Perform similarity search (already async)
             docs = await self.vector_store.similarity_search(
                 query=query,
                 k=self.config.vector_search_top_k,
                 filters=filters,
             )
 
-            # Convert to dict format for state
             retrieved_docs = [
                 {
                     "content": doc.page_content,
@@ -391,13 +369,11 @@ Be accurate and concise."""
             logger.error("vector_search_failed", error=str(e))
             return {
                 "retrieved_docs": [],
-                "metadata": {
-                    "vector_search_error": str(e),
-                },
+                "metadata": {"vector_search_error": str(e)},
             }
 
     async def tavily_search_node(self, state: AgentState) -> dict[str, Any]:
-        """Retrieve real-time information from Tavily with async optimization.
+        """Retrieve real-time information from Tavily.
 
         Args:
             state: Current agent state
@@ -405,16 +381,12 @@ Be accurate and concise."""
         Returns:
             State updates with search results
         """
-        import time
-
         start_time = time.time()
-
         query = state.query
 
         logger.info("performing_tavily_search", query=query[:100])
 
         try:
-            # Use safe_search for graceful degradation (already async)
             results, error = await self.tavily_client.safe_search(query=query)
 
             if error:
@@ -427,7 +399,6 @@ Be accurate and concise."""
                     },
                 }
 
-            # Convert to dict format for state
             search_results = [
                 {
                     "content": result.get("content", ""),
@@ -459,16 +430,11 @@ Be accurate and concise."""
             logger.error("tavily_search_failed", error=str(e))
             return {
                 "search_results": [],
-                "metadata": {
-                    "tavily_search_error": str(e),
-                },
+                "metadata": {"tavily_search_error": str(e)},
             }
 
     async def parallel_retrieval_node(self, state: AgentState) -> dict[str, Any]:
-        """Perform parallel retrieval from vector store and Tavily for maximum speed.
-
-        This node executes both vector search and Tavily search concurrently,
-        significantly reducing total retrieval time.
+        """Run vector search and Tavily search concurrently.
 
         Args:
             state: Current agent state
@@ -476,39 +442,36 @@ Be accurate and concise."""
         Returns:
             State updates with both retrieved documents and search results
         """
-        import time
-
         start_time = time.time()
 
         logger.info("performing_parallel_retrieval")
 
-        # Execute both searches in parallel
         vector_task = asyncio.create_task(self.vector_search_node(state))
         tavily_task = asyncio.create_task(self.tavily_search_node(state))
 
-        # Wait for both to complete
+        vector_result: dict[str, Any] | BaseException
+        tavily_result: dict[str, Any] | BaseException
         vector_result, tavily_result = await asyncio.gather(
             vector_task,
             tavily_task,
             return_exceptions=True,
         )
 
-        # Handle results
-        retrieved_docs = []
-        search_results = []
-        metadata = {}
+        retrieved_docs: list[dict[str, Any]] = []
+        search_results: list[dict[str, Any]] = []
+        metadata: dict[str, Any] = {}
 
         if isinstance(vector_result, dict):
             retrieved_docs = vector_result.get("retrieved_docs", [])
             metadata.update(vector_result.get("metadata", {}))
-        elif isinstance(vector_result, Exception):
+        elif isinstance(vector_result, BaseException):
             logger.error("parallel_vector_search_failed", error=str(vector_result))
             metadata["vector_search_error"] = str(vector_result)
 
         if isinstance(tavily_result, dict):
             search_results = tavily_result.get("search_results", [])
             metadata.update(tavily_result.get("metadata", {}))
-        elif isinstance(tavily_result, Exception):
+        elif isinstance(tavily_result, BaseException):
             logger.error("parallel_tavily_search_failed", error=str(tavily_result))
             metadata["tavily_search_error"] = str(tavily_result)
 
@@ -531,13 +494,18 @@ Be accurate and concise."""
         }
 
     async def rank_context_node(self, state: AgentState) -> dict[str, Any]:
-        """Rank and combine retrieved context from multiple sources.
+        """Rank retrieved context with multi-factor scoring.
+
+        Each item is scored on relevance, recency, authority, and
+        completeness; the top items from each source feed the generation
+        context. A typed ``sources`` list is placed in metadata for the
+        streaming server to forward to clients.
 
         Args:
             state: Current agent state
 
         Returns:
-            State updates with ranked context
+            State updates with ranked context and sources
         """
         retrieved_docs = state.retrieved_docs
         search_results = state.search_results
@@ -548,93 +516,104 @@ Be accurate and concise."""
             search_results=len(search_results),
         )
 
-        # Combine and rank all sources
-        all_sources = []
+        scored_vector: list[tuple[float, dict[str, Any]]] = sorted(
+            ((score_context_item(doc).total_score, doc) for doc in retrieved_docs),
+            key=lambda pair: pair[0],
+            reverse=True,
+        )
+        scored_search: list[tuple[float, dict[str, Any]]] = sorted(
+            (
+                (score_context_item(result).total_score, result)
+                for result in search_results
+            ),
+            key=lambda pair: pair[0],
+            reverse=True,
+        )
 
-        # Add vector store docs
-        for doc in retrieved_docs:
-            all_sources.append(
-                {
-                    "content": doc["content"],
-                    "source": doc.get("metadata", {}).get("source", "vector_store"),
-                    "score": 0.8,  # Default score for vector results
-                    "type": "historical",
-                }
-            )
-
-        # Add search results
-        for result in search_results:
-            all_sources.append(
-                {
-                    "content": result["content"],
-                    "source": result.get("url", "search"),
-                    "score": result.get("score", 0.7),
-                    "type": "current",
-                }
-            )
-
-        # Sort by score (descending)
-        ranked_sources = sorted(all_sources, key=lambda x: x["score"], reverse=True)
-
-        # Build context string
         context_parts = []
+        sources: list[dict[str, Any]] = []
 
-        if retrieved_docs:
+        if scored_vector:
             context_parts.append("=== Historical Context ===")
-            for i, doc in enumerate(retrieved_docs[:3], 1):  # Top 3
-                context_parts.append(f"\n[Source {i}] {doc['content'][:500]}...")
-
-        if search_results:
-            context_parts.append("\n\n=== Current Information ===")
-            for i, result in enumerate(search_results[:3], 1):  # Top 3
+            for i, (score, item) in enumerate(scored_vector[:3], 1):
                 context_parts.append(
-                    f"\n[Source {i}] {result['title']}\n{result['content'][:500]}..."
+                    f"\n[Historical Source {i}] (Score: {score:.2f})\n"
+                    f"{item['content'][:600]}..."
+                )
+                sources.append(
+                    {
+                        "kind": "vector",
+                        "title": item.get("metadata", {}).get("title")
+                        or item.get("metadata", {}).get("source", "knowledge base"),
+                        "url": None,
+                        "snippet": item["content"][:200],
+                        "score": round(score, 4),
+                    }
+                )
+
+        if scored_search:
+            context_parts.append("\n\n=== Current Information ===")
+            for i, (score, item) in enumerate(scored_search[:3], 1):
+                context_parts.append(
+                    f"\n[Current Source {i}] {item.get('title', 'Untitled')} "
+                    f"(Score: {score:.2f})\n{item['content'][:600]}..."
+                )
+                sources.append(
+                    {
+                        "kind": "web",
+                        "title": item.get("title", "Untitled"),
+                        "url": item.get("url") or None,
+                        "snippet": item["content"][:200],
+                        "score": round(score, 4),
+                    }
                 )
 
         context = "\n".join(context_parts)
+        top_score = max(
+            (score for score, _ in scored_vector + scored_search), default=0.0
+        )
 
         logger.info(
             "context_ranked",
-            total_sources=len(ranked_sources),
+            total_items=len(scored_vector) + len(scored_search),
+            top_score=top_score,
             context_length=len(context),
         )
 
         return {
             "context": context,
             "metadata": {
-                "ranked_sources_count": len(ranked_sources),
+                "sources": sources,
+                "scored_items_count": len(scored_vector) + len(scored_search),
+                "top_score": top_score,
                 "context_length": len(context),
             },
         }
 
     async def generate_node(self, state: AgentState) -> dict[str, Any]:
-        """Generate response using LLM with optimized caching and token usage.
+        """Generate the response, serving from the LLM cache when possible.
+
+        Cache hits return without invoking the LLM, so a cached request
+        emits zero token events on the stream — the NDJSON contract's
+        cache-hit semantics fall out of this for free.
 
         Args:
             state: Current agent state
 
         Returns:
-            State updates with generated response
+            State updates with the generated response
         """
-        import time
-
         start_time = time.time()
-
         query = state.query
         context = state.context
-        messages = state.messages
 
         logger.info("generating_response", query=query[:100])
 
-        # Check cache first
-        from src.utils.cache import get_cache_manager
-
         cache_manager = get_cache_manager()
-
         cache_key = cache_manager.get_llm_cache_key(
             query=query,
             context=context,
-            model=self.config.openai_model,
+            model=self.config.generation_model,
             temperature=self.config.openai_temperature,
         )
 
@@ -660,25 +639,24 @@ Be accurate and concise."""
                 },
             }
 
-        # Build optimized prompt with context
-        prompt_messages = self._build_optimized_prompt(query, context, messages)
+        prompt_messages = self._build_prompt(query, context, list(state.messages))
 
         try:
-            # Generate response with token tracking
-            response = await self.llm.ainvoke(prompt_messages)
-            response_text = response.content
+            # Stream-accumulate so token chunks flow through astream_events
+            # (the server forwards them as NDJSON `token` events).
+            response_text = ""
+            token_usage: dict[str, int] = {}
+            async for chunk in self.llm.astream(prompt_messages):
+                if chunk.content:
+                    response_text += str(chunk.content)
+                usage_metadata = getattr(chunk, "usage_metadata", None)
+                if usage_metadata:
+                    token_usage = {
+                        "prompt_tokens": usage_metadata.get("input_tokens", 0),
+                        "completion_tokens": usage_metadata.get("output_tokens", 0),
+                        "total_tokens": usage_metadata.get("total_tokens", 0),
+                    }
 
-            # Track token usage if available
-            token_usage = {}
-            if hasattr(response, "response_metadata"):
-                usage = response.response_metadata.get("token_usage", {})
-                token_usage = {
-                    "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0),
-                    "total_tokens": usage.get("total_tokens", 0),
-                }
-
-            # Cache the response
             cache_manager.llm_cache.set(cache_key, response_text)
 
             elapsed = time.time() - start_time
@@ -717,18 +695,16 @@ Be accurate and concise."""
                     HumanMessage(content=query),
                     AIMessage(content=error_response),
                 ],
-                "metadata": {
-                    "generation_error": str(e),
-                },
+                "metadata": {"generation_error": str(e)},
             }
 
-    def _build_optimized_prompt(
+    def _build_prompt(
         self,
         query: str,
         context: str,
-        messages: list,
-    ) -> list:
-        """Build optimized prompt with token-efficient context.
+        messages: list[BaseMessage],
+    ) -> list[BaseMessage]:
+        """Build the generation prompt with a sliding history window.
 
         Args:
             query: User query
@@ -736,20 +712,17 @@ Be accurate and concise."""
             messages: Conversation history
 
         Returns:
-            List of prompt messages optimized for token usage
+            List of prompt messages bounded for token usage
         """
-        prompt_messages = [
+        prompt_messages: list[BaseMessage] = [
             SystemMessage(content=F1_EXPERT_SYSTEM_PROMPT),
         ]
 
-        # Add conversation history with sliding window (last 5 exchanges = 10 messages)
-        # This prevents token overflow while maintaining context
+        # Sliding window: last 10 non-system messages (5 exchanges).
         recent_messages = [m for m in messages if m.type != "system"][-10:]
         prompt_messages.extend(recent_messages)
 
-        # Optimize context presentation to reduce tokens
         if context:
-            # Truncate context if too long (keep most relevant parts)
             max_context_length = 3000  # ~750 tokens
             if len(context) > max_context_length:
                 context = context[:max_context_length] + "\n...[context truncated]"
@@ -767,72 +740,20 @@ Provide a concise, accurate answer using the context. Cite sources."""
 
         return prompt_messages
 
-    async def generate_streaming(self, state: AgentState):
-        """Generate response with streaming for faster perceived performance.
-
-        This method streams the LLM response token by token, providing
-        immediate feedback to users.
-
-        Args:
-            state: Current agent state
-
-        Yields:
-            Response chunks as they are generated
-        """
-        query = state.query
-        context = state.context
-        messages = state.messages
-
-        logger.info("generating_streaming_response", query=query[:100])
-
-        # Build optimized prompt
-        prompt_messages = self._build_optimized_prompt(query, context, messages)
-
-        try:
-            # Stream response
-            full_response = ""
-            async for chunk in self.llm.astream(prompt_messages):
-                if hasattr(chunk, "content") and chunk.content:
-                    full_response += chunk.content
-                    yield chunk.content
-
-            # Cache the complete response
-            from src.utils.cache import get_cache_manager
-
-            cache_manager = get_cache_manager()
-
-            cache_key = cache_manager.get_llm_cache_key(
-                query=query,
-                context=context,
-                model=self.config.openai_model,
-                temperature=self.config.openai_temperature,
-            )
-            cache_manager.llm_cache.set(cache_key, full_response)
-
-            logger.info(
-                "streaming_response_complete",
-                response_length=len(full_response),
-            )
-
-        except Exception as e:
-            logger.error("streaming_generation_failed", error=str(e))
-            yield "I apologize, but I encountered an error. Please try again."
-
     async def format_response_node(self, state: AgentState) -> dict[str, Any]:
-        """Format and validate the final response.
+        """Format the final response, prepending degradation warnings.
 
         Args:
             state: Current agent state
 
         Returns:
-            State updates with formatted response
+            State updates with the formatted response
         """
-        response = state.response
+        response = state.response or ""
         metadata = state.metadata
 
         logger.info("formatting_response")
 
-        # Add fallback warnings if applicable
         warnings = []
 
         if metadata.get("tavily_fallback"):
@@ -840,19 +761,15 @@ Provide a concise, accurate answer using the context. Cite sources."""
 
         if metadata.get("vector_search_error"):
             warnings.append(
-                "⚠️ Historical context may be limited due to a temporary issue."
+                "Historical context may be limited due to a temporary issue."
             )
 
-        # Prepend warnings to response
         if warnings:
             formatted_response = "\n".join(warnings) + "\n\n" + response
         else:
             formatted_response = response
 
-        logger.info(
-            "response_formatted",
-            has_warnings=len(warnings) > 0,
-        )
+        logger.info("response_formatted", has_warnings=len(warnings) > 0)
 
         return {
             "response": formatted_response,
@@ -862,9 +779,7 @@ Provide a concise, accurate answer using the context. Cite sources."""
             },
         }
 
-    def _build_vector_filters(
-        self, entities: dict[str, Any]
-    ) -> Optional[dict[str, Any]]:
+    def _build_vector_filters(self, entities: dict[str, Any]) -> dict[str, Any] | None:
         """Build Pinecone metadata filters from extracted entities.
 
         Args:
@@ -873,27 +788,22 @@ Provide a concise, accurate answer using the context. Cite sources."""
         Returns:
             Pinecone filter dictionary or None
         """
-        filters = {}
+        filters: dict[str, Any] = {}
 
-        # Add year filter if present
-        if "years" in entities and entities["years"]:
+        if entities.get("years"):
             years = entities["years"]
             if len(years) == 1:
                 filters["year"] = int(years[0])
             elif len(years) > 1:
-                # Use range filter
                 filters["year"] = {
                     "$gte": int(min(years)),
                     "$lte": int(max(years)),
                 }
 
-        # Add driver filter if present
-        if "drivers" in entities and entities["drivers"]:
-            # Use first driver for simplicity
+        if entities.get("drivers"):
             filters["driver"] = entities["drivers"][0]
 
-        # Add team filter if present
-        if "teams" in entities and entities["teams"]:
+        if entities.get("teams"):
             filters["team"] = entities["teams"][0]
 
         return filters if filters else None
