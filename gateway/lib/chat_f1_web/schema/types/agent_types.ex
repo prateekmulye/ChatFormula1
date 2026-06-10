@@ -145,12 +145,16 @@ defmodule ChatF1Web.Schema.Types.AgentTypes do
   union :agent_event do
     types([:token_delta, :node_transition, :sources_resolved, :message_completed, :agent_error])
 
+    # Order matters: AgentError carries a :message key too (the error text),
+    # so its distinctive {:code, :retryable} pair must match BEFORE the
+    # %{message: _} clause — otherwise every error resolves as
+    # MessageCompleted (found in Phase 4 browser integration).
     resolve_type(fn
       %{text: _}, _ -> :token_delta
       %{node: _}, _ -> :node_transition
       %{sources: _}, _ -> :sources_resolved
-      %{message: _}, _ -> :message_completed
       %{code: _, retryable: _}, _ -> :agent_error
+      %{message: _}, _ -> :message_completed
     end)
   end
 
