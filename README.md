@@ -1,97 +1,63 @@
 # 🏎️ ChatFormula1
 
-An AI-powered Formula 1 chatbot that provides real-time race information, predictions, and insights using advanced RAG (Retrieval-Augmented Generation) architecture.
+An AI-powered Formula 1 chatbot built on a RAG (Retrieval-Augmented
+Generation) pipeline: LangGraph orchestration, Pinecone semantic search,
+and Tavily real-time web search.
 
-## 🚀 Live Demo
+> **v2 conversion in progress.** The repo is being rebuilt as a
+> three-app monorepo: an Elixir/Phoenix GraphQL gateway, a slimmed
+> Python LangGraph inference engine, and a React/Apollo frontend.
+> Phase 1 (the Python agent + monorepo skeleton) is complete; the
+> blueprint lives in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
+> the build plan in [docs/ROADMAP.md](docs/ROADMAP.md).
 
-**Try it now**: [https://chatformula1.com](https://chatformula1.com)
-
-*Note: First load may take 30 seconds as the free tier wakes up.*
-
----
-
-## 🗺️ Quick Navigation
-
-- **New to the project?** → Start with [Setup Guide](docs/SETUP.md)
-- **Want to deploy?** → Follow [Deployment Guide](docs/DEPLOYMENT.md)
-- **Want to contribute?** → Read [Contributing Guide](docs/CONTRIBUTING.md)
-- **Need help?** → Check [Troubleshooting](docs/TROUBLESHOOTING.md)
-- **All documentation** → See [Documentation Index](docs/README.md)
+> ChatFormula1 is an unofficial fan project. It is not affiliated with,
+> endorsed by, or connected to Formula 1, the FIA, or any F1 team.
 
 ---
 
 ## 📖 What It Does
 
-ChatFormula1 is an intelligent chatbot that can:
+ChatFormula1 answers Formula 1 questions through a routed RAG pipeline:
 
-- Answer questions about current F1 standings and race results
-- Provide historical F1 statistics and records
-- Generate race predictions based on data analysis
-- Search for latest F1 news and updates
-- Explain technical F1 concepts and regulations
-- Maintain context across conversations
+- Current standings, race results, and breaking F1 news (live web search)
+- Historical statistics and records (vector search over a curated corpus)
+- Technical concepts and regulations explained
+- Multi-source answers with ranked, cited context
 
-**Example Questions:**
-- "Who won the 2023 F1 World Championship?"
-- "What are the current driver standings?"
-- "Predict the outcome of the next race"
+**Example questions:**
+- "Who won the last race?"
+- "How many championships has Hamilton won?"
 - "Explain DRS in Formula 1"
 
 ---
 
 ## 🛠️ Tech Stack
 
-### AI & Machine Learning
-- **[LangChain](https://python.langchain.com/)** - Framework for building LLM applications
-- **[LangGraph](https://langchain-ai.github.io/langgraph/)** - Library for building stateful, multi-actor applications with LLMs
-- **[OpenAI GPT](https://platform.openai.com/)** - Large language model for generating responses
-- **[OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings)** - Text vectorization for semantic search
+### Agent (implemented — Phase 1)
+- **[Python 3.12](https://www.python.org/)** + **[FastAPI](https://fastapi.tiangolo.com/)** — internal-only NDJSON streaming API
+- **[LangGraph](https://langchain-ai.github.io/langgraph/)** / **[LangChain](https://python.langchain.com/)** — pipeline orchestration (exact-pinned)
+- **[OpenAI gpt-4o-mini](https://platform.openai.com/)** — generation and analysis, behind a provider seam
+- **[Pinecone](https://www.pinecone.io/)** — vector search (`static_corpus` / `news` namespaces, deterministic SHA-256 IDs)
+- **[Tavily](https://tavily.com/)** — real-time web search via `langchain-tavily`
 
-### Data & Search
-- **[Pinecone](https://www.pinecone.io/)** - Vector database for semantic search and retrieval
-- **[Tavily API](https://tavily.com/)** - Real-time web search API for current information
-
-### Backend
-- **[Python 3.11+](https://www.python.org/)** - Core programming language
-- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern web framework for building APIs
-- **[Pydantic](https://docs.pydantic.dev/)** - Data validation using Python type hints
-- **[Poetry](https://python-poetry.org/)** - Dependency management and packaging
-
-### Frontend
-- **[Streamlit](https://streamlit.io/)** - Framework for building interactive web applications
-
-### Infrastructure
-- **[Docker](https://www.docker.com/)** - Containerization platform
-- **[Render](https://render.com/)** - Cloud hosting platform (free tier available)
-
-### Observability - COMMING SOON
-- **[Structlog](https://www.structlog.org/)** - Structured logging library
-- **[Prometheus](https://prometheus.io/)** - Monitoring and alerting toolkit
-- **[Grafana](https://grafana.com/)** - Analytics and monitoring platform
+### Coming next (see [docs/ROADMAP.md](docs/ROADMAP.md))
+- **Gateway** (Phase 2-3): Elixir 1.18, Phoenix, Absinthe GraphQL, Oban — the only public backend
+- **Web** (Phase 4): React 18, TypeScript, Vite, Apollo Client
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-User Input
-    ↓
-Streamlit UI
-    ↓
-LangGraph Agent
-    ├── Query Analysis
-    ├── Routing (Vector Search / Web Search)
-    ├── Context Ranking
-    └── LLM Generation
-    ↓
-Response with Citations
+React (web/)  ──GraphQL──▶  Phoenix gateway (gateway/)  ──NDJSON──▶  LangGraph agent (agent/)
+   Phase 4                       Phase 2-3                              Phase 1 ✓
 ```
 
-**Key Components:**
-- **RAG Pipeline**: Combines vector search with LLM generation for accurate, grounded responses
-- **Multi-Source Integration**: Retrieves from both historical data (Pinecone) and real-time web (Tavily)
-- **Intelligent Routing**: Automatically determines the best data source for each query
-- **Rate Limiting**: Built-in protection to stay within free tier limits
+The agent pipeline: `analyze_query → route → (vector | web | parallel
+retrieval) → rank_context → generate → format_response`, compiled once at
+startup and streamed as typed NDJSON events — the frozen contract in
+[docs/STREAMING_PROTOCOL.md](docs/STREAMING_PROTOCOL.md).
 
 ---
 
@@ -99,167 +65,103 @@ Response with Citations
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- [Poetry](https://python-poetry.org/docs/#installation) - Python dependency manager
-- API Keys (all have free tiers):
-  - [OpenAI API Key](https://platform.openai.com/api-keys)
-  - [Pinecone API Key](https://app.pinecone.io/)
-  - [Tavily API Key](https://app.tavily.com/)
+- Python 3.12 and [Poetry](https://python-poetry.org/docs/#installation)
+- Docker (for the local Postgres + agent containers)
+- API keys (all have free tiers): [OpenAI](https://platform.openai.com/api-keys), [Pinecone](https://app.pinecone.io/), [Tavily](https://app.tavily.com/)
 
-### Local Development
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/chatformula1.git
-   cd chatformula1
-   ```
-
-2. **Install dependencies**
-   ```bash
-   poetry install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your API keys
-   ```
-
-4. **Run the application**
-   ```bash
-   # Option 1: Streamlit UI (recommended for testing)
-   poetry run streamlit run src/ui/app.py
-   
-   # Option 2: FastAPI backend
-   poetry run uvicorn src.api.main:app --reload
-   ```
-
-5. **Access the application**
-   - Streamlit UI: http://localhost:8501
-   - FastAPI docs: http://localhost:8000/docs
-
-### Docker
+### Local development
 
 ```bash
-# Build and run with Docker Compose
-docker-compose up --build
+git clone https://github.com/prateekmulye/ChatFormula1.git
+cd ChatFormula1
 
-# Access at:
-# - UI: http://localhost:8501
-# - API: http://localhost:8000
+# Install (agent only in Phase 1)
+make setup
+
+# Configure
+cp agent/.env.example agent/.env   # add your API keys + INTERNAL_API_TOKEN
+
+# Run the agent natively...
+cd agent && poetry run uvicorn chatf1_agent.server:app --reload
+
+# ...or run postgres + agent via Docker
+make dev
+```
+
+Stream an answer:
+
+```bash
+curl -N -X POST http://localhost:8000/internal/chat \
+  -H "Authorization: Bearer $INTERNAL_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Who won the last race?", "history": [], "request_id": "demo-1"}'
+```
+
+### Tests and linting
+
+```bash
+make test   # pytest — runs with dummy keys, no credentials needed
+make lint   # ruff + black + mypy
+```
+
+---
+
+## 📁 Project Structure
+
+```
+chatformula1/
+├── agent/                    # Python LangGraph inference service (Phase 1 ✓)
+│   ├── src/chatf1_agent/    # graph, state, providers, retrieval, guards, server
+│   ├── ingestion/           # offline ingestion CLI (deterministic SHA-256 IDs)
+│   └── tests/               # incl. NDJSON streaming contract tests
+├── gateway/                  # Phoenix GraphQL gateway (Phase 2 — placeholder)
+├── web/                      # React frontend (Phase 4 — placeholder)
+├── data/                     # F1 datasets (gateway seeds + agent RAG input)
+├── docs/                     # ARCHITECTURE, ROADMAP, STREAMING_PROTOCOL, ...
+├── Makefile                  # make setup / dev / test / lint — fans out per app
+└── docker-compose.yml        # postgres:16 + agent for local dev
 ```
 
 ---
 
 ## 📚 Documentation
 
-### Getting Started
-- **[Setup Guide](docs/SETUP.md)** - Complete local development setup with troubleshooting
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Deploy to Render for free in 15 minutes
-- **[Contributing Guide](docs/CONTRIBUTING.md)** - Guidelines for contributing to the project
-
-### Technical Documentation
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design and component architecture
-- **[API Reference](docs/API.md)** - REST API endpoints and usage
-- **[Security Guide](docs/SECURITY.md)** - Security best practices and implementation
-- **[Observability](docs/OBSERVABILITY.md)** - Monitoring, logging, and alerting setup
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-
-**[📖 Full Documentation Index](docs/README.md)**
+- **[Architecture](docs/ARCHITECTURE.md)** — the v2 blueprint: services, schema, streaming design
+- **[Roadmap](docs/ROADMAP.md)** — six phases, each demoable in 5 minutes
+- **[Streaming Protocol](docs/STREAMING_PROTOCOL.md)** — the frozen agent↔gateway NDJSON contract
+- **[Agent README](agent/README.md)** — running, testing, and ingesting
+- **[Tavily Integration](docs/TAVILY_INTEGRATION.md)** — web search client details
+- **[Secrets Management](docs/SECRETS_MANAGEMENT.md)** — credential handling
+- **[Contributing](docs/CONTRIBUTING.md)** — guidelines and workflow
 
 ---
 
-## 🎯 Deployment
+## 🔒 Security
 
-### Automated with GitHub Actions
-
-Deploy automatically on every commit prefixed with `deploy:`:
-
-```bash
-# One-time setup (5 minutes)
-./scripts/setup_github_actions.sh
-
-# Deploy with a single commit
-git commit -m "deploy: Add new feature"
-git push origin main
-```
-
-**What happens**: Code quality checks → Tests → Build → Deploy to Render → Health checks
-
-📖 **Guide**: [GitHub Actions Quick Start](GITHUB_ACTIONS_QUICKSTART.md) | [Full Documentation](docs/GITHUB_ACTIONS.md)
-
-## 📁 Project Structure
-
-```
-chatformula1/
-├── src/                      # Source code
-│   ├── agent/               # LangGraph agent implementation
-│   ├── api/                 # FastAPI endpoints
-│   ├── config/              # Configuration management
-│   ├── ingestion/           # Data ingestion pipeline
-│   ├── prompts/             # LLM prompt templates
-│   ├── search/              # Tavily search integration
-│   ├── tools/               # LangChain tools
-│   ├── ui/                  # Streamlit interface
-│   ├── utils/               # Utility functions
-│   └── vector_store/        # Pinecone integration
-├── tests/                   # Test suite
-├── scripts/                 # Deployment and utility scripts
-├── docs/                    # Documentation
-│   ├── README.md           # Documentation index
-│   ├── SETUP.md            # Local setup guide
-│   ├── DEPLOYMENT.md       # Deployment guide
-│   ├── CONTRIBUTING.md     # Contribution guidelines
-│   ├── ARCHITECTURE.md     # System architecture
-│   ├── API.md              # API reference
-│   └── ...                 # Additional technical docs
-├── pyproject.toml          # Poetry dependencies
-├── Dockerfile              # Docker configuration
-└── README.md               # This file (start here!)
-```
+- The agent is **internal-only**: every route requires a static bearer
+  token (constant-time compared); the public surface arrives with the
+  Phase 2 gateway
+- Prompt-injection heuristics guard the LLM boundary
+- API keys live in environment variables, never in the repo
+- CI runs with dummy keys only — real secrets never touch test runs
 
 ---
 
-## 🔒 Security & Rate Limiting
+## 💰 Cost
 
-- API keys stored as environment variables (never committed)
-- Input validation and sanitization
-- Rate limiting: 3 requests/minute, 100 requests/day per user
-- HTTPS encryption (automatic on Render)
-- No storage of personally identifiable information (PII)
-
----
-
-## 💰 Cost Optimization
-
-The application is designed to run entirely on free tiers:
-
-| Service | Free Tier | Usage Strategy |
-|---------|-----------|----------------|
-| Render | 750 hrs/month | Auto-sleep after 15min inactivity |
-| OpenAI | $5 credit | Rate limited to 3 RPM, 200 RPD |
-| Pinecone | 100K vectors | Efficient text chunking |
-| Tavily | 1000/month | Limited to 30 searches/day |
+Designed for $0/month fixed: free tiers of Render, Pinecone, and Tavily,
+with gpt-4o-mini as the only variable cost (capped and budgeted — see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7).
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
+Contributions are welcome — see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+MIT — see [LICENSE](LICENSE).
 
 ## 📞 Contact
 

@@ -1,0 +1,119 @@
+[tool.poetry]
+name = "chatf1-agent"
+version = "2.0.0"
+description = "ChatFormula1 agent — stateless LangGraph inference service (internal-only NDJSON API)"
+authors = ["Prateek Mulye <prateekmulye@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+packages = [
+    { include = "chatf1_agent", from = "src" },
+    { include = "ingestion" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+
+# Core
+pydantic = "^2.10.6"
+pydantic-settings = "^2.7.1"
+python-dotenv = "^1.0.1"
+
+# LangChain / LangGraph — exact pins; the NDJSON protocol contract tests
+# fail loudly at CI when an upstream bump changes behavior.
+langchain = "1.1.0"
+langgraph = "1.0.4"
+langchain-openai = "1.1.0"
+langchain-pinecone = "0.2.13"
+langchain-tavily = "0.2.13"
+langchain-text-splitters = "1.0.0"
+
+# Vector store
+pinecone = { extras = ["asyncio"], version = "^7.3.0" }
+
+# API
+fastapi = "^0.115.14"
+uvicorn = { extras = ["standard"], version = "^0.34.3" }
+
+# Utilities
+structlog = "^24.4.0"
+httpx = "^0.28.1"
+tenacity = "^9.0.0"
+click = "^8.1.8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.3.0"
+pytest-mock = "^3.15.1"
+black = "^25.11.0"
+ruff = "^0.8.6"
+mypy = "^1.19.0"
+
+[tool.poetry.scripts]
+f1-ingest = "ingestion.cli:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C4",  # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # function calls in argument defaults (FastAPI Depends/Header)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "langgraph.*",
+    "langchain_tavily.*",
+    "pinecone.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = ["--strict-markers", "--tb=short"]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests (require real API keys; skipped in CI)",
+]
+
+[tool.coverage.run]
+source = ["src/chatf1_agent", "ingestion"]
+omit = ["tests/*", "**/__pycache__/*"]

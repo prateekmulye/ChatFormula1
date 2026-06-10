@@ -1,0 +1,62 @@
+# Agent service CI — dummy keys ONLY, forever. Real secrets never enter
+# test runs (the old ci-cd.yml that injected production API keys into
+# unit tests on public PRs was deleted as a security fix in Phase 1).
+name: agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agent/**"
+      - ".github/workflows/agent.yml"
+  pull_request:
+    paths:
+      - "agent/**"
+      - ".github/workflows/agent.yml"
+
+env:
+  OPENAI_API_KEY: test-openai-key
+  PINECONE_API_KEY: test-pinecone-key
+  TAVILY_API_KEY: test-tavily-key
+  INTERNAL_API_TOKEN: test-internal-token
+
+defaults:
+  run:
+    working-directory: agent
+
+jobs:
+  checks:
+    name: ruff + mypy + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: agent/.venv
+          key: agent-venv-${{ runner.os }}-${{ hashFiles('agent/poetry.lock') }}
+
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-interaction
+
+      - name: Lint (ruff)
+        run: poetry run ruff check src ingestion tests
+
+      - name: Format check (black)
+        run: poetry run black --check src ingestion tests
+
+      - name: Type check (mypy)
+        run: poetry run mypy src ingestion
+
+      - name: Test (pytest)
+        run: poetry run pytest

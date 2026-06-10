@@ -47,12 +47,13 @@ Thank you for considering contributing to ChatFormula1 Agent! This guide will he
 4. **Write tests** for new functionality
 5. **Ensure all tests pass**
    ```bash
-   poetry run pytest
+   make test
    ```
 6. **Format and lint your code**
    ```bash
-   poetry run black src tests
-   poetry run ruff check src tests
+   cd agent
+   poetry run black src ingestion tests
+   poetry run ruff check src ingestion tests
    ```
 7. **Commit with clear messages**
    ```bash
@@ -82,13 +83,13 @@ git remote add upstream https://github.com/ORIGINAL_OWNER/chatformula1.git
 ### 2. Install Dependencies
 
 ```bash
-# Install with dev dependencies
-poetry install
+# Install all apps (only agent/ is implemented in Phase 1)
+make setup
 
-# Activate virtual environment
-poetry shell
+# Or directly:
+cd agent && poetry install
 
-# Install pre-commit hooks
+# Install pre-commit hooks (from the repo root)
 pre-commit install
 ```
 
@@ -118,14 +119,16 @@ git checkout -b feature/your-feature-name
 ### Code Formatting
 
 ```bash
+cd agent
+
 # Format with Black (line length: 88)
-poetry run black src tests
+poetry run black src ingestion tests
 
 # Lint with Ruff
-poetry run ruff check src tests
+poetry run ruff check src ingestion tests
 
 # Type check with mypy
-poetry run mypy src
+poetry run mypy src ingestion
 ```
 
 ### Example Code Style
@@ -174,53 +177,43 @@ def process_race_data(
 
 ```python
 import pytest
-from src.agent.graph import create_agent_graph
 
-def test_agent_graph_creation():
-    """Test that agent graph is created successfully."""
-    # Arrange
-    config = {"model": "gpt-3.5-turbo"}
-    
-    # Act
-    graph = create_agent_graph(config)
-    
-    # Assert
-    assert graph is not None
-    assert graph.nodes is not None
+from chatf1_agent.guards import scan_for_prompt_injection
 
-@pytest.mark.asyncio
-async def test_agent_query():
-    """Test agent can process a query."""
+
+@pytest.mark.unit
+def test_clean_query_passes_guard():
+    """A normal F1 question is not flagged."""
     # Arrange
-    agent = create_agent()
     query = "Who won the 2023 championship?"
-    
+
     # Act
-    response = await agent.process(query)
-    
+    verdict = scan_for_prompt_injection(query)
+
     # Assert
-    assert response is not None
-    assert "verstappen" in response.lower()
+    assert verdict.flagged is False
+    assert verdict.matched_pattern is None
 ```
 
 ### Running Tests
 
+Tests run with dummy credentials — no API keys required.
+
 ```bash
+cd agent
+
 # Run all tests
 poetry run pytest
 
 # Run with coverage
-poetry run pytest --cov=src --cov-report=html
+poetry run pytest --cov
 
 # Run specific test file
-poetry run pytest tests/test_agent.py
-
-# Run specific test
-poetry run pytest tests/test_agent.py::test_agent_graph_creation
+poetry run pytest tests/test_streaming_contract.py
 
 # Run by marker
 poetry run pytest -m unit
-poetry run pytest -m integration
+poetry run pytest -m integration   # needs real keys; skips otherwise
 ```
 
 ---
@@ -318,24 +311,14 @@ Brief description of changes
 
 ```
 chatformula1/
-├── src/                      # Source code
-│   ├── agent/               # LangGraph agent
-│   ├── api/                 # FastAPI endpoints
-│   ├── config/              # Configuration
-│   ├── ingestion/           # Data ingestion
-│   ├── prompts/             # LLM prompts
-│   ├── search/              # Search integration
-│   ├── tools/               # LangChain tools
-│   ├── ui/                  # Streamlit UI
-│   ├── utils/               # Utilities
-│   └── vector_store/        # Vector DB integration
-├── tests/                   # Test suite
-│   ├── unit/               # Unit tests
-│   ├── integration/        # Integration tests
-│   └── conftest.py         # Pytest fixtures
-├── scripts/                 # Utility scripts
-├── docs/                    # Documentation
-└── monitoring/              # Monitoring configs
+├── agent/                    # Python LangGraph inference service
+│   ├── src/chatf1_agent/    # Pipeline, retrieval, guards, NDJSON server
+│   ├── ingestion/           # Offline ingestion CLI
+│   └── tests/               # Test suite (incl. streaming contract tests)
+├── gateway/                  # Phoenix GraphQL gateway (Phase 2)
+├── web/                      # React frontend (Phase 4)
+├── data/                     # F1 datasets (seeds + ingestion input)
+└── docs/                     # Architecture, roadmap, streaming protocol
 ```
 
 ---
