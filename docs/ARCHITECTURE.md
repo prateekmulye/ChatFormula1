@@ -300,7 +300,7 @@ Subscriptions ride Phoenix Channels over `Phoenix.PubSub` (PG2, single node — 
 
 Every item below is reachable from the live demo or readable in ≤2 files — no theater.
 
-1. **Documented supervision tree** (diagram + `:observer` screenshot in docs): `ChatF1.Application` supervising `Repo`, `Phoenix.PubSub`, `ConvRegistry` (Registry), `ConversationSupervisor` (DynamicSupervisor), `StreamTaskSupervisor` (Task.Supervisor), `Agents.Breaker`, Finch pool, Oban, PromEx, `Endpoint` — with a scripted kill-a-GenServer-mid-demo showing crash isolation.
+1. **Documented supervision tree** (annotated diagram in `gateway/lib/chat_f1/application.ex`): `ChatF1.Application` supervising `Repo`, `Phoenix.PubSub`, `ConvRegistry` (Registry), `ConversationSupervisor` (DynamicSupervisor), `StreamTaskSupervisor` (Task.Supervisor), `Agents.Breaker`, Finch pool, Oban, PromEx, `Endpoint` — with a scripted kill-a-GenServer-mid-demo showing crash isolation.
 2. **Per-conversation GenServer** (`ChatF1.Conversations.Server`): Registry via-tuples, lazy start, Postgres hydration, idle `:timeout` + `:hibernate`, and a capped seq-numbered **replay buffer** re-feeding reconnecting subscribers — the OTP money shot.
 3. **Absinthe depth:** Dataloader (Ecto source) batching driver→constructor→results (provable no-N+1 on standings), **query complexity + max-depth analysis**, union-typed subscription payloads (`AgentEvent`), custom middleware stack with normalized `ErrorCode` errors.
 4. **Absinthe.Subscription over Phoenix.PubSub** with per-message topics, subscription-time authorization, and micro-batched publishes (40 ms / 12 tokens) — a real backpressure decision.
@@ -321,7 +321,7 @@ Every item below is reachable from the live demo or readable in ≤2 files — n
 
 ```
 chatformula1/
-├── README.md                  # 30-sec sell: hero GIF of token streaming, mermaid diagram,
+├── README.md                  # 30-sec sell: hero screenshot (streaming GIF post-deploy), mermaid diagram,
 │                              # "three files to read" (conversations/server.ex, schema.ex, graph.py),
 │                              # quickstart, CI badges, disclaimer, free-tier honesty notes
 ├── LICENSE
