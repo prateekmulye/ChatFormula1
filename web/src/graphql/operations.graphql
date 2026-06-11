@@ -127,6 +127,12 @@ mutation SendMessage($conversationId: ID!, $content: String!) {
   }
 }
 
+# Thumbs up/down on a completed assistant message. Idempotent per
+# viewer+message on the gateway — re-submitting updates the existing row.
+mutation SubmitFeedback($messageId: ID!, $helpful: Boolean!) {
+  submitFeedback(messageId: $messageId, helpful: $helpful)
+}
+
 subscription AgentStream($messageId: ID!) {
   agentStream(messageId: $messageId) {
     __typename

@@ -129,6 +129,7 @@ export function ChatPage() {
                   <UserBubble content={item.content} />
                 ) : (
                   <AssistantMessage
+                    messageId={item.message.id}
                     content={item.message.content}
                     sources={item.message.sources}
                     latencyMs={item.message.latencyMs ?? null}

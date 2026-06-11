@@ -556,6 +556,14 @@ export type SendMessageMutationVariables = Exact<{
 
 export type SendMessageMutation = { __typename?: 'RootMutationType', sendMessage: { __typename?: 'SendMessagePayload', assistantMessageId: string, userMessage: { __typename?: 'Message', id: string, role: MessageRole, content: string, status: MessageStatus, intent?: string | null, cached: boolean, latencyMs?: number | null, insertedAt: string, sources: Array<{ __typename?: 'Source', kind: SourceKind, title: string, url?: string | null, snippet?: string | null, score?: number | null }> } } };
 
+export type SubmitFeedbackMutationVariables = Exact<{
+  messageId: Scalars['ID']['input'];
+  helpful: Scalars['Boolean']['input'];
+}>;
+
+
+export type SubmitFeedbackMutation = { __typename?: 'RootMutationType', submitFeedback: boolean };
+
 export type AgentStreamSubscriptionVariables = Exact<{
   messageId: Scalars['ID']['input'];
 }>;
@@ -995,6 +1003,38 @@ export function useSendMessageMutation(baseOptions?: Apollo.MutationHookOptions<
 export type SendMessageMutationHookResult = ReturnType<typeof useSendMessageMutation>;
 export type SendMessageMutationResult = Apollo.MutationResult<SendMessageMutation>;
 export type SendMessageMutationOptions = Apollo.BaseMutationOptions<SendMessageMutation, SendMessageMutationVariables>;
+export const SubmitFeedbackDocument = gql`
+    mutation SubmitFeedback($messageId: ID!, $helpful: Boolean!) {
+  submitFeedback(messageId: $messageId, helpful: $helpful)
+}
+    `;
+export type SubmitFeedbackMutationFn = Apollo.MutationFunction<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>;
+
+/**
+ * __useSubmitFeedbackMutation__
+ *
+ * To run a mutation, you first call `useSubmitFeedbackMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSubmitFeedbackMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [submitFeedbackMutation, { data, loading, error }] = useSubmitFeedbackMutation({
+ *   variables: {
+ *      messageId: // value for 'messageId'
+ *      helpful: // value for 'helpful'
+ *   },
+ * });
+ */
+export function useSubmitFeedbackMutation(baseOptions?: Apollo.MutationHookOptions<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>(SubmitFeedbackDocument, options);
+      }
+export type SubmitFeedbackMutationHookResult = ReturnType<typeof useSubmitFeedbackMutation>;
+export type SubmitFeedbackMutationResult = Apollo.MutationResult<SubmitFeedbackMutation>;
+export type SubmitFeedbackMutationOptions = Apollo.BaseMutationOptions<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>;
 export const AgentStreamDocument = gql`
     subscription AgentStream($messageId: ID!) {
   agentStream(messageId: $messageId) {

@@ -166,6 +166,26 @@ export function ArrowRightIcon(props: IconProps) {
   );
 }
 
+/** Thumb up — helpful feedback (drawn glyph, never an emoji). */
+export function ThumbUpIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="10.5" width="3.5" height="9" rx="1" />
+      <path d="M7 12 L10.5 4.5 Q12.5 4.5 12.5 6.5 L12.5 9.5 L18.5 9.5 Q20.4 9.5 20 11.4 L18.6 18 Q18.3 19.5 16.8 19.5 L7 19.5" />
+    </svg>
+  );
+}
+
+/** Thumb down — not-helpful feedback (vertical mirror of ThumbUpIcon). */
+export function ThumbDownIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="4.5" width="3.5" height="9" rx="1" />
+      <path d="M7 12 L10.5 19.5 Q12.5 19.5 12.5 17.5 L12.5 14.5 L18.5 14.5 Q20.4 14.5 20 12.6 L18.6 6 Q18.3 4.5 16.8 4.5 L7 4.5" />
+    </svg>
+  );
+}
+
 /** Close ✕ — sheet / dismiss. */
 export function CloseIcon(props: IconProps) {
   return (
