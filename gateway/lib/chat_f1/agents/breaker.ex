@@ -112,11 +112,14 @@ defmodule ChatF1.Agents.Breaker do
   # ─── GenServer callbacks ─────────────────────────────────────────────────────
 
   @impl true
-  def init(_opts) do
+  def init(opts) do
     state = %{
       breaker: :closed,
       consecutive_failures: 0,
-      last_transition_at: nil
+      last_transition_at: nil,
+      # Injectable for tests: async test instances must not probe the global
+      # :agent_url, which other async tests point at their own Bypass ports.
+      agent_url: Keyword.get(opts, :agent_url)
     }
 
     {:ok, state}
@@ -191,7 +194,7 @@ defmodule ChatF1.Agents.Breaker do
   end
 
   defp run_probe(state) do
-    agent_url = Application.fetch_env!(:chat_f1, :agent_url)
+    agent_url = state.agent_url || Application.fetch_env!(:chat_f1, :agent_url)
     token = Application.fetch_env!(:chat_f1, :internal_api_token)
 
     result =

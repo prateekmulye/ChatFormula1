@@ -1,0 +1,50 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`TokenStream > matches the streaming structure snapshot 1`] = `
+<div
+  class="max-w-[65ch] rounded-[14px] rounded-bl-[4px] border border-hairline bg-surface-1 px-4 py-3 [contain:layout]"
+  data-testid="token-stream"
+>
+  <div
+    aria-atomic="false"
+    aria-busy="true"
+    aria-live="polite"
+    class="min-h-[3.1em] text-body leading-[1.55] text-text"
+    data-testid="token-stream-body"
+  >
+    <p
+      class="my-0 whitespace-pre-wrap"
+    >
+      Verstappen
+       
+      leads
+       
+      <span
+        class="inline-block"
+        style="opacity: 0; transform: translateY(8px);"
+      >
+        with
+      </span>
+       
+      <span
+        class="inline-block"
+        style="opacity: 0; transform: translateY(8px);"
+      >
+        312
+      </span>
+       
+      <span
+        class="inline-block"
+        style="opacity: 0; transform: translateY(8px);"
+      >
+        points
+      </span>
+      <span
+        aria-hidden="true"
+        class="ml-0.5 inline-block h-[1em] w-0.5 translate-y-[0.15em] rounded-full bg-azure"
+        style="transform: scaleY(0.7);"
+      />
+    </p>
+  </div>
+</div>
+`;

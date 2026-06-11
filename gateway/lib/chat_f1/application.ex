@@ -47,12 +47,13 @@ defmodule ChatF1.Application do
 
   * `Agents.Breaker` starts before `ConvPipelineSupervisor` so that the
     first `begin_stream` call can always check breaker state.
-  * `Absinthe.Subscription` is started as a child inside `Endpoint` (via
-    `use Absinthe.Phoenix.Endpoint` or the explicit child call in the
-    endpoint `start_link` path — this is handled by `absinthe_phoenix`'s
-    `Absinthe.Phoenix.Endpoint` behaviour).
-  * The endpoint still goes last so we don't accept traffic until the full
-    tree is healthy.
+  * `Absinthe.Subscription` is an explicit child AFTER the `Endpoint`
+    (`use Absinthe.Phoenix.Endpoint` only wires the publish API — it does
+    NOT start the subscription registry; without this child every
+    `subscribe` frame crashed with "Pubsub not configured!", found in
+    Phase 4 browser integration).
+  * The endpoint goes second-to-last so we don't accept traffic until the
+    rest of the tree is healthy.
   """
 
   use Application
@@ -91,9 +92,15 @@ defmodule ChatF1.Application do
       ChatF1.ConvPipelineSupervisor,
 
       # ── Phoenix Endpoint ─────────────────────────────────────────────────────
-      # Starts last; Bandit acceptors open after all children above are running.
-      # absinthe_phoenix wires Absinthe.Subscription into the endpoint on start.
-      ChatF1Web.Endpoint
+      # Bandit acceptors open after all children above are running.
+      ChatF1Web.Endpoint,
+
+      # ── Absinthe subscription registry ───────────────────────────────────────
+      # Must start AFTER the endpoint (it supervises per-endpoint proxies that
+      # need the endpoint's PubSub). `use Absinthe.Phoenix.Endpoint` does NOT
+      # start this — without it, every GraphQL `subscribe` raises
+      # "Pubsub not configured!" and the websocket closes with 1011.
+      {Absinthe.Subscription, ChatF1Web.Endpoint}
     ]
 
     opts = [strategy: :one_for_one, name: ChatF1.Supervisor]

@@ -10,8 +10,13 @@ defmodule ChatF1Web.Endpoint do
   # Transport spike outcome: absinthe_graphql_ws 0.3.6 + Phoenix 1.8 + Bandit
   # is COMPATIBLE.  The library implements Phoenix.Socket.Transport directly
   # (not Phoenix Channels), so Bandit's WebSock support is sufficient.
+  # NOTE: the npm `graphql-ws` client negotiates the modern sub-protocol
+  # string "graphql-transport-ws" (the package name predates the rename);
+  # "graphql-ws" is kept for legacy/manual clients. Allowing only the latter
+  # rejects every Apollo GraphQLWsLink upgrade with a 403 (found in Phase 4
+  # browser integration).
   socket "/socket", ChatF1Web.GraphqlSocket,
-    websocket: [subprotocols: ["graphql-ws"]],
+    websocket: [subprotocols: ["graphql-transport-ws", "graphql-ws"]],
     longpoll: false
 
   # Standard Absinthe/Phoenix Channels socket — used by GraphiQL subscription
@@ -43,6 +48,10 @@ defmodule ChatF1Web.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, store: :cookie, key: "_chat_f1_key", signing_salt: "chatf1salt"
+
+  # CORS + x-viewer-token echo for the cross-origin React frontend (Phase 4).
+  # Must sit before the Router so OPTIONS preflights short-circuit here.
+  plug ChatF1Web.Plugs.CORS
 
   plug ChatF1Web.Router
 end

@@ -1,0 +1,187 @@
+# All GraphQL documents for the cockpit. Typed hooks are generated into
+# generated.ts via `npm run codegen` (see ../../codegen.ts).
+
+fragment SourceFields on Source {
+  kind
+  title
+  url
+  snippet
+  score
+}
+
+fragment MessageFields on Message {
+  id
+  role
+  content
+  status
+  intent
+  cached
+  latencyMs
+  insertedAt
+  sources {
+    ...SourceFields
+  }
+}
+
+fragment SystemHealthFields on SystemHealth {
+  mode
+  gateway
+  agentService
+  database
+  breakerState
+}
+
+# ─── F1 structured data ────────────────────────────────────────────────────────
+
+query Standings($season: Int!) {
+  standings(season: $season) {
+    position
+    points
+    wins
+    podiums
+    driver {
+      id
+      code
+      number
+      fullName
+      nationality
+      constructor {
+        id
+        name
+      }
+    }
+  }
+}
+
+query Races($season: Int!) {
+  races(season: $season) {
+    id
+    season
+    round
+    name
+    circuit
+    country
+    startsAt
+  }
+}
+
+query NextRace {
+  nextRace {
+    id
+    season
+    round
+    name
+    circuit
+    country
+    startsAt
+  }
+}
+
+query Drivers($season: Int) {
+  drivers(season: $season) {
+    id
+    code
+    number
+    fullName
+    nationality
+    constructor {
+      id
+      name
+      points
+    }
+  }
+}
+
+# ─── Conversations ────────────────────────────────────────────────────────────
+
+query ConversationMessages($id: ID!) {
+  conversation(id: $id) {
+    id
+    title
+    messages {
+      ...MessageFields
+    }
+  }
+}
+
+mutation StartConversation {
+  startConversation {
+    id
+    title
+    insertedAt
+  }
+}
+
+mutation SendMessage($conversationId: ID!, $content: String!) {
+  sendMessage(conversationId: $conversationId, content: $content) {
+    userMessage {
+      ...MessageFields
+    }
+    assistantMessageId
+  }
+}
+
+subscription AgentStream($messageId: ID!) {
+  agentStream(messageId: $messageId) {
+    __typename
+    ... on TokenDelta {
+      messageId
+      seq
+      text
+    }
+    ... on NodeTransition {
+      messageId
+      node
+      startedAt
+    }
+    ... on SourcesResolved {
+      messageId
+      sources {
+        ...SourceFields
+      }
+    }
+    ... on MessageCompleted {
+      messageId
+      cached
+      message {
+        ...MessageFields
+      }
+      usage {
+        promptTokens
+        completionTokens
+        estimatedCostUsd
+      }
+    }
+    ... on AgentError {
+      messageId
+      code
+      # Aliased: AgentError.message (String!) conflicts with MessageCompleted.message (Message!).
+      errorMessage: message
+      retryable
+    }
+  }
+}
+
+# ─── Ops ──────────────────────────────────────────────────────────────────────
+
+query SystemHealth {
+  systemHealth {
+    ...SystemHealthFields
+  }
+}
+
+subscription SystemHealthChanged {
+  systemHealthChanged {
+    ...SystemHealthFields
+  }
+}
+
+query RateLimitStatus {
+  rateLimitStatus {
+    limitPerMinute
+    remainingMinute
+    limitPerHour
+    remainingHour
+    resetsAt
+  }
+}

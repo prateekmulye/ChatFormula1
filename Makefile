@@ -1,11 +1,11 @@
 # ChatFormula1 monorepo — fans out to the per-app toolchains.
-# Only agent/ is implemented in Phase 1; gateway/ and web/ land in
-# Phases 2-4 (see docs/ROADMAP.md).
+# agent/ (Phase 1), gateway/ (Phases 2-3) and web/ (Phase 4) are implemented;
+# see docs/ROADMAP.md for what each phase shipped.
 
 .PHONY: help setup dev test lint \
 	setup-agent dev-agent test-agent lint-agent \
 	setup-gateway dev-gateway test-gateway lint-gateway \
-	setup-web dev-web test-web lint-web \
+	setup-web dev-web test-web lint-web codegen-web \
 	db ingest clean
 
 help:
@@ -57,10 +57,24 @@ test-gateway:
 lint-gateway:
 	cd gateway && mix format --check-formatted && mix credo --strict
 
-# ─── web (React / Apollo — Phase 4) ─────────────────────────────────────────
+# ─── web (React / Apollo) ────────────────────────────────────────────────────
 
-setup-web dev-web test-web lint-web:
-	@echo "web: not yet — see docs/ROADMAP.md (Phase 4)"
+setup-web:
+	cd web && npm ci
+
+dev-web:
+	cd web && npm run dev
+
+test-web:
+	cd web && npx tsc -b && npx eslint . && npx vitest run
+
+lint-web:
+	cd web && npx eslint .
+
+# Regenerate web/schema.graphql from the gateway, then the typed hooks.
+codegen-web:
+	cd gateway && mix absinthe.schema.sdl --schema ChatF1Web.Schema ../web/schema.graphql
+	cd web && npm run codegen
 
 # ─── utilities ──────────────────────────────────────────────────────────────
 

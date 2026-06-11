@@ -1,0 +1,251 @@
+/*
+ * Telemetry Noir design tokens — single dark theme.
+ * Source of truth: web/DESIGN.md §2 (do not invent values here).
+ */
+@import "tailwindcss";
+
+@theme {
+  /* colors — exposed as utilities: bg-bg, text-azure, border-hairline, etc. */
+  --color-bg: oklch(12% 0.015 260);
+  --color-surface-1: oklch(16% 0.018 260);
+  --color-surface-2: oklch(20% 0.02 260);
+  --color-surface-3: oklch(26% 0.022 260);
+  --color-hairline: oklch(95% 0.01 260 / 8%);
+  --color-hairline-2: oklch(95% 0.01 260 / 14%);
+  --color-text: oklch(95% 0.01 260);
+  --color-text-dim: oklch(72% 0.015 260);
+  --color-text-faint: oklch(52% 0.015 260);
+  --color-azure: oklch(65% 0.12 245);
+  --color-azure-dim: oklch(45% 0.09 245);
+  --color-lime: oklch(85% 0.18 105);
+  --color-amber: oklch(70% 0.16 55);
+  --color-green: oklch(65% 0.12 150);
+  --color-critical: oklch(58% 0.17 28);
+  --color-chip: oklch(22% 0.03 245);
+
+  /* fonts */
+  --font-display: "Spectral", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* type scale (1.250 Major Third) — DESIGN.md §2.3 */
+  --text-hero: clamp(2.5rem, 6vw, 4.2rem);
+  --text-hero--line-height: 1.05;
+  --text-h1: 2.027rem;
+  --text-h1--line-height: 1.15;
+  --text-h2: 1.62rem;
+  --text-h2--line-height: 1.2;
+  --text-h3: 1.296rem;
+  --text-h3--line-height: 1.3;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.55;
+  --text-ui: 0.9375rem;
+  --text-ui--line-height: 1.45;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.4;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.3;
+  --text-numeral: clamp(3rem, 9vw, 6rem);
+  --text-numeral--line-height: 1;
+
+  /* radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* motion (durations as custom props; springs live in Motion config in TS) */
+  --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* shadcn-style primitive variables mapped onto the theme (DESIGN.md §2.6). */
+:root {
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-surface-1);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-surface-2);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-azure);
+  --primary-foreground: var(--color-bg);
+  --muted: var(--color-surface-2);
+  --muted-foreground: var(--color-text-dim);
+  --border: var(--color-hairline);
+  --ring: var(--color-azure);
+  --destructive: var(--color-critical);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Visible azure focus ring everywhere — never outline:none without replacement. */
+  :focus-visible {
+    outline: 2px solid var(--color-azure);
+    outline-offset: 2px;
+  }
+  /* Hairlines strengthen under prefers-contrast (DESIGN.md §6 baseline). */
+  @media (prefers-contrast: more) {
+    :root {
+      --color-hairline: oklch(95% 0.01 260 / 20%);
+      --color-hairline-2: oklch(95% 0.01 260 / 32%);
+    }
+  }
+}
+
+@layer components {
+  /* Carbon-fiber "Digital Soul" grain — one fixed instance, never animated
+     (DESIGN.md §2.2). Sits under text via z-index; pointer-events none. */
+  .carbon-grain {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.03;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Optional 2px twill diagonal for woven-carbon panels (DESIGN.md §2.2). */
+  .carbon-twill {
+    background-image: repeating-linear-gradient(
+      45deg,
+      oklch(95% 0.01 260 / 4%) 0px,
+      oklch(95% 0.01 260 / 4%) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  /* Instrument label: uppercase mono with 0.04em tracking (DESIGN.md §2.3). */
+  .instrument {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Elevation glows (DESIGN.md §2.4). */
+  .glow-azure {
+    box-shadow:
+      0 0 0 1px oklch(65% 0.12 245 / 40%),
+      0 0 24px -8px oklch(65% 0.12 245 / 50%);
+  }
+  .glow-lime {
+    box-shadow: 0 0 20px -6px oklch(85% 0.18 105 / 55%);
+  }
+
+  /* Marching-ants connector for the TelemetryStrip traveling signal. */
+  .marching-ants {
+    stroke-dasharray: 4 4;
+    animation: ants 600ms linear infinite;
+  }
+  @keyframes ants {
+    to {
+      stroke-dashoffset: -8;
+    }
+  }
+
+  /* Slow status-dot pulse (LIVE / DEGRADED ambient, 3.4s — DESIGN.md §5.5). */
+  .status-pulse {
+    animation: status-pulse 3.4s ease-in-out infinite;
+  }
+  @keyframes status-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  /* Ops sheet: 560ms grace slide (DESIGN.md §5.4 route/panel transitions). */
+  .sheet-panel[data-state="open"] {
+    animation: sheet-in 560ms var(--ease-reveal);
+  }
+  .sheet-panel[data-state="closed"] {
+    animation: sheet-out 320ms var(--ease-standard);
+  }
+  .sheet-overlay[data-state="open"] {
+    animation: fade-in 320ms var(--ease-standard);
+  }
+  .sheet-overlay[data-state="closed"] {
+    animation: fade-out 240ms var(--ease-standard);
+  }
+  @keyframes sheet-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes sheet-out {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* Skeleton shimmer in azure-dim; pre-allocates height (DESIGN.md §4.1). */
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, oklch(45% 0.09 245 / 12%), transparent);
+    animation: shimmer 1.8s var(--ease-standard) infinite;
+  }
+  @keyframes shimmer {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  /* All ambient CSS motion disabled under reduced motion (DESIGN.md §5.5). */
+  @media (prefers-reduced-motion: reduce) {
+    .marching-ants,
+    .status-pulse,
+    .skeleton-shimmer::after {
+      animation: none;
+    }
+    .sheet-panel[data-state="open"],
+    .sheet-panel[data-state="closed"],
+    .sheet-overlay[data-state="open"],
+    .sheet-overlay[data-state="closed"] {
+      animation: none;
+    }
+  }
+}

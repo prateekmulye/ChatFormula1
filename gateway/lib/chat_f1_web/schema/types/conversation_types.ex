@@ -39,11 +39,40 @@ defmodule ChatF1Web.Schema.Types.ConversationTypes do
     field :content, non_null(:string)
     field :status, non_null(:message_status)
     field :intent, :string
-    field :sources, non_null(list_of(non_null(:source)))
+
+    # The Ecto schema stores sources as a JSON column defaulting to %{}.
+    # Without this resolver Absinthe list-wraps the bare map into [%{}] and
+    # the non-null :kind crashes EVERY query selecting message.sources
+    # (found in Phase 4 browser integration — sendMessage.userMessage died).
+    # JSONB round-trips with string keys, so both key shapes are accepted.
+    field :sources, non_null(list_of(non_null(:source))) do
+      resolve(fn message, _args, _resolution ->
+        {:ok, normalize_message_sources(message.sources)}
+      end)
+    end
+
     field :cached, non_null(:boolean)
     field :latency_ms, :integer
     field :inserted_at, non_null(:datetime)
   end
+
+  @doc false
+  def normalize_message_sources(sources) when is_list(sources) do
+    Enum.map(sources, fn source ->
+      %{
+        kind: source_kind(source[:kind] || source["kind"]),
+        title: source[:title] || source["title"] || "",
+        url: source[:url] || source["url"],
+        snippet: source[:snippet] || source["snippet"],
+        score: source[:score] || source["score"]
+      }
+    end)
+  end
+
+  def normalize_message_sources(_), do: []
+
+  defp source_kind(kind) when kind in [:web, "web"], do: :web
+  defp source_kind(_), do: :vector
 
   object :conversation do
     @desc "A chat conversation owned by the viewer."
