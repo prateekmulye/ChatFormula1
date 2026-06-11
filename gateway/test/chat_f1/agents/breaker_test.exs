@@ -132,14 +132,16 @@ defmodule ChatF1.Agents.BreakerTest do
     assert h.agent_service == :healthy
   end
 
-  test "system_health returns :degraded + :down when open" do
+  test "system_health returns :showcase + :down when open (Phase 5: SHOWCASE wins)" do
+    # Per ARCHITECTURE §3: ServiceMode SHOWCASE = budget spent OR agent down (breaker open).
+    # Breaker open → mode is :showcase so the UI activates cached-replay path.
     pid = start_breaker()
 
     Enum.each(1..3, fn _ -> failure(pid) end)
     sync(pid)
 
     h = health(pid)
-    assert h.mode == :degraded
+    assert h.mode == :showcase
     assert h.breaker_state == :open
     assert h.agent_service == :down
   end
