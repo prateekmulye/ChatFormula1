@@ -69,6 +69,50 @@ def test_manager_requires_credentials(monkeypatch: pytest.MonkeyPatch):
         VectorStoreManager(settings)
 
 
+@pytest.mark.unit
+class TestDimensionValidation:
+    """The live index dimension must match the configured embeddings."""
+
+    async def test_mismatch_fails_loudly_with_remediation(
+        self, test_settings: Settings, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A mismatched index raises with the `make reindex` remediation."""
+        from types import SimpleNamespace
+
+        from chatf1_agent.exceptions import VectorStoreError
+
+        manager = VectorStoreManager(test_settings)
+        monkeypatch.setattr(
+            manager.pc,
+            "describe_index",
+            lambda name: SimpleNamespace(dimension=768, metric="cosine"),
+        )
+
+        with pytest.raises(VectorStoreError) as exc_info:
+            await manager._validate_index()
+
+        message = str(exc_info.value)
+        assert "768" in message
+        assert "1536" in message
+        assert "make reindex" in message
+        assert test_settings.embedding_model in message
+
+    async def test_matching_dimension_passes(
+        self, test_settings: Settings, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A matching index validates without error."""
+        from types import SimpleNamespace
+
+        manager = VectorStoreManager(test_settings)
+        monkeypatch.setattr(
+            manager.pc,
+            "describe_index",
+            lambda name: SimpleNamespace(dimension=1536, metric="cosine"),
+        )
+
+        await manager._validate_index()
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestVectorStoreIntegration:
@@ -90,7 +134,7 @@ class TestVectorStoreIntegration:
         health = await vector_store.health_check()
 
         assert health["status"] == "healthy"
-        assert health["dimension"] == vector_store.config.pinecone_dimension
+        assert health["dimension"] == vector_store.config.resolved_embedding_dimension
 
     async def test_add_and_search_documents(self, vector_store: VectorStoreManager):
         """Documents upsert deterministically and are searchable."""

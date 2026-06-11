@@ -316,7 +316,7 @@ def check_config(ctx: click.Context) -> None:
             click.echo(f"  Environment: {config.environment}")
             click.echo(f"  Log level: {config.log_level}")
             click.echo(f"  Pinecone index: {config.pinecone_index_name}")
-            click.echo(f"  Generation model: {config.generation_model}")
+            click.echo(f"  Generation model: {config.llm_model}")
             click.echo(f"  Chunk size: {config.chunk_size}")
             click.echo(f"  Chunk overlap: {config.chunk_overlap}")
 

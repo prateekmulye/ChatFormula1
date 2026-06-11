@@ -138,9 +138,13 @@ class F1AgentGraph:
 
         logger.info(
             "f1_agent_graph_initialized",
-            generation_model=config.generation_model,
+            provider=config.llm_provider,
+            generation_model=config.llm_model,
             analysis_model=config.analysis_model,
-            temperature=config.openai_temperature,
+            temperature=config.llm_temperature,
+            structured_output=(
+                "function_calling" if config.supports_function_calling else "json"
+            ),
         )
 
     def _build_graph(self) -> StateGraph:
@@ -613,8 +617,8 @@ Be accurate and concise."""
         cache_key = cache_manager.get_llm_cache_key(
             query=query,
             context=context,
-            model=self.config.generation_model,
-            temperature=self.config.openai_temperature,
+            model=self.config.llm_model,
+            temperature=self.config.llm_temperature,
         )
 
         cached_response = cache_manager.llm_cache.get(cache_key)
