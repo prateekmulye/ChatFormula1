@@ -26,10 +26,14 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
 
   require Logger
 
+  import Ecto.Query, only: []
+
   alias ChatF1.Agents.Breaker
   alias ChatF1.Conversations
+  alias ChatF1.Conversations.MessageFeedback
   alias ChatF1.Conversations.Server, as: ConvServer
   alias ChatF1.RateLimit.Server, as: RateLimitServer
+  alias ChatF1.Repo
 
   # ── Queries ──────────────────────────────────────────────────────────────────
 
@@ -126,5 +130,51 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
       {:ok, _} -> {:ok, true}
       {:error, :not_found} -> {:error, :not_found}
     end
+  end
+
+  @doc """
+  `submitFeedback` — records thumbs-up/down on an assistant message.
+
+  Idempotent per viewer+message: if feedback already exists, updates the
+  `helpful` value.  Returns `true` on success.
+  """
+  def submit_feedback(_parent, %{message_id: message_id, helpful: helpful}, %{
+        context: %{viewer_id: viewer_id}
+      }) do
+    msg_id_int =
+      case Integer.parse(to_string(message_id)) do
+        {n, ""} -> n
+        _ -> nil
+      end
+
+    if is_nil(msg_id_int) do
+      {:error, %{message: "Invalid message ID", extensions: %{code: "VALIDATION"}}}
+    else
+      # Upsert: insert or update on conflict.
+      result =
+        Repo.insert(
+          %MessageFeedback{}
+          |> MessageFeedback.changeset(%{
+            message_id: msg_id_int,
+            viewer_id: viewer_id,
+            helpful: helpful
+          }),
+          on_conflict: {:replace, [:helpful, :updated_at]},
+          conflict_target: [:message_id, :viewer_id]
+        )
+
+      case result do
+        {:ok, _} ->
+          {:ok, true}
+
+        {:error, cs} ->
+          Logger.error("submitFeedback failed: #{inspect(cs)}")
+          {:error, %{message: "Failed to submit feedback", extensions: %{code: "INTERNAL"}}}
+      end
+    end
+  end
+
+  def submit_feedback(_parent, _args, _context) do
+    {:error, %{message: "Viewer token required", extensions: %{code: "UNAUTHORIZED"}}}
   end
 end

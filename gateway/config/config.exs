@@ -30,4 +30,11 @@ config :logger, :default_formatter,
 
 config :phoenix, :json_library, Jason
 
+# PromEx: disabled by default; runtime.exs/test.exs override as needed.
+config :chat_f1, ChatF1.Telemetry.PromEx,
+  manual_metrics_start_delay: :no_delay,
+  drop_metrics_groups: [],
+  grafana: :disabled,
+  metrics_server: :disabled
+
 import_config "#{config_env()}.exs"

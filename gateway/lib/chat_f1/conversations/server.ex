@@ -69,9 +69,12 @@ defmodule ChatF1.Conversations.Server do
   require Logger
 
   alias ChatF1.Agents.Breaker
+  alias ChatF1.Budget
   alias ChatF1.Conversations
   alias ChatF1.Conversations.StreamRunner
   alias ChatF1.Repo
+  alias ChatF1.Showcase
+  alias ChatF1.Showcase.Replayer
 
   # ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -209,17 +212,7 @@ defmodule ChatF1.Conversations.Server do
 
   @impl true
   def handle_call({:begin_stream, assistant_message_id}, _from, state) do
-    # Build payload here (in the GenServer process) so the DB query runs on a
-    # connection that is allowed by Ecto.Adapters.SQL.Sandbox in tests.
-    # The Task.Supervised process running StreamRunner cannot access the
-    # sandbox connection owned by the test process.
-    payload =
-      StreamRunner.build_request_payload(
-        state.conversation_id,
-        assistant_message_id
-      )
-
-    # Reset buffer for the new message.
+    # Reset buffer for the new message (common to all paths).
     new_state = %{
       state
       | streaming_message_id: assistant_message_id,
@@ -231,19 +224,34 @@ defmodule ChatF1.Conversations.Server do
         stream_monitor: nil
     }
 
-    # Launch the StreamRunner task with the pre-built payload.
-    task_ref =
-      Task.Supervisor.async_nolink(
-        ChatF1.StreamTaskSupervisor,
-        StreamRunner,
-        :run,
-        [state.conversation_id, assistant_message_id, payload]
-      )
+    # Mode gate: SHOWCASE wins over LIVE (Budget + Breaker composition).
+    case Budget.mode() do
+      :showcase ->
+        new_state = start_showcase_stream(new_state, assistant_message_id)
+        {:reply, :ok, new_state, @idle_timeout_ms}
 
-    new_state = %{new_state | stream_monitor: task_ref.ref}
-    Process.monitor(task_ref.pid)
+      _live_or_degraded ->
+        # Build payload here (in the GenServer process) so the DB query runs on a
+        # connection that is allowed by Ecto.Adapters.SQL.Sandbox in tests.
+        payload =
+          StreamRunner.build_request_payload(
+            state.conversation_id,
+            assistant_message_id
+          )
 
-    {:reply, :ok, new_state, @idle_timeout_ms}
+        task_ref =
+          Task.Supervisor.async_nolink(
+            ChatF1.StreamTaskSupervisor,
+            StreamRunner,
+            :run,
+            [state.conversation_id, assistant_message_id, payload]
+          )
+
+        new_state = %{new_state | stream_monitor: task_ref.ref}
+        Process.monitor(task_ref.pid)
+
+        {:reply, :ok, new_state, @idle_timeout_ms}
+    end
   end
 
   @impl true
@@ -255,6 +263,54 @@ defmodule ChatF1.Conversations.Server do
       Enum.map(state.replay_buffer, fn %{type: type, event: event} -> %{type => event} end)
 
     {:reply, payloads, state, @idle_timeout_ms}
+  end
+
+  # Starts a SHOWCASE replay task for the given message.
+  # We need to fetch the question from the user message in this conversation.
+  @spec start_showcase_stream(map(), binary()) :: map()
+  defp start_showcase_stream(state, assistant_message_id) do
+    import Ecto.Query
+
+    # Grab the last user message content in this conversation.
+    question =
+      Repo.one(
+        from m in Conversations.Message,
+          where: m.conversation_id == ^state.conversation_id and m.role == :user,
+          order_by: [desc: m.id],
+          limit: 1,
+          select: m.content
+      ) || ""
+
+    case Showcase.find_nearest(question) do
+      {:ok, answer} ->
+        task_ref =
+          Task.Supervisor.async_nolink(
+            ChatF1.StreamTaskSupervisor,
+            Replayer,
+            :run,
+            [state.conversation_id, assistant_message_id, answer]
+          )
+
+        new_state = %{state | stream_monitor: task_ref.ref}
+        Process.monitor(task_ref.pid)
+        new_state
+
+      {:error, :no_match} ->
+        # No cached answer — publish a polite BUDGET_EXHAUSTED error immediately.
+        error_event = %{
+          message_id: assistant_message_id,
+          code: :budget_exhausted,
+          message:
+            "Daily LLM budget exhausted. Please try again tomorrow or choose a demo question.",
+          retryable: false
+        }
+
+        mark_message_failed(assistant_message_id, "Budget exhausted — no cached answer")
+
+        state
+        |> append_to_buffer(:agent_error, error_event)
+        |> publish_event(:agent_error, error_event)
+    end
   end
 
   # ─── Cast handlers ────────────────────────────────────────────────────────────
@@ -335,6 +391,10 @@ defmodule ChatF1.Conversations.Server do
       message_id: state.streaming_message_id,
       sources: sources
     }
+
+    # Phase 4 handoff debt: persist sources onto the message row immediately
+    # so they survive even if the stream terminates before `complete`.
+    persist_sources_to_message(state.streaming_message_id, sources)
 
     state
     |> append_to_buffer(:sources_resolved, event)
@@ -567,22 +627,50 @@ defmodule ChatF1.Conversations.Server do
         :error
 
       message ->
-        {:ok, updated} =
-          Conversations.update_assistant_message(message, %{
-            content: content,
-            status: :complete,
-            cached: cached,
-            sources: message.sources,
-            latency_ms: nil
-          })
+        {:ok, updated} = persist_completed_message(message, content, cached)
+        maybe_decrement_budget(cached, usage)
+        {:ok, %{message_id: message_id, message: updated, cached: cached, usage: usage}}
+    end
+  end
 
-        {:ok,
-         %{
-           message_id: message_id,
-           message: updated,
-           cached: cached,
-           usage: usage
-         }}
+  defp persist_completed_message(message, content, cached) do
+    latency_ms = compute_latency_ms(message.inserted_at)
+
+    persisted_sources =
+      case message.sources do
+        sources when is_list(sources) -> sources
+        _ -> []
+      end
+
+    Conversations.update_assistant_message(message, %{
+      content: content,
+      status: :complete,
+      cached: cached,
+      sources: persisted_sources,
+      latency_ms: latency_ms
+    })
+  end
+
+  defp compute_latency_ms(%DateTime{} = inserted) do
+    DateTime.diff(DateTime.utc_now(), inserted, :millisecond)
+  end
+
+  defp compute_latency_ms(_), do: nil
+
+  defp maybe_decrement_budget(true, _usage), do: :ok
+  defp maybe_decrement_budget(_cached, nil), do: :ok
+
+  defp maybe_decrement_budget(_cached, usage) do
+    cost = Map.get(usage, :estimated_cost_usd, 0.0)
+
+    if cost > 0.0 do
+      case Budget.decrement(cost) do
+        {:ok, _} ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning("[ConvServer] budget decrement failed: #{inspect(reason)}")
+      end
     end
   end
 
@@ -598,6 +686,20 @@ defmodule ChatF1.Conversations.Server do
         })
     end
   end
+
+  # Persists resolved sources onto the message row immediately on SourcesResolved.
+  # Phase 4 handoff debt: the frontend was merging live sources as a workaround.
+  defp persist_sources_to_message(message_id, sources) when is_list(sources) and sources != [] do
+    case Repo.get(Conversations.Message, to_integer(message_id)) do
+      nil ->
+        :ok
+
+      message ->
+        Conversations.update_assistant_message(message, %{sources: sources})
+    end
+  end
+
+  defp persist_sources_to_message(_message_id, _sources), do: :ok
 
   defp to_integer(id) when is_integer(id), do: id
   defp to_integer(id) when is_binary(id), do: String.to_integer(id)

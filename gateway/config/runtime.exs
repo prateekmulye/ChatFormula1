@@ -6,6 +6,31 @@ if System.get_env("PHX_SERVER") do
   config :chat_f1, ChatF1Web.Endpoint, server: true
 end
 
+# ── Oban configuration (all envs) ────────────────────────────────────────────
+# Uses Oban.Notifiers.PG (pooler-safe, no LISTEN/NOTIFY dependency).
+# Machine count is pinned to 1 (ADR-000) — no global distributed locks needed.
+# Cron expressions use 5-field "min hour dom mon dow" format.
+config :chat_f1, Oban,
+  repo: ChatF1.Repo,
+  notifier: Oban.Notifiers.PG,
+  queues: [default: 10],
+  plugins: [
+    {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
+    {Oban.Plugins.Cron,
+     crontab: [
+       # 02:00 UTC — nightly standings/races/results sync from Jolpica
+       {"0 2 * * *", ChatF1.Workers.JolpicaSync},
+       # 01:00 UTC — nightly Tavily news ingest trigger
+       {"0 1 * * *", ChatF1.Workers.IngestNews},
+       # 03:00 UTC — daily conversation TTL pruning (7-day window)
+       {"0 3 * * *", ChatF1.Workers.PruneConversations},
+       # 04:00 UTC — SHOWCASE cache warming (after JolpicaSync)
+       {"0 4 * * *", ChatF1.Workers.WarmShowcaseCache},
+       # 23:30 UTC — daily spend rollup reconciliation
+       {"30 23 * * *", ChatF1.Workers.SpendRollup}
+     ]}
+  ]
+
 if config_env() == :prod do
   # DATABASE_URL — required in production.
   # Format: ecto://USER:PASS@HOST/DATABASE

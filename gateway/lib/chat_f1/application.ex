@@ -2,7 +2,7 @@ defmodule ChatF1.Application do
   @moduledoc """
   OTP application entry point for the ChatFormula1 gateway.
 
-  ## Supervision tree (Phase 3)
+  ## Supervision tree (Phase 5)
 
   All top-level children run under a `:one_for_one` supervisor.  The three
   conversation-pipeline processes (`ConvRegistry`, `ConversationSupervisor`,
@@ -18,7 +18,9 @@ defmodule ChatF1.Application do
   ├── {Finch, name: ChatF1.Finch}       HTTP pool for agent proxy calls
   ├── ChatF1.RateLimit.Server           ETS token-bucket GenServer
   ├── ChatF1Web.Telemetry               Telemetry supervisor
+  ├── ChatF1.Telemetry.PromEx           Prometheus metrics exporter (Phase 5)
   ├── ChatF1.Agents.Breaker             Circuit breaker GenServer (Phase 3)
+  ├── {Oban, ...}                       Background jobs + cron (Phase 5)
   ├── ChatF1.ConvPipelineSupervisor     [:rest_for_one] (Phase 3)
   │   ├── {Registry, name: ChatF1.ConvRegistry}
   │   │     Per-conversation lookup; via-tuple process registration.
@@ -43,23 +45,25 @@ defmodule ChatF1.Application do
     a single broken conversation never affects `RateLimit.Server`, `Finch`,
     or the `Endpoint`.
 
-  ### Phase-3-specific design notes
+  ### Phase-5-specific design notes
 
-  * `Agents.Breaker` starts before `ConvPipelineSupervisor` so that the
-    first `begin_stream` call can always check breaker state.
-  * `Absinthe.Subscription` is an explicit child AFTER the `Endpoint`
-    (`use Absinthe.Phoenix.Endpoint` only wires the publish API — it does
-    NOT start the subscription registry; without this child every
-    `subscribe` frame crashed with "Pubsub not configured!", found in
-    Phase 4 browser integration).
-  * The endpoint goes second-to-last so we don't accept traffic until the
-    rest of the tree is healthy.
+  * `Oban` uses `Oban.Notifiers.PG` (pooler-safe, single-node, no Redis).
+    Machine count is pinned to 1 in fly.toml (ADR-000).
+  * `ChatF1.Telemetry.PromEx` starts before the Endpoint so metrics collection
+    begins before the first request arrives.
+  * ETS `:chatf1_stats` table is created at startup by
+    `ChatF1.Telemetry.StatsHandler.attach/0`.
   """
 
   use Application
 
+  alias ChatF1.Telemetry.StatsHandler
+
   @impl true
   def start(_type, _args) do
+    # Attach telemetry stats handler and create ETS table for systemStats.
+    StatsHandler.attach()
+
     children = [
       # ── Ecto repo ────────────────────────────────────────────────────────────
       ChatF1.Repo,
@@ -81,10 +85,19 @@ defmodule ChatF1.Application do
       # ── Telemetry supervisor ─────────────────────────────────────────────────
       ChatF1Web.Telemetry,
 
+      # ── PromEx metrics exporter (Phase 5) ────────────────────────────────────
+      # Must start before Endpoint so collection begins before first request.
+      ChatF1.Telemetry.PromEx,
+
       # ── Circuit breaker (Phase 3) ─────────────────────────────────────────────
       # Must start before ConversationSupervisor so begin_stream calls can
       # always check breaker state.
       ChatF1.Agents.Breaker,
+
+      # ── Oban background jobs + cron (Phase 5) ────────────────────────────────
+      # Notifier: PG (single-node pooler-safe, ADR-000).
+      # Queue config and cron schedule live in runtime.exs.
+      {Oban, Application.fetch_env!(:chat_f1, Oban)},
 
       # ── Conversation pipeline sub-supervisor (Phase 3) ───────────────────────
       # ChatF1.ConvPipelineSupervisor uses :rest_for_one internally so a

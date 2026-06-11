@@ -21,7 +21,7 @@ defmodule ChatF1.Conversations.Message do
     field :status, Ecto.Enum, values: @statuses, default: :pending
     field :intent, :string
     # JSON array of source objects: [{kind, title, url, snippet, score}]
-    field :sources, :map, default: %{}
+    field :sources, {:array, :map}, default: []
     field :cached, :boolean, default: false
     field :latency_ms, :integer
 
@@ -40,10 +40,10 @@ defmodule ChatF1.Conversations.Message do
       :content,
       :status,
       :intent,
-      :sources,
       :cached,
       :latency_ms
     ])
+    |> cast_sources(attrs)
     |> validate_required([:conversation_id])
     |> validate_inclusion(:role, @roles)
     |> validate_inclusion(:status, @statuses)
@@ -67,6 +67,38 @@ defmodule ChatF1.Conversations.Message do
     |> put_change(:status, :pending)
     |> put_change(:content, "")
     |> validate_required([:role])
+  end
+
+  # Sources can be an atom-keyed map (from GenServer normalize_sources) or a list.
+  # Coerce to list of string-keyed maps for the {:array, :map} column.
+  defp cast_sources(changeset, attrs) do
+    sources = Map.get(attrs, :sources) || Map.get(attrs, "sources")
+    normalized = normalize_sources(sources)
+
+    if is_nil(normalized) do
+      changeset
+    else
+      put_change(changeset, :sources, normalized)
+    end
+  end
+
+  defp normalize_sources(nil), do: nil
+  defp normalize_sources([]), do: []
+
+  defp normalize_sources([%{} | _] = list) do
+    Enum.map(list, &normalize_source_entry/1)
+  end
+
+  defp normalize_sources(_), do: nil
+
+  defp normalize_source_entry(s) do
+    %{
+      "kind" => to_string(s[:kind] || s["kind"] || "vector"),
+      "title" => s[:title] || s["title"] || "",
+      "url" => s[:url] || s["url"],
+      "snippet" => s[:snippet] || s["snippet"],
+      "score" => s[:score] || s["score"]
+    }
   end
 
   # Content validation for user messages: length, control chars, repeated chars.
