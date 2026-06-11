@@ -327,21 +327,24 @@ chatformula1/
 ├── LICENSE
 ├── Makefile                   # make setup / dev / test / lint / demo / reindex — fans out to all apps
 ├── docker-compose.yml         # postgres:16 + agent for local dev (gateway runs native via mix)
-├── data/                      # races.json, drivers.json, historical_features.csv,
-│                              # showcase_answers.json (gateway seeds + agent ingestion input)
+├── data/                      # races.json, drivers.json, historical_features.csv
+│                              # (gateway seeds + agent ingestion input; showcase
+│                              #  answers live in Postgres, warmed by an Oban job)
 ├── docs/
-│   ├── ARCHITECTURE.md        # supervision tree diagram, service boundary, token path narrative
+│   ├── ARCHITECTURE.md        # this document: service boundary, schema, token path narrative
 │   ├── STREAMING_PROTOCOL.md  # the frozen NDJSON event contract + AgentEvent mapping
 │   ├── GRAPHQL.md             # schema tour + example operations
 │   ├── DEPLOYMENT.md          # Fly/Render/Supabase/Pinecone/Vercel free-tier runbook
+│   ├── DEMO.md                # the 5-minute demo script
 │   └── adr/
 │       ├── 000-single-node-invariants.md   # ETS limiter, local PubSub, replay buffers,
 │       │                                   # Oban.Notifiers.PG all assume ONE machine; count pinned in fly.toml
 │       ├── 001-two-services.md
-│       ├── 002-ndjson-over-sse.md
-│       ├── 003-supabase-over-neon.md       # Oban polling burns Neon's ~190 free compute-hrs in ~8 days
-│       ├── 004-showcase-mode.md
-│       └── 005-handrolled-rate-limiter.md
+│       ├── 002-model-agnostic-providers.md
+│       ├── 003-ndjson-over-sse.md
+│       ├── 004-supabase-over-neon.md       # Oban polling burns Neon's ~190 free compute-hrs in ~8 days
+│       ├── 005-showcase-mode.md
+│       └── 006-handrolled-rate-limiter.md
 ├── .github/workflows/
 │   ├── gateway.yml            # path-filtered: mix format --check, credo, dialyzer (cached PLT), mix test
 │   ├── agent.yml              # path-filtered: ruff, mypy, pytest — DUMMY KEYS ONLY
@@ -406,7 +409,7 @@ Two backend services (constraint-compliant), $0/month fixed.
 |---|---|---|
 | **Gateway** | **Fly.io** — 1× shared-cpu-1x **256 MB**, `auto_stop_machines = false`, machine count pinned to 1 | The gateway terminates WebSockets and hosts GenServer state — it **cannot sleep**. Fly is the only free option tolerating 24/7 + long-lived websockets. BEAM tuning: `ERL_FLAGS=+hmqd off_heap`, capped Finch pool, micro-batched publishes, 32 KB replay-buffer caps. Mix release in slim Alpine; `/healthz` for Fly checks; `/up` for wake-on-paint. Single node → PG2 PubSub, no Redis. |
 | **Agent** | **Render** free web service — **allowed to sleep** after 15 min idle | Always-on would burn ~720 of 750 free instance-hours. Cold start is a designed state: breaker reports `DOWN→HALF_OPEN`, UI shows the "warming up the engines" lights-out animation, wake-on-paint pre-warms, and Oban pings `/internal/health` 90 s before the nightly ingest. Internal auth: long random bearer token in both services' secrets. |
-| **Postgres** | **Supabase** free (500 MB), **not Neon** | The always-on gateway holds persistent connections and Oban polls every second — that burns Neon's ~190 free compute-hours/month in ~8 days (ADR-003). Supabase has no compute-hour meter. Supavisor session mode (or direct IPv6 from Fly); Ecto `pool_size: 5`; `Oban.Notifiers.PG` so nothing depends on LISTEN/NOTIFY through a pooler. The daily Oban cron heartbeat defeats Supabase's 7-day-inactivity pause. Neon fallback documented (aggressive idle disconnect + raised Oban poll interval) but not default. |
+| **Postgres** | **Supabase** free (500 MB), **not Neon** | The always-on gateway holds persistent connections and Oban polls every second — that burns Neon's ~190 free compute-hours/month in ~8 days (ADR-004). Supabase has no compute-hour meter. Supavisor session mode (or direct IPv6 from Fly); Ecto `pool_size: 5`; `Oban.Notifiers.PG` so nothing depends on LISTEN/NOTIFY through a pooler. The daily Oban cron heartbeat defeats Supabase's 7-day-inactivity pause. Neon fallback documented (aggressive idle disconnect + raised Oban poll interval) but not default. |
 | **Vector store** | **Pinecone** Starter serverless — existing `f1-knowledge` index (aws/us-east-1, the only free region; 1536-dim, text-embedding-3-small) | Namespaces (`static_corpus` / `news`) + deterministic content-hash IDs added at migration so re-ingestion upserts instead of duplicating. `make reindex` rebuilds the entire index from `data/` in one command — the index is cattle, not a pet (Starter indexes have inactivity-deletion precedent). |
 | **Frontend** | **Vercel** free (Hobby) | Static Vite build; env-injected GraphQL HTTPS + WSS URLs at the Fly hostname; `chatformula1.com` via CNAME; **PR preview deploys** as a free recruiter-visible bonus. The landing page renders in <1 s regardless of backend state. |
 | **LLM** | **OpenAI gpt-4o-mini** (generation *and* analysis) behind `providers.py` | gpt-4-turbo was a cost bug for a free demo. Defense in depth: ETS rate limiter → daily USD ledger → SHOWCASE mode → **account-level hard spend cap on the OpenAI billing console**. |
