@@ -130,6 +130,23 @@ export type ErrorCode =
   /** Input failed validation (length, control chars, repetition). */
   | 'VALIDATION';
 
+/** Result of enqueuing an ingest job. */
+export type IngestJob = {
+  __typename?: 'IngestJob';
+  id: Scalars['ID']['output'];
+  queuedAt: Scalars['DateTime']['output'];
+  state: Scalars['String']['output'];
+};
+
+/** Allowlisted ingest sources for the triggerIngest mutation. */
+export type IngestSource =
+  /** Race calendar sync. */
+  | 'CALENDAR'
+  /** Historical F1 data ingestion. */
+  | 'HISTORICAL'
+  /** Tavily news ingestion (nightly Oban job). */
+  | 'NEWS';
+
 export type Message = {
   __typename?: 'Message';
   cached: Scalars['Boolean']['output'];
@@ -238,6 +255,16 @@ export type RootMutationType = {
   sendMessage: SendMessagePayload;
   /** Create a new conversation for the current viewer. */
   startConversation: Conversation;
+  /**
+   * Submit thumbs-up/down feedback on an assistant message.
+   * Idempotent per viewer+message — re-submitting updates the existing row.
+   */
+  submitFeedback: Scalars['Boolean']['output'];
+  /**
+   * Enqueues a news/data ingest Oban job.
+   * Requires API key with scope 'admin:ingest'.
+   */
+  triggerIngest: IngestJob;
 };
 
 
@@ -251,12 +278,25 @@ export type RootMutationTypeSendMessageArgs = {
   conversationId: Scalars['ID']['input'];
 };
 
+
+export type RootMutationTypeSubmitFeedbackArgs = {
+  helpful: Scalars['Boolean']['input'];
+  messageId: Scalars['ID']['input'];
+};
+
+
+export type RootMutationTypeTriggerIngestArgs = {
+  source: IngestSource;
+};
+
 export type RootQueryType = {
   __typename?: 'RootQueryType';
   /** Fetch a conversation by ID. Returns null if not found or not owned by viewer. */
   conversation?: Maybe<Conversation>;
   /** List all conversations for the current viewer. */
   conversations: Array<Conversation>;
+  /** Pre-warmed SHOWCASE question chips wired to cached answers. */
+  demoQuestions: Array<Scalars['String']['output']>;
   /** Look up a driver by three-letter code (e.g. 'VER'). */
   driver?: Maybe<Driver>;
   /** List all drivers, optionally filtered by season. */
@@ -271,6 +311,11 @@ export type RootQueryType = {
   standings: Array<StandingRow>;
   /** Current system health — gateway, agent, database, and circuit breaker state. */
   systemHealth: SystemHealth;
+  /**
+   * BEAM + system telemetry for the public pit-wall panel.
+   * Only telemetry-fed numbers — no theater (see ARCHITECTURE.md risk #12).
+   */
+  systemStats: SystemStats;
 };
 
 
@@ -399,6 +444,33 @@ export type SystemHealth = {
   database: ServiceStatus;
   gateway: ServiceStatus;
   mode: ServiceMode;
+};
+
+/**
+ * Real-time BEAM + system statistics.  All fields are telemetry-fed — no
+ * invented numbers.  Nullable fields return nil when no data is available yet
+ * (e.g. p95FirstTokenMs before any stream has completed).
+ */
+export type SystemStats = {
+  __typename?: 'SystemStats';
+  /** Number of active Conversation.Server GenServers. */
+  activeConversations: Scalars['Int']['output'];
+  /** Total BEAM process count (VM-level). */
+  beamProcessCount: Scalars['Int']['output'];
+  /** Remaining daily LLM budget in USD. */
+  dailyBudgetRemainingUsd: Scalars['Float']['output'];
+  /** When the standings data was last synced from Jolpica/Ergast. Nil if never. */
+  lastStandingsSyncAt?: Maybe<Scalars['DateTime']['output']>;
+  /** LLM spend in USD today. */
+  llmSpendTodayUsd: Scalars['Float']['output'];
+  /** Oban jobs completed in the last 24 hours. */
+  obanJobsCompleted24h: Scalars['Int']['output'];
+  /** p95 first-token latency in ms (nil until at least 1 stream completes). */
+  p95FirstTokenMs?: Maybe<Scalars['Int']['output']>;
+  /** Mean tokens/second from recent streams (nil until at least 1 stream completes). */
+  tokensPerSecond?: Maybe<Scalars['Float']['output']>;
+  /** Seconds since the gateway started. */
+  uptimeSeconds: Scalars['Int']['output'];
 };
 
 /**
