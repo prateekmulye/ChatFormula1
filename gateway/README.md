@@ -1,8 +1,9 @@
 # gateway — Phoenix GraphQL Gateway
 
 Elixir 1.18 / Phoenix 1.8 / Absinthe 1.7 API-only gateway.  It is the only
-public backend: GraphQL queries + mutations, conversation persistence, per-viewer
-rate limiting, and a synchronous proxy to the Python agent service.
+public backend: GraphQL queries + mutations + subscriptions, conversation
+persistence, per-viewer rate limiting, and supervised NDJSON streaming from
+the Python agent service.
 
 ## What is here
 
@@ -63,6 +64,8 @@ make lint-gateway
 | `PGPASSWORD` | dev/test | `postgres` | Postgres password |
 | `PGHOST` | dev/test | `localhost` | Postgres host |
 | `POOL_SIZE` | prod only | `5` | Ecto connection pool size |
+| `CORS_ORIGINS` | prod only | `""` (no cross-origin access) | Comma-separated browser origins; also feeds WebSocket `check_origin` |
+| `DAILY_LLM_BUDGET_USD` | optional | `2.00` | Daily spend ledger budget; exhaustion flips SHOWCASE mode |
 
 ## Phase 3 streaming (graphql-ws)
 
