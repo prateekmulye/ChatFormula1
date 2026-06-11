@@ -31,6 +31,9 @@ defmodule Mix.Tasks.ChatF1.GenApiKey do
 
   use Mix.Task
 
+  alias ChatF1.Accounts.ApiKey
+  alias ChatF1.Repo
+
   @requirements ["app.start"]
 
   @impl Mix.Task
@@ -48,9 +51,9 @@ defmodule Mix.Tasks.ChatF1.GenApiKey do
       Mix.raise("At least one --scope is required. Supported: admin:ingest, admin:dashboard")
     end
 
-    {raw_key, changeset} = ChatF1.Accounts.ApiKey.generate(label, scopes)
+    {raw_key, changeset} = ApiKey.generate(label, scopes)
 
-    case ChatF1.Repo.insert(changeset) do
+    case Repo.insert(changeset) do
       {:ok, key} ->
         Mix.shell().info("""
 

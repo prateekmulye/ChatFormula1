@@ -73,35 +73,32 @@ defmodule ChatF1.Conversations.Message do
   # Coerce to list of string-keyed maps for the {:array, :map} column.
   defp cast_sources(changeset, attrs) do
     sources = Map.get(attrs, :sources) || Map.get(attrs, "sources")
-
-    normalized =
-      case sources do
-        nil ->
-          nil
-
-        [] ->
-          []
-
-        [%{} | _] = list ->
-          Enum.map(list, fn s ->
-            %{
-              "kind" => to_string(s[:kind] || s["kind"] || "vector"),
-              "title" => s[:title] || s["title"] || "",
-              "url" => s[:url] || s["url"],
-              "snippet" => s[:snippet] || s["snippet"],
-              "score" => s[:score] || s["score"]
-            }
-          end)
-
-        _ ->
-          nil
-      end
+    normalized = normalize_sources(sources)
 
     if is_nil(normalized) do
       changeset
     else
       put_change(changeset, :sources, normalized)
     end
+  end
+
+  defp normalize_sources(nil), do: nil
+  defp normalize_sources([]), do: []
+
+  defp normalize_sources([%{} | _] = list) do
+    Enum.map(list, &normalize_source_entry/1)
+  end
+
+  defp normalize_sources(_), do: nil
+
+  defp normalize_source_entry(s) do
+    %{
+      "kind" => to_string(s[:kind] || s["kind"] || "vector"),
+      "title" => s[:title] || s["title"] || "",
+      "url" => s[:url] || s["url"],
+      "snippet" => s[:snippet] || s["snippet"],
+      "score" => s[:score] || s["score"]
+    }
   end
 
   # Content validation for user messages: length, control chars, repeated chars.

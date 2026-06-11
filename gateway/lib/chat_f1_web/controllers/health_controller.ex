@@ -70,18 +70,14 @@ defmodule ChatF1Web.HealthController do
   end
 
   defp safe_breaker_state do
-    try do
-      Breaker.state()
-    rescue
-      _ -> :open
-    end
+    Breaker.state()
+  rescue
+    _ -> :open
   end
 
   defp safe_mode do
-    try do
-      Budget.mode()
-    rescue
-      _ -> :live
-    end
+    Budget.mode()
+  rescue
+    _ -> :live
   end
 end

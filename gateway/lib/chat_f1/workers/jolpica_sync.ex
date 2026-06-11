@@ -71,32 +71,25 @@ defmodule ChatF1.Workers.JolpicaSync do
   defp sync_constructors(season) do
     url = "#{@jolpica_base}/#{season}/constructorStandings.json"
 
-    case get_json(url) do
-      {:ok, body} ->
-        standings =
-          get_in(body, [
-            "MRData",
-            "StandingsTable",
-            "StandingsLists",
-            Access.at(0),
-            "ConstructorStandings"
-          ]) || []
+    with {:ok, body} <- get_json(url) do
+      standings =
+        get_in(body, [
+          "MRData",
+          "StandingsTable",
+          "StandingsLists",
+          Access.at(0),
+          "ConstructorStandings"
+        ]) || []
 
-        Repo.transaction(fn ->
-          Enum.each(standings, fn row ->
-            constructor = row["Constructor"]
-            points = parse_float(row["points"])
-
-            Formula1.upsert_constructor(%{
-              name: constructor["constructorId"],
-              points: points
-            })
-          end)
-        end)
-
-      {:error, _} = err ->
-        err
+      Repo.transaction(fn -> Enum.each(standings, &upsert_constructor_row/1) end)
     end
+  end
+
+  defp upsert_constructor_row(row) do
+    Formula1.upsert_constructor(%{
+      name: row["Constructor"]["constructorId"],
+      points: parse_float(row["points"])
+    })
   end
 
   # ─── Drivers ──────────────────────────────────────────────────────────────────
@@ -104,35 +97,30 @@ defmodule ChatF1.Workers.JolpicaSync do
   defp sync_drivers(season) do
     url = "#{@jolpica_base}/#{season}/driverStandings.json"
 
-    case get_json(url) do
-      {:ok, body} ->
-        standings =
-          get_in(body, [
-            "MRData",
-            "StandingsTable",
-            "StandingsLists",
-            Access.at(0),
-            "DriverStandings"
-          ]) || []
+    with {:ok, body} <- get_json(url) do
+      standings =
+        get_in(body, [
+          "MRData",
+          "StandingsTable",
+          "StandingsLists",
+          Access.at(0),
+          "DriverStandings"
+        ]) || []
 
-        Repo.transaction(fn ->
-          Enum.each(standings, fn row ->
-            driver = row["Driver"]
-            constructor_name = get_in(row, ["Constructors", Access.at(0), "constructorId"])
-
-            Formula1.upsert_driver(%{
-              code: driver["code"] || String.upcase(String.slice(driver["driverId"], 0..2)),
-              full_name: "#{driver["givenName"]} #{driver["familyName"]}",
-              number: parse_int(driver["permanentNumber"]),
-              nationality: driver["nationality"],
-              constructor_name: constructor_name
-            })
-          end)
-        end)
-
-      {:error, _} = err ->
-        err
+      Repo.transaction(fn -> Enum.each(standings, &upsert_driver_row/1) end)
     end
+  end
+
+  defp upsert_driver_row(row) do
+    driver = row["Driver"]
+
+    Formula1.upsert_driver(%{
+      code: driver["code"] || String.upcase(String.slice(driver["driverId"], 0..2)),
+      full_name: "#{driver["givenName"]} #{driver["familyName"]}",
+      number: parse_int(driver["permanentNumber"]),
+      nationality: driver["nationality"],
+      constructor_name: get_in(row, ["Constructors", Access.at(0), "constructorId"])
+    })
   end
 
   # ─── Races ────────────────────────────────────────────────────────────────────
@@ -140,28 +128,23 @@ defmodule ChatF1.Workers.JolpicaSync do
   defp sync_races(season) do
     url = "#{@jolpica_base}/#{season}.json"
 
-    case get_json(url) do
-      {:ok, body} ->
-        races = get_in(body, ["MRData", "RaceTable", "Races"]) || []
-
-        Repo.transaction(fn ->
-          Enum.each(races, fn race ->
-            {:ok, starts_at} = parse_race_datetime(race)
-
-            Formula1.upsert_race(%{
-              season: season,
-              round: parse_int(race["round"]),
-              name: race["raceName"],
-              circuit: get_in(race, ["Circuit", "circuitName"]) || "",
-              country: get_in(race, ["Circuit", "Location", "country"]) || "",
-              starts_at: starts_at
-            })
-          end)
-        end)
-
-      {:error, _} = err ->
-        err
+    with {:ok, body} <- get_json(url) do
+      races = get_in(body, ["MRData", "RaceTable", "Races"]) || []
+      Repo.transaction(fn -> Enum.each(races, &upsert_race_row(&1, season)) end)
     end
+  end
+
+  defp upsert_race_row(race, season) do
+    {:ok, starts_at} = parse_race_datetime(race)
+
+    Formula1.upsert_race(%{
+      season: season,
+      round: parse_int(race["round"]),
+      name: race["raceName"],
+      circuit: get_in(race, ["Circuit", "circuitName"]) || "",
+      country: get_in(race, ["Circuit", "Location", "country"]) || "",
+      starts_at: starts_at
+    })
   end
 
   # ─── Results ──────────────────────────────────────────────────────────────────
@@ -169,38 +152,28 @@ defmodule ChatF1.Workers.JolpicaSync do
   defp sync_results(season) do
     url = "#{@jolpica_base}/#{season}/results.json?limit=1000"
 
-    case get_json(url) do
-      {:ok, body} ->
-        races = get_in(body, ["MRData", "RaceTable", "Races"]) || []
-
-        Repo.transaction(fn ->
-          Enum.each(races, fn race ->
-            round = parse_int(race["round"])
-
-            Enum.each(race["Results"] || [], fn result ->
-              driver_code =
-                result["Driver"]["code"] ||
-                  String.upcase(String.slice(result["Driver"]["driverId"], 0..2))
-
-              finish_pos = parse_int(result["position"])
-              grid_pos = parse_int(result["grid"])
-              points = parse_float(result["points"])
-
-              Formula1.upsert_race_result(%{
-                season: season,
-                round: round,
-                driver_code: driver_code,
-                finish_position: finish_pos,
-                grid_position: grid_pos,
-                points: points
-              })
-            end)
-          end)
-        end)
-
-      {:error, _} = err ->
-        err
+    with {:ok, body} <- get_json(url) do
+      races = get_in(body, ["MRData", "RaceTable", "Races"]) || []
+      Repo.transaction(fn -> Enum.each(races, &upsert_race_results(&1, season)) end)
     end
+  end
+
+  defp upsert_race_results(race, season) do
+    round = parse_int(race["round"])
+    Enum.each(race["Results"] || [], &upsert_result_row(&1, season, round))
+  end
+
+  defp upsert_result_row(result, season, round) do
+    driver = result["Driver"]
+
+    Formula1.upsert_race_result(%{
+      season: season,
+      round: round,
+      driver_code: driver["code"] || String.upcase(String.slice(driver["driverId"], 0..2)),
+      finish_position: parse_int(result["position"]),
+      grid_position: parse_int(result["grid"]),
+      points: parse_float(result["points"])
+    })
   end
 
   # ─── Standings (just updates constructor + driver points) ────────────────────
@@ -241,9 +214,8 @@ defmodule ChatF1.Workers.JolpicaSync do
   defp parse_int(n) when is_integer(n), do: n
 
   defp parse_race_datetime(%{"date" => date, "time" => time}) do
-    with {:ok, naive} <- NaiveDateTime.from_iso8601("#{date}T#{time}"),
-         {:ok, dt} <- DateTime.from_naive(naive, "Etc/UTC") do
-      {:ok, dt}
+    with {:ok, naive} <- NaiveDateTime.from_iso8601("#{date}T#{time}") do
+      DateTime.from_naive(naive, "Etc/UTC")
     end
   end
 

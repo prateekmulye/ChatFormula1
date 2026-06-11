@@ -62,44 +62,55 @@ defmodule ChatF1.Workers.WarmShowcaseCache do
   end
 
   defp warm_one(question) do
-    # Skip if we're already in SHOWCASE mode (budget exhausted) —
-    # calling the agent would fail anyway.
-    case Budget.mode() do
-      :showcase ->
-        Logger.info("[WarmShowcaseCache] in SHOWCASE mode — skipping '#{String.slice(question, 0, 40)}'")
+    # Skip if already in SHOWCASE mode (budget exhausted) — agent would fail anyway.
+    if Budget.mode() == :showcase do
+      Logger.info(
+        "[WarmShowcaseCache] SHOWCASE mode — skipping '#{String.slice(question, 0, 40)}'"
+      )
+
+      :ok
+    else
+      call_agent_and_upsert(question)
+    end
+  end
+
+  defp call_agent_and_upsert(question) do
+    request_id =
+      "warm-#{:crypto.hash(:sha256, question) |> Base.encode16(case: :lower) |> String.slice(0, 8)}"
+
+    case AgentClient.chat(question, [], request_id) do
+      {:ok, %{content: content, sources: sources}} ->
+        upsert_warmed_answer(question, content, sources)
+
+      {:error, reason} ->
+        Logger.info(
+          "[WarmShowcaseCache] agent error for '#{String.slice(question, 0, 40)}': #{inspect(reason)}"
+        )
+
+        :ok
+    end
+  end
+
+  defp upsert_warmed_answer(question, content, sources) do
+    batches = split_into_batches(content, @batch_size)
+    histogram = List.duplicate(@simulated_batch_delay_ms, length(batches))
+
+    case Showcase.upsert_answer(%{
+           question: question,
+           content: content,
+           sources: sources,
+           node_trace: [],
+           token_timing_histogram: histogram,
+           token_batches: batches,
+           generated_at: DateTime.utc_now()
+         }) do
+      {:ok, _} ->
+        Logger.debug("[WarmShowcaseCache] warmed: #{String.slice(question, 0, 40)}")
         :ok
 
-      _ ->
-        request_id = "warm-#{:crypto.hash(:sha256, question) |> Base.encode16(case: :lower) |> String.slice(0, 8)}"
-
-        case AgentClient.chat(question, [], request_id) do
-          {:ok, %{content: content, sources: sources}} ->
-            batches = split_into_batches(content, @batch_size)
-            histogram = List.duplicate(@simulated_batch_delay_ms, length(batches))
-
-            Showcase.upsert_answer(%{
-              question: question,
-              content: content,
-              sources: sources,
-              node_trace: [],
-              token_timing_histogram: histogram,
-              token_batches: batches,
-              generated_at: DateTime.utc_now()
-            })
-            |> case do
-              {:ok, _} ->
-                Logger.debug("[WarmShowcaseCache] warmed: #{String.slice(question, 0, 40)}")
-                :ok
-
-              {:error, cs} ->
-                Logger.warning("[WarmShowcaseCache] upsert failed: #{inspect(cs)}")
-                :error
-            end
-
-          {:error, reason} ->
-            Logger.info("[WarmShowcaseCache] agent error for '#{String.slice(question, 0, 40)}': #{inspect(reason)}")
-            :ok
-        end
+      {:error, cs} ->
+        Logger.warning("[WarmShowcaseCache] upsert failed: #{inspect(cs)}")
+        :error
     end
   end
 

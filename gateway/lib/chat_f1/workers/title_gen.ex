@@ -20,7 +20,9 @@ defmodule ChatF1.Workers.TitleGen do
 
   use Oban.Worker,
     queue: :default,
-    unique: [fields: [:args], period: :infinity, states: [:available, :scheduled, :executing]],
+    # unique by args forever — one title-gen job per conversation at a time.
+    # Omit :states to use Oban defaults (includes :retryable and :suspended).
+    unique: [fields: [:args], period: :infinity],
     max_attempts: 2
 
   require Logger
@@ -44,7 +46,6 @@ defmodule ChatF1.Workers.TitleGen do
   end
 
   defp generate_and_persist_title(conversation) do
-    # Fetch first user message as context.
     first_user_msg =
       Repo.one(
         from m in Message,
@@ -56,27 +57,34 @@ defmodule ChatF1.Workers.TitleGen do
     if is_nil(first_user_msg) do
       :ok
     else
-      prompt =
-        "Summarise this question in 8 words or fewer (no punctuation): #{first_user_msg.content}"
+      ask_agent_for_title(conversation, first_user_msg.content)
+    end
+  end
 
-      request_id = "title-gen-#{conversation.id}"
+  defp ask_agent_for_title(conversation, user_content) do
+    prompt = "Summarise this question in 8 words or fewer (no punctuation): #{user_content}"
+    request_id = "title-gen-#{conversation.id}"
 
-      case AgentClient.chat(prompt, [], request_id) do
-        {:ok, %{content: content}} when is_binary(content) and content != "" ->
-          title = content |> String.trim() |> String.slice(0, 100)
+    case AgentClient.chat(prompt, [], request_id) do
+      {:ok, %{content: content}} when is_binary(content) and content != "" ->
+        persist_title(conversation, content)
 
-          conversation
-          |> Conversation.changeset(%{title: title})
-          |> Repo.update()
-          |> case do
-            {:ok, _} -> :ok
-            {:error, cs} -> Logger.info("[TitleGen] update failed: #{inspect(cs)}"); :ok
-          end
+      other ->
+        Logger.info("[TitleGen] agent returned #{inspect(other)} — skipping title")
+        :ok
+    end
+  end
 
-        other ->
-          Logger.info("[TitleGen] agent returned #{inspect(other)} — skipping title")
-          :ok
-      end
+  defp persist_title(conversation, content) do
+    title = content |> String.trim() |> String.slice(0, 100)
+
+    case conversation |> Conversation.changeset(%{title: title}) |> Repo.update() do
+      {:ok, _} ->
+        :ok
+
+      {:error, cs} ->
+        Logger.info("[TitleGen] update failed: #{inspect(cs)}")
+        :ok
     end
   end
 end

@@ -44,6 +44,7 @@ defmodule ChatF1.ShowcaseTest do
 
   test "upsert_answer/1 updates content on conflict" do
     insert_answer("What is DRS?", "Drag Reduction System v1")
+
     {:ok, updated} =
       Showcase.upsert_answer(%{
         question: "What is DRS?",

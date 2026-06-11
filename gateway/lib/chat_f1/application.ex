@@ -57,10 +57,12 @@ defmodule ChatF1.Application do
 
   use Application
 
+  alias ChatF1.Telemetry.StatsHandler
+
   @impl true
   def start(_type, _args) do
     # Attach telemetry stats handler and create ETS table for systemStats.
-    ChatF1.Telemetry.StatsHandler.attach()
+    StatsHandler.attach()
 
     children = [
       # ── Ecto repo ────────────────────────────────────────────────────────────

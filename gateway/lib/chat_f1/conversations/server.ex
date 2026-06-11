@@ -627,58 +627,50 @@ defmodule ChatF1.Conversations.Server do
         :error
 
       message ->
-        # Compute latency_ms: time from message creation to now.
-        latency_ms =
-          case message.inserted_at do
-            %DateTime{} = inserted ->
-              DateTime.diff(DateTime.utc_now(), inserted, :millisecond)
+        {:ok, updated} = persist_completed_message(message, content, cached)
+        maybe_decrement_budget(cached, usage)
+        {:ok, %{message_id: message_id, message: updated, cached: cached, usage: usage}}
+    end
+  end
 
-            _ ->
-              nil
-          end
+  defp persist_completed_message(message, content, cached) do
+    latency_ms = compute_latency_ms(message.inserted_at)
 
-        # Persist sources from replay buffer if currently empty on the row.
-        # Phase 4 debt: sources arrive via SourcesResolved before complete —
-        # they were already accumulated in the replay buffer but not persisted.
-        persisted_sources =
-          case message.sources do
-            nil -> []
-            [] -> []
-            sources when is_list(sources) -> sources
-            _map -> []
-          end
+    persisted_sources =
+      case message.sources do
+        sources when is_list(sources) -> sources
+        _ -> []
+      end
 
-        {:ok, updated} =
-          Conversations.update_assistant_message(message, %{
-            content: content,
-            status: :complete,
-            cached: cached,
-            sources: persisted_sources,
-            latency_ms: latency_ms
-          })
+    Conversations.update_assistant_message(message, %{
+      content: content,
+      status: :complete,
+      cached: cached,
+      sources: persisted_sources,
+      latency_ms: latency_ms
+    })
+  end
 
-        # Decrement daily budget if this was a live (non-cached) LLM response.
-        if not cached and usage != nil do
-          cost = Map.get(usage, :estimated_cost_usd, 0.0)
+  defp compute_latency_ms(%DateTime{} = inserted) do
+    DateTime.diff(DateTime.utc_now(), inserted, :millisecond)
+  end
 
-          if cost > 0.0 do
-            case Budget.decrement(cost) do
-              {:ok, _} ->
-                :ok
+  defp compute_latency_ms(_), do: nil
 
-              {:error, reason} ->
-                Logger.warning("[ConvServer] budget decrement failed: #{inspect(reason)}")
-            end
-          end
-        end
+  defp maybe_decrement_budget(true, _usage), do: :ok
+  defp maybe_decrement_budget(_cached, nil), do: :ok
 
-        {:ok,
-         %{
-           message_id: message_id,
-           message: updated,
-           cached: cached,
-           usage: usage
-         }}
+  defp maybe_decrement_budget(_cached, usage) do
+    cost = Map.get(usage, :estimated_cost_usd, 0.0)
+
+    if cost > 0.0 do
+      case Budget.decrement(cost) do
+        {:ok, _} ->
+          :ok
+
+        {:error, reason} ->
+          Logger.warning("[ConvServer] budget decrement failed: #{inspect(reason)}")
+      end
     end
   end
 
