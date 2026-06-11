@@ -54,10 +54,15 @@ defmodule ChatF1.MixProject do
       # Serialization
       {:jason, "~> 1.4"},
 
+      # Background jobs + cron (single-node, Oban.Notifiers.PG, ADR-000)
+      {:oban, "~> 2.19"},
+
       # Telemetry + observability
       {:telemetry_metrics, "~> 1.1"},
       {:telemetry_poller, "~> 1.3"},
       {:phoenix_live_dashboard, "~> 0.8"},
+      # PromEx: Phoenix/Ecto/Oban/BEAM metrics exported to Prometheus /metrics
+      {:prom_ex, "~> 1.11"},
 
       # DNS clustering (single-node; ADR-000 pins machine count to 1)
       {:dns_cluster, "~> 0.2"},
