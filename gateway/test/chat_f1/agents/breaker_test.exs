@@ -10,9 +10,11 @@ defmodule ChatF1.Agents.BreakerTest do
 
   alias ChatF1.Agents.Breaker
 
-  # Start a fresh, isolated Breaker process for each test.
+  # Start a fresh, isolated Breaker process for each test. The probe URL is
+  # pinned to a dead local port so a fired probe NEVER hits the global
+  # :agent_url — async client tests point that at their own Bypass instances.
   defp start_breaker do
-    {:ok, pid} = GenServer.start(Breaker, [])
+    {:ok, pid} = GenServer.start(Breaker, agent_url: "http://127.0.0.1:1")
     on_exit(fn -> if Process.alive?(pid), do: GenServer.stop(pid, :normal) end)
     pid
   end
