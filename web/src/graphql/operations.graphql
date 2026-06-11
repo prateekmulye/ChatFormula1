@@ -92,6 +92,12 @@ query Drivers($season: Int) {
   }
 }
 
+# Pre-warmed SHOWCASE question chips. The UI caps display at 5 (Hick's law)
+# and falls back to a static list if this query errors — never an empty row.
+query DemoQuestions {
+  demoQuestions
+}
+
 # ─── Conversations ────────────────────────────────────────────────────────────
 
 query ConversationMessages($id: ID!) {

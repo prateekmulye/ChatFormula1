@@ -531,6 +531,11 @@ export type DriversQueryVariables = Exact<{
 
 export type DriversQuery = { __typename?: 'RootQueryType', drivers?: Array<{ __typename?: 'Driver', id: string, code: string, number?: number | null, fullName: string, nationality: string, constructor: { __typename?: 'Constructor', id: string, name: string, points: number } }> | null };
 
+export type DemoQuestionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type DemoQuestionsQuery = { __typename?: 'RootQueryType', demoQuestions: Array<string> };
+
 export type ConversationMessagesQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
@@ -812,6 +817,46 @@ export type DriversQueryHookResult = ReturnType<typeof useDriversQuery>;
 export type DriversLazyQueryHookResult = ReturnType<typeof useDriversLazyQuery>;
 export type DriversSuspenseQueryHookResult = ReturnType<typeof useDriversSuspenseQuery>;
 export type DriversQueryResult = Apollo.QueryResult<DriversQuery, DriversQueryVariables>;
+export const DemoQuestionsDocument = gql`
+    query DemoQuestions {
+  demoQuestions
+}
+    `;
+
+/**
+ * __useDemoQuestionsQuery__
+ *
+ * To run a query within a React component, call `useDemoQuestionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useDemoQuestionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useDemoQuestionsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useDemoQuestionsQuery(baseOptions?: Apollo.QueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<DemoQuestionsQuery, DemoQuestionsQueryVariables>(DemoQuestionsDocument, options);
+      }
+export function useDemoQuestionsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<DemoQuestionsQuery, DemoQuestionsQueryVariables>(DemoQuestionsDocument, options);
+        }
+// @ts-ignore
+export function useDemoQuestionsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>): Apollo.UseSuspenseQueryResult<DemoQuestionsQuery, DemoQuestionsQueryVariables>;
+export function useDemoQuestionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>): Apollo.UseSuspenseQueryResult<DemoQuestionsQuery | undefined, DemoQuestionsQueryVariables>;
+export function useDemoQuestionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<DemoQuestionsQuery, DemoQuestionsQueryVariables>(DemoQuestionsDocument, options);
+        }
+export type DemoQuestionsQueryHookResult = ReturnType<typeof useDemoQuestionsQuery>;
+export type DemoQuestionsLazyQueryHookResult = ReturnType<typeof useDemoQuestionsLazyQuery>;
+export type DemoQuestionsSuspenseQueryHookResult = ReturnType<typeof useDemoQuestionsSuspenseQuery>;
+export type DemoQuestionsQueryResult = Apollo.QueryResult<DemoQuestionsQuery, DemoQuestionsQueryVariables>;
 export const ConversationMessagesDocument = gql`
     query ConversationMessages($id: ID!) {
   conversation(id: $id) {
