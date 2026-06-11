@@ -19,11 +19,15 @@ defmodule ChatF1Web.Schema do
 
   ## Query limits
 
-  * **Max depth: 7** — prevents infinite nesting on the Driver→results→race→results path.
-  * **Max complexity: 200** — each field costs 1; lists multiply by expected size (10).
-    A typical standings query (20 drivers + constructor + results) costs ~60.
-    A pathological `drivers { results { race { results { driver { ... } } } } }` query
-    is blocked before execution.
+  * **Max complexity: 400**, enforced via `analyze_complexity: true` on the
+    Absinthe.Plug forwards in the router. Each field costs 1 by default;
+    list fields multiply their children by expected size (20 drivers,
+    24 races, 20 results per race, 2 drivers per constructor).
+  * The full standings-page query costs 260. A pathological
+    `drivers { results { race { results { driver { ... } } } } }` document
+    multiplies to ~19,000 and is rejected before execution — nesting depth
+    is bounded by the compounding list multipliers rather than a separate
+    depth analyzer.
 
   ## Dataloader
 

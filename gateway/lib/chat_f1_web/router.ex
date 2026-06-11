@@ -26,12 +26,17 @@ defmodule ChatF1Web.Router do
   end
 
   # ── GraphQL API ──────────────────────────────────────────────────────────────
+  # Complexity analysis is enforced here (the schema declares per-field
+  # complexity functions; this plug option is what actually rejects
+  # over-budget documents). See ChatF1Web.Schema moduledoc for the budget.
   scope "/graphql" do
     pipe_through :graphql
 
     forward "/", Absinthe.Plug,
       schema: ChatF1Web.Schema,
-      json_codec: Jason
+      json_codec: Jason,
+      analyze_complexity: true,
+      max_complexity: 400
   end
 
   # ── GraphiQL (dev + prod — public, rate-limited via schema middleware) ────────
@@ -43,7 +48,9 @@ defmodule ChatF1Web.Router do
     forward "/", Absinthe.Plug.GraphiQL,
       schema: ChatF1Web.Schema,
       json_codec: Jason,
-      interface: :playground
+      interface: :playground,
+      analyze_complexity: true,
+      max_complexity: 400
   end
 
   # ── LiveDashboard — API-key gated in ALL envs (replaces dev-only pipeline) ──

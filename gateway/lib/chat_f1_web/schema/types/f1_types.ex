@@ -1,5 +1,12 @@
 defmodule ChatF1Web.Schema.Types.F1Types do
-  @moduledoc "Absinthe type definitions for the F1 structured data surface."
+  @moduledoc """
+  Absinthe type definitions for the F1 structured data surface.
+
+  Nested list fields declare complexity multipliers (expected list sizes:
+  2 drivers per constructor, 24 races per season, 20 results per race) so
+  that deeply nested documents compound past the complexity budget enforced
+  at the router (`max_complexity: 400`) instead of costing a flat 1.
+  """
 
   use Absinthe.Schema.Notation
   import Absinthe.Resolution.Helpers, only: [dataloader: 3]
@@ -13,6 +20,7 @@ defmodule ChatF1Web.Schema.Types.F1Types do
 
     @desc "All drivers belonging to this constructor. Dataloader-batched."
     field :drivers, list_of(non_null(:driver)) do
+      complexity(fn _args, child_complexity -> 2 * child_complexity end)
       resolve(dataloader(ChatF1.Formula1, :drivers, args: %{}))
     end
   end
@@ -33,6 +41,7 @@ defmodule ChatF1Web.Schema.Types.F1Types do
     @desc "Race results, optionally filtered by season. Dataloader-batched."
     field :results, list_of(non_null(:race_result)) do
       arg(:season, :integer)
+      complexity(fn _args, child_complexity -> 24 * child_complexity end)
       resolve(dataloader(ChatF1.Formula1, :race_results, args: %{}))
     end
   end
@@ -49,6 +58,7 @@ defmodule ChatF1Web.Schema.Types.F1Types do
 
     @desc "Race results in finish order. Dataloader-batched."
     field :results, list_of(non_null(:race_result)) do
+      complexity(fn _args, child_complexity -> 20 * child_complexity end)
       resolve(dataloader(ChatF1.Formula1, :race_results, args: %{}))
     end
   end
