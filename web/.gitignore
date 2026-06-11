@@ -1,5 +1,5 @@
-node_modules
-dist
+node_modules/
+dist/
 *.local
-.DS_Store
-npm-debug.log*
+.vite/
+coverage/
