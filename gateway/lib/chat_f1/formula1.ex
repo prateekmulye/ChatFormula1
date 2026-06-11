@@ -239,7 +239,14 @@ defmodule ChatF1.Formula1 do
   Looks up the race and driver by natural keys; silently skips if either
   is not found (the race/driver sync must run before results sync).
   """
-  @spec upsert_race_result(map()) :: :ok | {:error, term()}
+  @spec upsert_race_result(%{
+          season: integer(),
+          round: integer(),
+          driver_code: String.t(),
+          finish_position: integer() | nil,
+          grid_position: integer() | nil,
+          points: float() | nil
+        }) :: :ok | {:error, term()}
   def upsert_race_result(%{season: season, round: round, driver_code: code} = attrs) do
     race =
       Race
