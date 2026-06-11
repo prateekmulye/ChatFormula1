@@ -1,3 +1,4 @@
+import { MockedProvider } from "@apollo/client/testing";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -55,7 +56,7 @@ describe("TokenStream", () => {
     expect(screen.getByText("2026 regulations")).toBeInTheDocument();
   });
 
-  it("finalizes with latency and live/cached badges and drops the caret", () => {
+  it("finalizes with latency, live/cached badges, and the feedback controls", () => {
     const completedState: StreamState = {
       ...streamingState(),
       phase: "complete",
@@ -74,9 +75,16 @@ describe("TokenStream", () => {
         },
       },
     };
-    render(<TokenStream state={completedState} />);
+    // MockedProvider: the completed footer mounts the submitFeedback mutation hook.
+    render(
+      <MockedProvider mocks={[]}>
+        <TokenStream state={completedState} />
+      </MockedProvider>,
+    );
     const footer = screen.getByTestId("token-stream-footer");
     expect(footer).toHaveTextContent("42");
     expect(footer).toHaveTextContent("cached");
+    expect(screen.getByRole("button", { name: "Helpful" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Not helpful" })).toBeInTheDocument();
   });
 });

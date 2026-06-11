@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { CautionTriangleIcon } from "@/components/icons";
-import { GITHUB_URL, GRAPHIQL_URL } from "@/lib/env";
+import { GITHUB_URL, GRAPHIQL_URL, PORTFOLIO_URL } from "@/lib/env";
 
 /**
  * Footer disclaimer (DESIGN.md §3.5): persistent, readable text on every
@@ -40,6 +40,14 @@ export function Footer() {
             rel="noopener noreferrer"
           >
             GraphiQL<span className="sr-only"> (opens in a new tab)</span>
+          </a>
+          <a
+            className="text-meta text-text-dim underline-offset-4 hover:text-azure hover:underline"
+            href={PORTFOLIO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            prateekmulye.dev<span className="sr-only"> (opens in a new tab)</span>
           </a>
           <span className="tabular ml-auto font-mono text-micro text-text-faint">
             build {__BUILD_HASH__}

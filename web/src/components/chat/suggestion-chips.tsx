@@ -1,16 +1,8 @@
-/**
- * Suggested questions for the empty state and below the conversation.
- *
- * Static for Phase 4: the `demoQuestions` query (chips wired to pre-warmed
- * SHOWCASE answers) ships with Phase 5 — these constants are replaced by it.
- * Hick's law: at most 5 visible (DESIGN.md §3.1).
- */
-const SUGGESTED_QUESTIONS: readonly string[] = [
-  "Who leads the drivers' championship?",
-  "When is the next race?",
-  "How do the 2026 regulations change the cars?",
-  "Compare Verstappen and Norris this season",
-];
+import { FALLBACK_QUESTIONS } from "@/components/chat/suggestion-fallback";
+import { useDemoQuestionsQuery } from "@/graphql/generated";
+
+/** Hick's law: at most 5 visible (DESIGN.md §3.1). */
+const MAX_VISIBLE = 5;
 
 export function SuggestionChips({
   onPick,
@@ -19,9 +11,16 @@ export function SuggestionChips({
   onPick: (question: string) => void;
   disabled: boolean;
 }) {
+  const { data } = useDemoQuestionsQuery();
+  const fromGateway = data?.demoQuestions ?? [];
+  const questions = (fromGateway.length > 0 ? fromGateway : FALLBACK_QUESTIONS).slice(
+    0,
+    MAX_VISIBLE,
+  );
+
   return (
     <ul aria-label="Suggested questions" className="flex flex-wrap gap-2">
-      {SUGGESTED_QUESTIONS.slice(0, 5).map((question) => (
+      {questions.map((question) => (
         <li key={question}>
           <button
             type="button"

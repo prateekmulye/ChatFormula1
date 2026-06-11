@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Composer } from "@/components/chat/composer";
 import { LightsOutLoader } from "@/components/chat/lights-out-loader";
+import { ShowcaseNotice } from "@/components/chat/showcase-notice";
 import { SuggestionChips } from "@/components/chat/suggestion-chips";
 import { AssistantMessage, TokenStream } from "@/components/chat/token-stream";
 import { CountdownHero } from "@/components/standings/countdown-hero";
@@ -9,6 +10,7 @@ import { TelemetryStrip } from "@/components/telemetry/telemetry-strip";
 import { Button } from "@/components/ui/button";
 import { type StreamPhase } from "@/features/chat/stream-reducer";
 import { useChat } from "@/features/chat/use-chat";
+import { useSystemHealthContext } from "@/features/health/health-context";
 import { useNextRaceQuery } from "@/graphql/generated";
 
 /**
@@ -84,6 +86,7 @@ function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disable
 
 export function ChatPage() {
   const chat = useChat();
+  const { health } = useSystemHealthContext();
   const handoff = useWarmingHandoff(chat.stream.phase);
   const endRef = useRef<HTMLDivElement>(null);
   const activeBubbleRef = useRef<HTMLDivElement>(null);
@@ -126,6 +129,7 @@ export function ChatPage() {
                   <UserBubble content={item.content} />
                 ) : (
                   <AssistantMessage
+                    messageId={item.message.id}
                     content={item.message.content}
                     sources={item.message.sources}
                     latencyMs={item.message.latencyMs ?? null}
@@ -172,6 +176,8 @@ export function ChatPage() {
 
       <div className="sticky bottom-14 z-20 border-t border-hairline bg-bg/95 py-3 backdrop-blur-sm md:bottom-0">
         <div className="mx-auto w-[min(760px,92vw)]">
+          {/* SHOWCASE keeps the composer ENABLED — the gateway routes sends to cached replay. */}
+          <ShowcaseNotice mode={health?.mode ?? null} />
           <Composer onSend={chat.send} busy={busy} />
         </div>
       </div>

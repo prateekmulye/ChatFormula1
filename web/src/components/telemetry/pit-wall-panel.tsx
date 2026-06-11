@@ -8,6 +8,7 @@ import {
   SignalDotIcon,
   XOctagonIcon,
 } from "@/components/icons";
+import { LiveTelemetry } from "@/components/telemetry/pit-wall-stats";
 import { SheetContent } from "@/components/ui/sheet";
 import {
   type BreakerState,
@@ -84,10 +85,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 /**
  * PIT WALL · OPS — the public ops slide-over (DESIGN.md §3.4).
  *
- * Phase 4 renders only what the Phase 3 schema serves: systemHealth
- * (mode / gateway / agentService / database / breakerState). The LIVE
- * TELEMETRY section is the structural slot for the Phase 5 `systemStats`
- * query — it shows NO numbers until real ones exist (anti-slop rule 9).
+ * Renders systemHealth (mode / gateway / agentService / database /
+ * breakerState) plus the Phase 5 `systemStats` live telemetry, polled every
+ * 30s while the panel is open only. Unmeasured values render as em-dashes —
+ * telemetry-fed numbers or nothing (anti-slop rule 9).
  */
 export function PitWallPanel({
   health,
@@ -129,27 +130,7 @@ export function PitWallPanel({
       )}
 
       <Section title="Live telemetry">
-        <dl>
-          {[
-            "ACTIVE CONVERSATIONS",
-            "BEAM PROCESSES",
-            "P95 FIRST TOKEN",
-            "THROUGHPUT",
-            "UPTIME",
-            "LLM SPEND TODAY",
-          ].map((label) => (
-            <div key={label} className="flex items-center justify-between py-1.5">
-              <dt className="instrument text-micro text-text-faint">{label}</dt>
-              <dd className="tabular font-mono text-meta text-text-faint" aria-label="not yet available">
-                —
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-2 text-micro leading-relaxed text-text-faint">
-          Numerals arrive with the Phase 5 <code className="font-mono">systemStats</code> query —
-          telemetry-fed only, no theater.
-        </p>
+        <LiveTelemetry />
       </Section>
     </SheetContent>
   );

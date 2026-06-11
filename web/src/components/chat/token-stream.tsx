@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { Fragment } from "react";
 
 import { CitationChip } from "@/components/chat/citation-chip";
+import { FeedbackControls } from "@/components/chat/feedback-controls";
 import { MessageBlocks } from "@/components/chat/message-blocks";
 import { CautionTriangleIcon, ReplaySquareIcon, SignalDotIcon } from "@/components/icons";
 import { humanizeStreamError } from "@/features/chat/error-copy";
@@ -26,7 +27,15 @@ function SourcesRow({ sources }: { sources: readonly SourceFieldsFragment[] }) {
   );
 }
 
-function FooterBadges({ latencyMs, cached }: { latencyMs: number | null; cached: boolean }) {
+function FooterBadges({
+  messageId,
+  latencyMs,
+  cached,
+}: {
+  messageId: string;
+  latencyMs: number | null;
+  cached: boolean;
+}) {
   return (
     <div
       data-testid="token-stream-footer"
@@ -44,6 +53,7 @@ function FooterBadges({ latencyMs, cached }: { latencyMs: number | null; cached:
           <SignalDotIcon className="h-2.5 w-2.5" /> live
         </span>
       )}
+      <FeedbackControls messageId={messageId} />
     </div>
   );
 }
@@ -103,11 +113,13 @@ function LuminousCaret({ pulseKey, reducedMotion }: { pulseKey: number; reducedM
 
 /** A completed assistant message (also the refetched-after-gap path). */
 export function AssistantMessage({
+  messageId,
   content,
   sources,
   latencyMs,
   cached,
 }: {
+  messageId: string;
   content: string;
   sources: readonly SourceFieldsFragment[];
   latencyMs: number | null;
@@ -119,7 +131,7 @@ export function AssistantMessage({
       <div data-testid="token-stream-body" className="text-body leading-[1.55] text-text">
         <MessageBlocks content={content} />
       </div>
-      <FooterBadges latencyMs={latencyMs} cached={cached} />
+      <FooterBadges messageId={messageId} latencyMs={latencyMs} cached={cached} />
     </div>
   );
 }
@@ -141,6 +153,7 @@ export function TokenStream({ state }: { state: StreamState }) {
   if (state.phase === "complete" && state.completion !== null) {
     return (
       <AssistantMessage
+        messageId={state.completion.message.id}
         content={streamText(state)}
         sources={state.sources ?? state.completion.message.sources}
         latencyMs={state.completion.message.latencyMs ?? null}

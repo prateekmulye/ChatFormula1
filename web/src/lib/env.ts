@@ -13,6 +13,9 @@ export const GRAPHIQL_URL = new URL("/graphiql", GRAPHQL_HTTP_URL).toString();
 
 export const GITHUB_URL = "https://github.com/prateekmulye/ChatFormula1";
 
+/** Owner portfolio — the footer cross-link closing the trust loop. */
+export const PORTFOLIO_URL = "https://prateekmulye.dev";
+
 /**
  * The season with seeded data. The Jolpica nightly sync (Phase 5) will keep
  * this current; until then it matches the committed `data/` seeds.

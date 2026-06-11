@@ -130,6 +130,23 @@ export type ErrorCode =
   /** Input failed validation (length, control chars, repetition). */
   | 'VALIDATION';
 
+/** Result of enqueuing an ingest job. */
+export type IngestJob = {
+  __typename?: 'IngestJob';
+  id: Scalars['ID']['output'];
+  queuedAt: Scalars['DateTime']['output'];
+  state: Scalars['String']['output'];
+};
+
+/** Allowlisted ingest sources for the triggerIngest mutation. */
+export type IngestSource =
+  /** Race calendar sync. */
+  | 'CALENDAR'
+  /** Historical F1 data ingestion. */
+  | 'HISTORICAL'
+  /** Tavily news ingestion (nightly Oban job). */
+  | 'NEWS';
+
 export type Message = {
   __typename?: 'Message';
   cached: Scalars['Boolean']['output'];
@@ -238,6 +255,16 @@ export type RootMutationType = {
   sendMessage: SendMessagePayload;
   /** Create a new conversation for the current viewer. */
   startConversation: Conversation;
+  /**
+   * Submit thumbs-up/down feedback on an assistant message.
+   * Idempotent per viewer+message — re-submitting updates the existing row.
+   */
+  submitFeedback: Scalars['Boolean']['output'];
+  /**
+   * Enqueues a news/data ingest Oban job.
+   * Requires API key with scope 'admin:ingest'.
+   */
+  triggerIngest: IngestJob;
 };
 
 
@@ -251,12 +278,25 @@ export type RootMutationTypeSendMessageArgs = {
   conversationId: Scalars['ID']['input'];
 };
 
+
+export type RootMutationTypeSubmitFeedbackArgs = {
+  helpful: Scalars['Boolean']['input'];
+  messageId: Scalars['ID']['input'];
+};
+
+
+export type RootMutationTypeTriggerIngestArgs = {
+  source: IngestSource;
+};
+
 export type RootQueryType = {
   __typename?: 'RootQueryType';
   /** Fetch a conversation by ID. Returns null if not found or not owned by viewer. */
   conversation?: Maybe<Conversation>;
   /** List all conversations for the current viewer. */
   conversations: Array<Conversation>;
+  /** Pre-warmed SHOWCASE question chips wired to cached answers. */
+  demoQuestions: Array<Scalars['String']['output']>;
   /** Look up a driver by three-letter code (e.g. 'VER'). */
   driver?: Maybe<Driver>;
   /** List all drivers, optionally filtered by season. */
@@ -271,6 +311,11 @@ export type RootQueryType = {
   standings: Array<StandingRow>;
   /** Current system health — gateway, agent, database, and circuit breaker state. */
   systemHealth: SystemHealth;
+  /**
+   * BEAM + system telemetry for the public pit-wall panel.
+   * Only telemetry-fed numbers — no theater (see ARCHITECTURE.md risk #12).
+   */
+  systemStats: SystemStats;
 };
 
 
@@ -402,6 +447,33 @@ export type SystemHealth = {
 };
 
 /**
+ * Real-time BEAM + system statistics.  All fields are telemetry-fed — no
+ * invented numbers.  Nullable fields return nil when no data is available yet
+ * (e.g. p95FirstTokenMs before any stream has completed).
+ */
+export type SystemStats = {
+  __typename?: 'SystemStats';
+  /** Number of active Conversation.Server GenServers. */
+  activeConversations: Scalars['Int']['output'];
+  /** Total BEAM process count (VM-level). */
+  beamProcessCount: Scalars['Int']['output'];
+  /** Remaining daily LLM budget in USD. */
+  dailyBudgetRemainingUsd: Scalars['Float']['output'];
+  /** When the standings data was last synced from Jolpica/Ergast. Nil if never. */
+  lastStandingsSyncAt?: Maybe<Scalars['DateTime']['output']>;
+  /** LLM spend in USD today. */
+  llmSpendTodayUsd: Scalars['Float']['output'];
+  /** Oban jobs completed in the last 24 hours. */
+  obanJobsCompleted24h: Scalars['Int']['output'];
+  /** p95 first-token latency in ms (nil until at least 1 stream completes). */
+  p95FirstTokenMs?: Maybe<Scalars['Int']['output']>;
+  /** Mean tokens/second from recent streams (nil until at least 1 stream completes). */
+  tokensPerSecond?: Maybe<Scalars['Float']['output']>;
+  /** Seconds since the gateway started. */
+  uptimeSeconds: Scalars['Int']['output'];
+};
+
+/**
  * One or more LLM tokens.  Delivery is micro-batched: the Conversation.Server
  * accumulates tokens for 40 ms or 12 tokens (whichever comes first) before a
  * single publish.  This amortises Absinthe.Subscription.publish overhead and
@@ -459,6 +531,11 @@ export type DriversQueryVariables = Exact<{
 
 export type DriversQuery = { __typename?: 'RootQueryType', drivers?: Array<{ __typename?: 'Driver', id: string, code: string, number?: number | null, fullName: string, nationality: string, constructor: { __typename?: 'Constructor', id: string, name: string, points: number } }> | null };
 
+export type DemoQuestionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type DemoQuestionsQuery = { __typename?: 'RootQueryType', demoQuestions: Array<string> };
+
 export type ConversationMessagesQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
@@ -479,6 +556,14 @@ export type SendMessageMutationVariables = Exact<{
 
 export type SendMessageMutation = { __typename?: 'RootMutationType', sendMessage: { __typename?: 'SendMessagePayload', assistantMessageId: string, userMessage: { __typename?: 'Message', id: string, role: MessageRole, content: string, status: MessageStatus, intent?: string | null, cached: boolean, latencyMs?: number | null, insertedAt: string, sources: Array<{ __typename?: 'Source', kind: SourceKind, title: string, url?: string | null, snippet?: string | null, score?: number | null }> } } };
 
+export type SubmitFeedbackMutationVariables = Exact<{
+  messageId: Scalars['ID']['input'];
+  helpful: Scalars['Boolean']['input'];
+}>;
+
+
+export type SubmitFeedbackMutation = { __typename?: 'RootMutationType', submitFeedback: boolean };
+
 export type AgentStreamSubscriptionVariables = Exact<{
   messageId: Scalars['ID']['input'];
 }>;
@@ -490,6 +575,13 @@ export type SystemHealthQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type SystemHealthQuery = { __typename?: 'RootQueryType', systemHealth: { __typename?: 'SystemHealth', mode: ServiceMode, gateway: ServiceStatus, agentService: ServiceStatus, database: ServiceStatus, breakerState: BreakerState } };
+
+export type SystemStatsFieldsFragment = { __typename?: 'SystemStats', activeConversations: number, beamProcessCount: number, uptimeSeconds: number, p95FirstTokenMs?: number | null, tokensPerSecond?: number | null, obanJobsCompleted24h: number, lastStandingsSyncAt?: string | null, llmSpendTodayUsd: number, dailyBudgetRemainingUsd: number };
+
+export type SystemStatsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SystemStatsQuery = { __typename?: 'RootQueryType', systemStats: { __typename?: 'SystemStats', activeConversations: number, beamProcessCount: number, uptimeSeconds: number, p95FirstTokenMs?: number | null, tokensPerSecond?: number | null, obanJobsCompleted24h: number, lastStandingsSyncAt?: string | null, llmSpendTodayUsd: number, dailyBudgetRemainingUsd: number } };
 
 export type SystemHealthChangedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
@@ -532,6 +624,19 @@ export const SystemHealthFieldsFragmentDoc = gql`
   agentService
   database
   breakerState
+}
+    `;
+export const SystemStatsFieldsFragmentDoc = gql`
+    fragment SystemStatsFields on SystemStats {
+  activeConversations
+  beamProcessCount
+  uptimeSeconds
+  p95FirstTokenMs
+  tokensPerSecond
+  obanJobsCompleted24h
+  lastStandingsSyncAt
+  llmSpendTodayUsd
+  dailyBudgetRemainingUsd
 }
     `;
 export const StandingsDocument = gql`
@@ -740,6 +845,46 @@ export type DriversQueryHookResult = ReturnType<typeof useDriversQuery>;
 export type DriversLazyQueryHookResult = ReturnType<typeof useDriversLazyQuery>;
 export type DriversSuspenseQueryHookResult = ReturnType<typeof useDriversSuspenseQuery>;
 export type DriversQueryResult = Apollo.QueryResult<DriversQuery, DriversQueryVariables>;
+export const DemoQuestionsDocument = gql`
+    query DemoQuestions {
+  demoQuestions
+}
+    `;
+
+/**
+ * __useDemoQuestionsQuery__
+ *
+ * To run a query within a React component, call `useDemoQuestionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useDemoQuestionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useDemoQuestionsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useDemoQuestionsQuery(baseOptions?: Apollo.QueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<DemoQuestionsQuery, DemoQuestionsQueryVariables>(DemoQuestionsDocument, options);
+      }
+export function useDemoQuestionsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<DemoQuestionsQuery, DemoQuestionsQueryVariables>(DemoQuestionsDocument, options);
+        }
+// @ts-ignore
+export function useDemoQuestionsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>): Apollo.UseSuspenseQueryResult<DemoQuestionsQuery, DemoQuestionsQueryVariables>;
+export function useDemoQuestionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>): Apollo.UseSuspenseQueryResult<DemoQuestionsQuery | undefined, DemoQuestionsQueryVariables>;
+export function useDemoQuestionsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<DemoQuestionsQuery, DemoQuestionsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<DemoQuestionsQuery, DemoQuestionsQueryVariables>(DemoQuestionsDocument, options);
+        }
+export type DemoQuestionsQueryHookResult = ReturnType<typeof useDemoQuestionsQuery>;
+export type DemoQuestionsLazyQueryHookResult = ReturnType<typeof useDemoQuestionsLazyQuery>;
+export type DemoQuestionsSuspenseQueryHookResult = ReturnType<typeof useDemoQuestionsSuspenseQuery>;
+export type DemoQuestionsQueryResult = Apollo.QueryResult<DemoQuestionsQuery, DemoQuestionsQueryVariables>;
 export const ConversationMessagesDocument = gql`
     query ConversationMessages($id: ID!) {
   conversation(id: $id) {
@@ -858,6 +1003,38 @@ export function useSendMessageMutation(baseOptions?: Apollo.MutationHookOptions<
 export type SendMessageMutationHookResult = ReturnType<typeof useSendMessageMutation>;
 export type SendMessageMutationResult = Apollo.MutationResult<SendMessageMutation>;
 export type SendMessageMutationOptions = Apollo.BaseMutationOptions<SendMessageMutation, SendMessageMutationVariables>;
+export const SubmitFeedbackDocument = gql`
+    mutation SubmitFeedback($messageId: ID!, $helpful: Boolean!) {
+  submitFeedback(messageId: $messageId, helpful: $helpful)
+}
+    `;
+export type SubmitFeedbackMutationFn = Apollo.MutationFunction<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>;
+
+/**
+ * __useSubmitFeedbackMutation__
+ *
+ * To run a mutation, you first call `useSubmitFeedbackMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useSubmitFeedbackMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [submitFeedbackMutation, { data, loading, error }] = useSubmitFeedbackMutation({
+ *   variables: {
+ *      messageId: // value for 'messageId'
+ *      helpful: // value for 'helpful'
+ *   },
+ * });
+ */
+export function useSubmitFeedbackMutation(baseOptions?: Apollo.MutationHookOptions<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>(SubmitFeedbackDocument, options);
+      }
+export type SubmitFeedbackMutationHookResult = ReturnType<typeof useSubmitFeedbackMutation>;
+export type SubmitFeedbackMutationResult = Apollo.MutationResult<SubmitFeedbackMutation>;
+export type SubmitFeedbackMutationOptions = Apollo.BaseMutationOptions<SubmitFeedbackMutation, SubmitFeedbackMutationVariables>;
 export const AgentStreamDocument = gql`
     subscription AgentStream($messageId: ID!) {
   agentStream(messageId: $messageId) {
@@ -965,6 +1142,48 @@ export type SystemHealthQueryHookResult = ReturnType<typeof useSystemHealthQuery
 export type SystemHealthLazyQueryHookResult = ReturnType<typeof useSystemHealthLazyQuery>;
 export type SystemHealthSuspenseQueryHookResult = ReturnType<typeof useSystemHealthSuspenseQuery>;
 export type SystemHealthQueryResult = Apollo.QueryResult<SystemHealthQuery, SystemHealthQueryVariables>;
+export const SystemStatsDocument = gql`
+    query SystemStats {
+  systemStats {
+    ...SystemStatsFields
+  }
+}
+    ${SystemStatsFieldsFragmentDoc}`;
+
+/**
+ * __useSystemStatsQuery__
+ *
+ * To run a query within a React component, call `useSystemStatsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useSystemStatsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useSystemStatsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useSystemStatsQuery(baseOptions?: Apollo.QueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<SystemStatsQuery, SystemStatsQueryVariables>(SystemStatsDocument, options);
+      }
+export function useSystemStatsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<SystemStatsQuery, SystemStatsQueryVariables>(SystemStatsDocument, options);
+        }
+// @ts-ignore
+export function useSystemStatsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>): Apollo.UseSuspenseQueryResult<SystemStatsQuery, SystemStatsQueryVariables>;
+export function useSystemStatsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>): Apollo.UseSuspenseQueryResult<SystemStatsQuery | undefined, SystemStatsQueryVariables>;
+export function useSystemStatsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<SystemStatsQuery, SystemStatsQueryVariables>(SystemStatsDocument, options);
+        }
+export type SystemStatsQueryHookResult = ReturnType<typeof useSystemStatsQuery>;
+export type SystemStatsLazyQueryHookResult = ReturnType<typeof useSystemStatsLazyQuery>;
+export type SystemStatsSuspenseQueryHookResult = ReturnType<typeof useSystemStatsSuspenseQuery>;
+export type SystemStatsQueryResult = Apollo.QueryResult<SystemStatsQuery, SystemStatsQueryVariables>;
 export const SystemHealthChangedDocument = gql`
     subscription SystemHealthChanged {
   systemHealthChanged {

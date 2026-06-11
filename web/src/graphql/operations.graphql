@@ -92,6 +92,12 @@ query Drivers($season: Int) {
   }
 }
 
+# Pre-warmed SHOWCASE question chips. The UI caps display at 5 (Hick's law)
+# and falls back to a static list if this query errors — never an empty row.
+query DemoQuestions {
+  demoQuestions
+}
+
 # ─── Conversations ────────────────────────────────────────────────────────────
 
 query ConversationMessages($id: ID!) {
@@ -119,6 +125,12 @@ mutation SendMessage($conversationId: ID!, $content: String!) {
     }
     assistantMessageId
   }
+}
+
+# Thumbs up/down on a completed assistant message. Idempotent per
+# viewer+message on the gateway — re-submitting updates the existing row.
+mutation SubmitFeedback($messageId: ID!, $helpful: Boolean!) {
+  submitFeedback(messageId: $messageId, helpful: $helpful)
 }
 
 subscription AgentStream($messageId: ID!) {
@@ -167,6 +179,26 @@ subscription AgentStream($messageId: ID!) {
 query SystemHealth {
   systemHealth {
     ...SystemHealthFields
+  }
+}
+
+fragment SystemStatsFields on SystemStats {
+  activeConversations
+  beamProcessCount
+  uptimeSeconds
+  p95FirstTokenMs
+  tokensPerSecond
+  obanJobsCompleted24h
+  lastStandingsSyncAt
+  llmSpendTodayUsd
+  dailyBudgetRemainingUsd
+}
+
+# Polled every 30s by the PitWallPanel — and ONLY while the panel is open
+# (the query lives inside the sheet content, which unmounts on close).
+query SystemStats {
+  systemStats {
+    ...SystemStatsFields
   }
 }
 
