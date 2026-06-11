@@ -12,7 +12,6 @@ from typing import Any, cast
 
 import structlog
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 from tenacity import (
@@ -24,6 +23,7 @@ from tenacity import (
 
 from chatf1_agent.caching import get_cache_manager
 from chatf1_agent.exceptions import VectorStoreError
+from chatf1_agent.providers import create_embeddings
 from chatf1_agent.settings import Settings
 
 logger = structlog.get_logger(__name__)
@@ -33,7 +33,6 @@ NAMESPACE_STATIC = "static_corpus"
 NAMESPACE_NEWS = "news"
 
 # Optimized batch sizes for different operations
-OPTIMAL_EMBEDDING_BATCH_SIZE = 100  # OpenAI embeddings API optimal batch size
 OPTIMAL_UPSERT_BATCH_SIZE = 100  # Pinecone upsert optimal batch size
 MAX_PARALLEL_BATCHES = 3  # Maximum parallel batch operations
 
@@ -69,7 +68,7 @@ class VectorStoreManager:
         Raises:
             VectorStoreError: If initialization fails
         """
-        config.require("pinecone_api_key", "openai_api_key")
+        config.require("pinecone_api_key")
         self.config = config
         self.logger = logger.bind(component="vector_store_manager")
 
@@ -84,16 +83,14 @@ class VectorStoreManager:
             raise VectorStoreError(f"Failed to initialize Pinecone client: {e}") from e
 
         try:
-            self.embeddings = OpenAIEmbeddings(
-                openai_api_key=config.openai_api_key,
-                model=config.openai_embedding_model,
-                chunk_size=OPTIMAL_EMBEDDING_BATCH_SIZE,
-                max_retries=3,
-            )
+            # Built through the provider factory: the embedding endpoint and
+            # dimension are settings-driven and validated eagerly there.
+            self.embeddings = create_embeddings(config)
             self.logger.info(
                 "embeddings_initialized",
-                model=config.openai_embedding_model,
-                chunk_size=OPTIMAL_EMBEDDING_BATCH_SIZE,
+                provider=config.resolved_embedding_provider,
+                model=config.embedding_model,
+                dimension=config.resolved_embedding_dimension,
             )
         except Exception as e:
             self.logger.error("embeddings_init_failed", error=str(e))
@@ -146,16 +143,17 @@ class VectorStoreManager:
             )
 
             if self.index_name not in existing_indexes:
+                dimension = self.config.resolved_embedding_dimension
                 self.logger.info(
                     "creating_index",
                     index_name=self.index_name,
-                    dimension=self.config.pinecone_dimension,
+                    dimension=dimension,
                 )
 
                 await asyncio.to_thread(
                     self.pc.create_index,
                     name=self.index_name,
-                    dimension=self.config.pinecone_dimension,
+                    dimension=dimension,
                     metric="cosine",
                     spec=ServerlessSpec(cloud="aws", region="us-east-1"),
                 )
@@ -166,6 +164,8 @@ class VectorStoreManager:
 
             await self._validate_index()
 
+        except VectorStoreError:
+            raise
         except Exception as e:
             self.logger.error(
                 "index_creation_failed",
@@ -175,10 +175,15 @@ class VectorStoreManager:
             raise VectorStoreError(f"Failed to ensure index exists: {e}") from e
 
     async def _validate_index(self) -> None:
-        """Validate index configuration matches expected settings.
+        """Validate that the live index matches the configured embeddings.
+
+        The dimension travels with the embedding provider — querying or
+        ingesting against a mismatched index silently produces garbage, so
+        this fails loudly with the remediation path instead.
 
         Raises:
-            VectorStoreError: If index configuration is invalid
+            VectorStoreError: If the live index dimension disagrees with
+                the configured embedding dimension.
         """
         try:
             index_description = await asyncio.to_thread(
@@ -186,13 +191,20 @@ class VectorStoreManager:
                 self.index_name,
             )
 
-            expected_dimension = self.config.pinecone_dimension
+            expected_dimension = self.config.resolved_embedding_dimension
             actual_dimension = index_description.dimension
 
             if actual_dimension != expected_dimension:
                 raise VectorStoreError(
-                    f"Index dimension mismatch: expected {expected_dimension}, "
-                    f"got {actual_dimension}"
+                    f"Embedding dimension mismatch: index "
+                    f"'{self.index_name}' is {actual_dimension}-dimensional, "
+                    f"but settings expect {expected_dimension} "
+                    f"({self.config.resolved_embedding_provider}/"
+                    f"{self.config.embedding_model}). Vectors from different "
+                    "embedding models are not interchangeable. Remediation: "
+                    "delete and recreate the index with `make reindex`, THEN "
+                    "re-ingest with `make ingest`. Never re-ingest into a "
+                    "mismatched index."
                 )
 
             self.logger.info(

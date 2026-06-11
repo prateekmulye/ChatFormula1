@@ -17,10 +17,11 @@ def test_settings_loads_from_environment(test_settings: Settings):
 
 @pytest.mark.unit
 def test_settings_default_values(test_settings: Settings):
-    """Defaults match the v2 architecture: gpt-4o-mini everywhere."""
-    assert test_settings.generation_model == "gpt-4o-mini"
+    """Defaults match the v2 architecture: OpenAI gpt-4o-mini everywhere."""
+    assert test_settings.llm_provider == "openai"
+    assert test_settings.llm_model == "gpt-4o-mini"
     assert test_settings.analysis_model == "gpt-4o-mini"
-    assert test_settings.openai_embedding_model == "text-embedding-3-small"
+    assert test_settings.embedding_model == "text-embedding-3-small"
     assert test_settings.pinecone_index_name == "f1-knowledge"
     assert test_settings.app_name == "ChatFormula1"
     assert test_settings.log_level == "DEBUG"
@@ -30,7 +31,7 @@ def test_settings_default_values(test_settings: Settings):
 @pytest.mark.unit
 def test_settings_validation_constraints(test_settings: Settings):
     """Field constraints hold for the loaded settings."""
-    assert 0.0 <= test_settings.openai_temperature <= 2.0
+    assert 0.0 <= test_settings.llm_temperature <= 2.0
     assert 1 <= test_settings.tavily_max_results <= 10
     assert test_settings.max_conversation_history >= 1
     assert test_settings.vector_search_top_k >= 1
@@ -50,7 +51,7 @@ def test_settings_work_without_api_keys(monkeypatch: pytest.MonkeyPatch):
     settings = Settings(_env_file=None)
 
     assert settings.openai_api_key == ""
-    assert settings.generation_model == "gpt-4o-mini"
+    assert settings.llm_model == "gpt-4o-mini"
 
 
 @pytest.mark.unit

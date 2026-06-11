@@ -7,6 +7,7 @@ server can forward only its tokens to clients.
 """
 
 import asyncio
+import json
 import time
 from datetime import datetime
 from typing import Any, Literal, cast
@@ -16,7 +17,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable
 from langgraph.graph import END, StateGraph
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from chatf1_agent.caching import get_cache_manager
 from chatf1_agent.prompts import F1_EXPERT_SYSTEM_PROMPT
@@ -30,6 +31,54 @@ logger = structlog.get_logger(__name__)
 
 # Domains whose results get an authority boost during ranking.
 TRUSTED_DOMAINS = ["formula1.com", "fia.com", "autosport.com"]
+
+ANALYSIS_SYSTEM_PROMPT = """You are a query analyzer for an F1 chatbot. Analyze the user's query and extract:
+1. Intent: current_info, historical, prediction, technical, general, or off_topic
+2. Confidence: 0.0 to 1.0
+3. Whether real-time search is needed
+4. Whether vector store search is needed
+5. Entities: drivers, teams, races, years, circuits
+6. Time period if relevant
+7. Brief reasoning
+
+Be accurate and concise."""
+
+
+def safe_default_analysis(reason: str) -> QueryAnalysis:
+    """Conservative analysis used when the model's output is unusable.
+
+    Routes to BOTH retrieval sources: over-retrieving costs a little
+    latency, under-retrieving costs answer quality.
+
+    Args:
+        reason: Human-readable explanation recorded in the analysis.
+
+    Returns:
+        A QueryAnalysis that retrieves from the vector store and the web.
+    """
+    return QueryAnalysis(
+        intent="general",
+        confidence=0.0,
+        requires_search=True,
+        requires_vector_search=True,
+        entities={},
+        time_period=None,
+        reasoning=reason,
+    )
+
+
+def _extract_json(text: str) -> str:
+    """Pull the JSON object out of a model reply.
+
+    Tolerates markdown fences and surrounding prose by slicing from the
+    first ``{`` to the last ``}``. Anything else is returned as-is and
+    left for Pydantic to reject.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        return text[start : end + 1]
+    return text.strip()
 
 
 class ContextScore(BaseModel):
@@ -138,9 +187,13 @@ class F1AgentGraph:
 
         logger.info(
             "f1_agent_graph_initialized",
-            generation_model=config.generation_model,
+            provider=config.llm_provider,
+            generation_model=config.llm_model,
             analysis_model=config.analysis_model,
-            temperature=config.openai_temperature,
+            temperature=config.llm_temperature,
+            structured_output=(
+                "function_calling" if config.supports_function_calling else "json"
+            ),
         )
 
     def _build_graph(self) -> StateGraph:
@@ -188,7 +241,11 @@ class F1AgentGraph:
     async def analyze_query_node(self, state: AgentState) -> dict[str, Any]:
         """Analyze the user query to detect intent and extract entities.
 
-        Uses structured output to ensure a consistent analysis format.
+        Two provider-dependent paths produce the same QueryAnalysis:
+        function-calling structured output when the model supports it,
+        otherwise a prompted-JSON path with one repair retry and a safe
+        route-to-both default. Neither path is tagged ``generation``, so
+        analysis output never reaches the user-visible token stream.
 
         Args:
             state: Current agent state
@@ -200,30 +257,14 @@ class F1AgentGraph:
 
         logger.info("analyzing_query", query=query[:100])
 
-        analysis_prompt = ChatPromptTemplate.from_messages(
-            [
-                SystemMessage(
-                    content="""You are a query analyzer for an F1 chatbot. Analyze the user's query and extract:
-1. Intent: current_info, historical, prediction, technical, general, or off_topic
-2. Confidence: 0.0 to 1.0
-3. Whether real-time search is needed
-4. Whether vector store search is needed
-5. Entities: drivers, teams, races, years, circuits
-6. Time period if relevant
-7. Brief reasoning
-
-Be accurate and concise."""
-                ),
-                HumanMessage(content=f"Analyze this F1 query: {query}"),
-            ]
-        )
-
         try:
-            structured_llm = self.analysis_llm.with_structured_output(QueryAnalysis)
-            analysis = cast(
-                QueryAnalysis,
-                await structured_llm.ainvoke(analysis_prompt.format_messages()),
-            )
+            used_fallback = False
+            if self.config.supports_function_calling:
+                mode = "function_calling"
+                analysis = await self._analyze_with_function_calling(query)
+            else:
+                mode = "json"
+                analysis, used_fallback = await self._analyze_with_json_prompt(query)
 
             logger.info(
                 "query_analyzed",
@@ -231,16 +272,22 @@ Be accurate and concise."""
                 confidence=analysis.confidence,
                 requires_search=analysis.requires_search,
                 requires_vector=analysis.requires_vector_search,
+                analysis_mode=mode,
             )
+
+            metadata: dict[str, Any] = {
+                "analysis": analysis.model_dump(),
+                "analysis_mode": mode,
+                "requires_search": analysis.requires_search,
+                "requires_vector_search": analysis.requires_vector_search,
+            }
+            if used_fallback:
+                metadata["analysis_fallback"] = True
 
             return {
                 "intent": analysis.intent,
                 "entities": analysis.entities,
-                "metadata": {
-                    "analysis": analysis.model_dump(),
-                    "requires_search": analysis.requires_search,
-                    "requires_vector_search": analysis.requires_vector_search,
-                },
+                "metadata": metadata,
             }
 
         except Exception as e:
@@ -255,6 +302,93 @@ Be accurate and concise."""
                     "requires_vector_search": True,
                 },
             }
+
+    async def _analyze_with_function_calling(self, query: str) -> QueryAnalysis:
+        """Analyze via function-calling structured output (OpenAI-class models).
+
+        Args:
+            query: User query to analyze.
+
+        Returns:
+            Parsed QueryAnalysis from the model's tool call.
+        """
+        analysis_prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessage(content=ANALYSIS_SYSTEM_PROMPT),
+                HumanMessage(content=f"Analyze this F1 query: {query}"),
+            ]
+        )
+        structured_llm = self.analysis_llm.with_structured_output(QueryAnalysis)
+        return cast(
+            QueryAnalysis,
+            await structured_llm.ainvoke(analysis_prompt.format_messages()),
+        )
+
+    async def _analyze_with_json_prompt(self, query: str) -> tuple[QueryAnalysis, bool]:
+        """Analyze via prompted JSON for models without function calling.
+
+        The prompt embeds the QueryAnalysis JSON Schema and demands a bare
+        JSON object. On a parse failure the model gets exactly ONE repair
+        attempt with the validation error appended; if that also fails the
+        node returns the safe default (retrieve from both sources) instead
+        of failing the request.
+
+        Args:
+            query: User query to analyze.
+
+        Returns:
+            ``(analysis, used_safe_default)``.
+        """
+        schema = json.dumps(QueryAnalysis.model_json_schema(), separators=(",", ":"))
+        messages: list[BaseMessage] = [
+            SystemMessage(
+                content=(
+                    ANALYSIS_SYSTEM_PROMPT
+                    + "\n\nRespond with a single JSON object that validates "
+                    "against this JSON Schema. No prose, no markdown fences, "
+                    "JSON only:\n" + schema
+                )
+            ),
+            HumanMessage(content=f"Analyze this F1 query: {query}"),
+        ]
+
+        reply = await self.analysis_llm.ainvoke(messages)
+        raw = str(reply.content)
+        try:
+            return QueryAnalysis.model_validate_json(_extract_json(raw)), False
+        except ValidationError as parse_error:
+            logger.warning(
+                "analysis_json_invalid_retrying", error=str(parse_error)[:500]
+            )
+            retry_messages: list[BaseMessage] = [
+                *messages,
+                AIMessage(content=raw),
+                HumanMessage(
+                    content=(
+                        "Your previous reply was not a valid JSON object for "
+                        f"the schema. Validation error:\n{parse_error}\n"
+                        "Reply again with ONLY the corrected JSON object."
+                    )
+                ),
+            ]
+            retry_reply = await self.analysis_llm.ainvoke(retry_messages)
+            try:
+                analysis = QueryAnalysis.model_validate_json(
+                    _extract_json(str(retry_reply.content))
+                )
+                return analysis, False
+            except ValidationError as retry_error:
+                logger.error(
+                    "analysis_json_invalid_after_retry",
+                    error=str(retry_error)[:500],
+                )
+                return (
+                    safe_default_analysis(
+                        "Query analysis produced unparseable JSON twice; "
+                        "defaulting to retrieval from both sources."
+                    ),
+                    True,
+                )
 
     async def route_node(self, state: AgentState) -> dict[str, Any]:
         """Record the routing decision based on query analysis.
@@ -613,8 +747,8 @@ Be accurate and concise."""
         cache_key = cache_manager.get_llm_cache_key(
             query=query,
             context=context,
-            model=self.config.generation_model,
-            temperature=self.config.openai_temperature,
+            model=self.config.llm_model,
+            temperature=self.config.llm_temperature,
         )
 
         cached_response = cache_manager.llm_cache.get(cache_key)
