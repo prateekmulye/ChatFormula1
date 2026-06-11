@@ -3,6 +3,7 @@ import { type ReactNode } from "react";
 import { Footer } from "@/components/layout/footer";
 import { Masthead } from "@/components/layout/masthead";
 import { MobileTabs } from "@/components/layout/mobile-tabs";
+import { SystemHealthProvider } from "@/features/health/system-health-provider";
 
 /**
  * Global shell (DESIGN.md §3.0): skip link, semantic landmarks, masthead,
@@ -11,20 +12,22 @@ import { MobileTabs } from "@/components/layout/mobile-tabs";
  */
 export function Shell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <a
-        href="#main"
-        className="sr-only z-50 rounded-md bg-azure px-4 py-2 text-bg focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-      >
-        Skip to content
-      </a>
-      <div className="carbon-grain" aria-hidden />
-      <Masthead />
-      <main id="main" className="relative z-10 flex flex-1 flex-col [&>*]:flex-1">
-        {children}
-      </main>
-      <Footer />
-      <MobileTabs />
-    </div>
+    <SystemHealthProvider>
+      <div className="flex min-h-dvh flex-col">
+        <a
+          href="#main"
+          className="sr-only z-50 rounded-md bg-azure px-4 py-2 text-bg focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        >
+          Skip to content
+        </a>
+        <div className="carbon-grain" aria-hidden />
+        <Masthead />
+        <main id="main" className="relative z-10 flex flex-1 flex-col [&>*]:flex-1">
+          {children}
+        </main>
+        <Footer />
+        <MobileTabs />
+      </div>
+    </SystemHealthProvider>
   );
 }

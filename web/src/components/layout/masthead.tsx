@@ -5,7 +5,7 @@ import { ApexIcon } from "@/components/icons";
 import { PitWallPanel } from "@/components/telemetry/pit-wall-panel";
 import { StatusBadge } from "@/components/telemetry/status-badge";
 import { Sheet, SheetTrigger } from "@/components/ui/sheet";
-import { useSystemHealth } from "@/features/health/use-system-health";
+import { useSystemHealthContext } from "@/features/health/health-context";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -21,7 +21,7 @@ const NAV_ITEMS = [
  * ops panel. Desktop nav hidden on mobile (bottom tabs take over).
  */
 export function Masthead() {
-  const { health, unreachable } = useSystemHealth();
+  const { health, unreachable } = useSystemHealthContext();
   const [panelOpen, setPanelOpen] = useState(false);
 
   return (
