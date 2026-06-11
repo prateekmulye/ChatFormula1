@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+import time
 
 import click
 import structlog
@@ -315,12 +316,31 @@ def check_config(ctx: click.Context) -> None:
             click.echo("✅ Configuration loaded successfully")
             click.echo(f"  Environment: {config.environment}")
             click.echo(f"  Log level: {config.log_level}")
-            click.echo(f"  Pinecone index: {config.pinecone_index_name}")
+
+            click.echo("\n🤖 LLM provider")
+            click.echo(f"  Provider: {config.llm_provider}")
+            click.echo(f"  Base URL: {config.llm_base_url or '(provider default)'}")
             click.echo(f"  Generation model: {config.llm_model}")
+            click.echo(f"  Analysis model: {config.analysis_model}")
+            click.echo(f"  Function calling: {config.supports_function_calling}")
+
+            click.echo("\n🧬 Embeddings")
+            click.echo(f"  Provider: {config.resolved_embedding_provider}")
+            click.echo(
+                f"  Base URL: {config.embedding_base_url or '(provider default)'}"
+            )
+            click.echo(f"  Model: {config.embedding_model}")
+            # Raises with remediation when the dimension is unresolvable.
+            expected_dimension = config.resolved_embedding_dimension
+            click.echo(f"  Dimension: {expected_dimension}")
+
+            click.echo("\n📚 Ingestion")
+            click.echo(f"  Pinecone index: {config.pinecone_index_name}")
             click.echo(f"  Chunk size: {config.chunk_size}")
             click.echo(f"  Chunk overlap: {config.chunk_overlap}")
 
-            # Test vector store connection
+            # Test vector store connection (validates the index dimension
+            # against the configured embeddings and fails loudly on drift).
             click.echo("\n🔌 Testing vector store connection...")
             data_dir = ctx.obj["data_dir"]
             pipeline = IngestionPipeline(config=config, data_dir=data_dir)
@@ -332,7 +352,10 @@ def check_config(ctx: click.Context) -> None:
             if health["status"] == "healthy":
                 click.echo("✅ Vector store connection successful")
                 click.echo(f"  Index: {health['index_name']}")
-                click.echo(f"  Dimension: {health['dimension']}")
+                click.echo(
+                    f"  Dimension: {health['dimension']} "
+                    f"(matches configured {expected_dimension} ✅)"
+                )
                 click.echo(f"  Vectors: {health['total_vector_count']}")
             else:
                 click.echo(
@@ -349,6 +372,81 @@ def check_config(ctx: click.Context) -> None:
 
     # Run async function
     asyncio.run(run_check())
+
+
+@cli.command()
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Skip the confirmation prompt (CI / scripted use).",
+)
+def reindex(yes: bool) -> None:
+    """Delete and recreate the Pinecone index (destroys ALL vectors).
+
+    Run this BEFORE re-ingesting whenever the embedding provider, model,
+    or dimension changes — vectors from different embedding models are
+    not interchangeable. Repopulate afterwards with `make ingest`.
+    """
+    from pinecone import Pinecone, ServerlessSpec
+
+    click.echo("🏎️  ChatFormula1 Index Rebuild")
+    click.echo("=" * 50)
+
+    try:
+        config = get_settings()
+        config.require("pinecone_api_key")
+        dimension = config.resolved_embedding_dimension
+        name = config.pinecone_index_name
+
+        click.echo(f"Index: {name}")
+        click.echo(f"Embedding provider: {config.resolved_embedding_provider}")
+        click.echo(f"Embedding model: {config.embedding_model}")
+        click.echo(f"Dimension: {dimension}")
+
+        pc = Pinecone(api_key=config.pinecone_api_key)
+        existing = [idx.name for idx in pc.list_indexes()]
+
+        if name in existing:
+            stats = pc.Index(name).describe_index_stats()
+            count = stats.total_vector_count
+            if not yes:
+                click.confirm(
+                    f"\n⚠️  Delete index '{name}' ({count} vectors)? "
+                    "This cannot be undone",
+                    abort=True,
+                )
+            click.echo(f"🗑️  Deleting index '{name}'...")
+            pc.delete_index(name)
+
+            # Deletion is asynchronous server-side; wait until it is gone.
+            deadline = time.monotonic() + 60
+            while name in [idx.name for idx in pc.list_indexes()]:
+                if time.monotonic() > deadline:
+                    raise TimeoutError(
+                        f"Index '{name}' was not deleted within 60s; "
+                        "retry once Pinecone finishes the deletion."
+                    )
+                time.sleep(2)
+        else:
+            click.echo(f"Index '{name}' does not exist yet; creating it fresh.")
+
+        click.echo(f"🆕 Creating index '{name}' ({dimension}-dim, cosine)...")
+        pc.create_index(
+            name=name,
+            dimension=dimension,
+            metric="cosine",
+            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        )
+
+        click.echo("\n✅ Index rebuilt and EMPTY. Re-ingest with: make ingest")
+        logger.info("reindex_complete", index_name=name, dimension=dimension)
+
+    except click.Abort:
+        raise
+    except Exception as e:
+        click.echo(f"\n❌ Reindex failed: {e}", err=True)
+        logger.error("reindex_failed", error=str(e))
+        sys.exit(1)
 
 
 if __name__ == "__main__":
