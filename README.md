@@ -37,7 +37,7 @@ ChatFormula1 answers Formula 1 questions through a routed RAG pipeline:
 ### Agent (implemented — Phase 1)
 - **[Python 3.12](https://www.python.org/)** + **[FastAPI](https://fastapi.tiangolo.com/)** — internal-only NDJSON streaming API
 - **[LangGraph](https://langchain-ai.github.io/langgraph/)** / **[LangChain](https://python.langchain.com/)** — pipeline orchestration (exact-pinned)
-- **[OpenAI gpt-4o-mini](https://platform.openai.com/)** — generation and analysis, behind a provider seam
+- **Model-agnostic LLMs** — [OpenAI](https://platform.openai.com/) gpt-4o-mini by default, [Ollama](https://ollama.com/) (local or cloud) or any OpenAI-compatible endpoint via a 4-line env change ([ADR-002](docs/adr/002-model-agnostic-providers.md))
 - **[Pinecone](https://www.pinecone.io/)** — vector search (`static_corpus` / `news` namespaces, deterministic SHA-256 IDs)
 - **[Tavily](https://tavily.com/)** — real-time web search via `langchain-tavily`
 

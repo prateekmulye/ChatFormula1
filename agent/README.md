@@ -14,15 +14,16 @@ analyze_query → route → (vector_search | tavily_search | parallel_retrieval)
               → rank_context → generate → format_response
 ```
 
-- **Query analysis** — structured-output intent + entity extraction
-  (gpt-4o-mini, temperature 0)
+- **Query analysis** — intent + entity extraction at temperature 0, via
+  function-calling structured output or a prompted-JSON fallback depending
+  on the provider (see [Model providers](#model-providers))
 - **Retrieval** — Pinecone semantic search (`f1-knowledge` index, namespaces
   `static_corpus` / `news`) and/or Tavily web search, in parallel when both
   are needed
 - **Ranking** — multi-factor scoring (relevance 40%, recency 30%,
   authority 20%, completeness 10%)
-- **Generation** — gpt-4o-mini tagged `generation`; only its tokens are
-  forwarded on the stream
+- **Generation** — the configured chat model (default gpt-4o-mini) tagged
+  `generation`; only its tokens are forwarded on the stream
 
 Responses stream as NDJSON events — the frozen contract between this service
 and the gateway, documented in
@@ -36,6 +37,55 @@ contract tests (`tests/test_streaming_contract.py`).
 | `POST /internal/chat` | NDJSON streaming chat. Body: `{message, history, request_id}`. Stateless — history arrives in the payload. |
 | `POST /internal/ingest` | Trigger an ingestion run (`{"source": "static"}` or `{"source": "news"}`). |
 | `GET /internal/health` | Liveness probe; doubles as the cold-start pre-warm target. |
+
+## Model providers
+
+The agent is model-agnostic: both chat models and the embedding client are
+built exclusively by the provider factory
+(`src/chatf1_agent/providers.py`), which speaks the OpenAI wire protocol to
+OpenAI, Ollama (local or cloud), and any other OpenAI-compatible server
+(vLLM, LM Studio, OpenRouter). Full reasoning:
+[ADR-002](../docs/adr/002-model-agnostic-providers.md).
+
+OpenAI is the default. Switching to local Ollama is four lines of env:
+
+```bash
+LLM_PROVIDER=ollama              # endpoint defaults to http://localhost:11434/v1
+LLM_MODEL=qwen3:8b
+EMBEDDING_MODEL=nomic-embed-text
+EMBEDDING_DIMENSION=768          # the index dimension travels with the model
+```
+
+> **⚠️ Changing the embedding provider/model changes the vector space.**
+> Vectors from different models are not interchangeable, so the Pinecone
+> index must be rebuilt: `make reindex` (delete + recreate, destroys all
+> vectors), **then** `make ingest`. The agent validates the live index
+> dimension at startup and refuses to run against a mismatch. Always
+> reindex *before* re-ingesting — never after.
+
+Ollama Cloud serves big open models over the same protocol — set
+`LLM_BASE_URL=https://ollama.com/v1` and `LLM_API_KEY` (see
+`.env.example`, provider block 3). Honest tradeoffs:
+
+| | OpenAI | Ollama local | Ollama Cloud |
+|---|---|---|---|
+| Cost | per-token | free (your hardware) | free tier with rate/usage limits, then paid |
+| Latency | consistent | cold model loads on first request (seconds-tens of seconds) | shared infra; cold loads possible |
+| Function calling | reliable | model-dependent, often unreliable → JSON fallback | model-dependent |
+| Embeddings | text-embedding-3-small (1536) | nomic-embed-text 768 / mxbai-embed-large 1024 | chat-only catalog — run embeddings locally or keep OpenAI (`EMBEDDING_PROVIDER=openai`) |
+
+**Structured output**: `llm_supports_function_calling` (default true only
+for `openai`) selects the analysis strategy. When false, the analysis
+prompt embeds the `QueryAnalysis` JSON Schema and the reply is parsed with
+Pydantic — one repair retry with the validation error appended, then a
+safe default that retrieves from both sources. Either way the analysis
+model is untagged, so its output never reaches the NDJSON token stream.
+
+Check the effective configuration any time:
+
+```bash
+poetry run f1-ingest --data-dir ../data check-config
+```
 
 ## Security
 
