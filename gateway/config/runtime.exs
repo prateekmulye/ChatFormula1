@@ -54,10 +54,24 @@ if config_env() == :prod do
   host = System.get_env("PHX_HOST") || "chatformula1.com"
   port = String.to_integer(System.get_env("PORT") || "4000")
 
+  # CORS_ORIGINS — comma-separated browser origins allowed to call the
+  # GraphQL API (the Vercel frontend), e.g. "https://chatformula1.com".
+  # Empty default: no cross-origin browser access until explicitly granted.
+  cors_origins =
+    (System.get_env("CORS_ORIGINS") || "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+
+  config :chat_f1, :cors_origins, cors_origins
+
+  # check_origin guards the WebSocket upgrade (subscriptions). The frontend
+  # is served from a different origin than the gateway (Vercel vs Fly), so
+  # the allowed origins are the CORS list plus the gateway's own host.
   config :chat_f1, ChatF1Web.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}, port: port],
-    secret_key_base: secret_key_base
+    secret_key_base: secret_key_base,
+    check_origin: cors_origins ++ ["https://#{host}"]
 
   # AGENT_URL — internal URL of the Python inference service (Render).
   # INTERNAL_API_TOKEN — shared bearer token; same value set in the agent env.
@@ -69,13 +83,4 @@ if config_env() == :prod do
          :internal_api_token,
          System.get_env("INTERNAL_API_TOKEN") ||
            raise("environment variable INTERNAL_API_TOKEN is missing")
-
-  # CORS_ORIGINS — comma-separated browser origins allowed to call the
-  # GraphQL API (the Vercel frontend), e.g. "https://chatformula1.com".
-  # Empty default: no cross-origin browser access until explicitly granted.
-  config :chat_f1,
-         :cors_origins,
-         (System.get_env("CORS_ORIGINS") || "")
-         |> String.split(",", trim: true)
-         |> Enum.map(&String.trim/1)
 end
