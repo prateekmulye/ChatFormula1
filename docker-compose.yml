@@ -1,19 +1,21 @@
-# Local development: Postgres 16 (for the Phase 2 gateway) + the agent
-# service. The gateway runs natively via `mix` once it lands.
+# Local development: Postgres 16 (for the gateway) + the agent service.
+# The gateway runs natively via `mix` (see gateway/README.md).
+# Credentials match the gateway's dev/test defaults (postgres/postgres)
+# so `make db` + `make setup` work without extra env vars.
 services:
   postgres:
     image: postgres:16
     container_name: chatf1-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-chatf1}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chatf1_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-chatf1_dev}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-chatf1}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5

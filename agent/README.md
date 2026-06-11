@@ -143,4 +143,4 @@ In-process TTL caches (`chatf1_agent/caching.py`) cover the inference path:
 vector search (5 min), Tavily search (15 min), and LLM responses (1 h).
 An LLM cache hit emits zero `token` events and a single `complete` with
 `cached: true` — explicit in the streaming contract. Single-replica by
-design (see ADR-000 in the roadmap).
+design ([ADR-000](../docs/adr/000-single-node-invariants.md)).

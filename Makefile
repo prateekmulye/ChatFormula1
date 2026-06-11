@@ -1,5 +1,5 @@
 # ChatFormula1 monorepo — fans out to the per-app toolchains.
-# agent/ (Phase 1), gateway/ (Phases 2-3) and web/ (Phase 4) are implemented;
+# agent/ (Python/LangGraph), gateway/ (Elixir/Phoenix), web/ (React/Apollo);
 # see docs/ROADMAP.md for what each phase shipped.
 
 .PHONY: help setup dev test lint \
@@ -10,9 +10,11 @@
 
 help:
 	@echo "ChatFormula1 monorepo targets:"
-	@echo "  make setup    Install dependencies for all apps"
-	@echo "  make dev      Run local development (postgres + agent)"
-	@echo "  make test     Run all test suites"
+	@echo "  make setup    Install dependencies for all apps (run 'make db' first —"
+	@echo "                the gateway setup creates + migrates its database)"
+	@echo "  make dev      Run postgres + agent via Docker (gateway and web run"
+	@echo "                natively: make dev-gateway / make dev-web)"
+	@echo "  make test     Run all test suites (gateway tests need Postgres up)"
 	@echo "  make lint     Run all linters"
 	@echo "  make db       Start the local Postgres container only"
 	@echo "  make ingest   Run the agent ingestion pipeline over data/"

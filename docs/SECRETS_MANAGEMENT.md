@@ -11,10 +11,13 @@ How credentials are handled across the ChatFormula1 monorepo. The rule:
 | `PINECONE_API_KEY` | agent | Vector store access |
 | `TAVILY_API_KEY` | agent | Real-time web search |
 | `INTERNAL_API_TOKEN` | agent + gateway | Static bearer token guarding every `/internal/*` route |
+| `DATABASE_URL` | gateway (prod) | Ecto connection to Supabase Postgres |
+| `SECRET_KEY_BASE` | gateway (prod) | Phoenix signing secret (`mix phx.gen.secret`) |
 
-The Phase 2 gateway adds its own secrets (database URL, `SECRET_KEY_BASE`,
-plus the shared `INTERNAL_API_TOKEN`); they will be documented with the
-gateway's deployment runbook.
+Where each production secret is set, service by service, is in the
+[deployment runbook](DEPLOYMENT.md). Gateway API keys (`f1s_` prefix)
+are not stored as secrets at all — only their SHA-256 hashes live in
+Postgres; the raw key is printed once at generation.
 
 ## Local development
 
