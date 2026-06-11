@@ -568,6 +568,13 @@ export type SystemHealthQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type SystemHealthQuery = { __typename?: 'RootQueryType', systemHealth: { __typename?: 'SystemHealth', mode: ServiceMode, gateway: ServiceStatus, agentService: ServiceStatus, database: ServiceStatus, breakerState: BreakerState } };
 
+export type SystemStatsFieldsFragment = { __typename?: 'SystemStats', activeConversations: number, beamProcessCount: number, uptimeSeconds: number, p95FirstTokenMs?: number | null, tokensPerSecond?: number | null, obanJobsCompleted24h: number, lastStandingsSyncAt?: string | null, llmSpendTodayUsd: number, dailyBudgetRemainingUsd: number };
+
+export type SystemStatsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type SystemStatsQuery = { __typename?: 'RootQueryType', systemStats: { __typename?: 'SystemStats', activeConversations: number, beamProcessCount: number, uptimeSeconds: number, p95FirstTokenMs?: number | null, tokensPerSecond?: number | null, obanJobsCompleted24h: number, lastStandingsSyncAt?: string | null, llmSpendTodayUsd: number, dailyBudgetRemainingUsd: number } };
+
 export type SystemHealthChangedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -609,6 +616,19 @@ export const SystemHealthFieldsFragmentDoc = gql`
   agentService
   database
   breakerState
+}
+    `;
+export const SystemStatsFieldsFragmentDoc = gql`
+    fragment SystemStatsFields on SystemStats {
+  activeConversations
+  beamProcessCount
+  uptimeSeconds
+  p95FirstTokenMs
+  tokensPerSecond
+  obanJobsCompleted24h
+  lastStandingsSyncAt
+  llmSpendTodayUsd
+  dailyBudgetRemainingUsd
 }
     `;
 export const StandingsDocument = gql`
@@ -1082,6 +1102,48 @@ export type SystemHealthQueryHookResult = ReturnType<typeof useSystemHealthQuery
 export type SystemHealthLazyQueryHookResult = ReturnType<typeof useSystemHealthLazyQuery>;
 export type SystemHealthSuspenseQueryHookResult = ReturnType<typeof useSystemHealthSuspenseQuery>;
 export type SystemHealthQueryResult = Apollo.QueryResult<SystemHealthQuery, SystemHealthQueryVariables>;
+export const SystemStatsDocument = gql`
+    query SystemStats {
+  systemStats {
+    ...SystemStatsFields
+  }
+}
+    ${SystemStatsFieldsFragmentDoc}`;
+
+/**
+ * __useSystemStatsQuery__
+ *
+ * To run a query within a React component, call `useSystemStatsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useSystemStatsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useSystemStatsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useSystemStatsQuery(baseOptions?: Apollo.QueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<SystemStatsQuery, SystemStatsQueryVariables>(SystemStatsDocument, options);
+      }
+export function useSystemStatsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<SystemStatsQuery, SystemStatsQueryVariables>(SystemStatsDocument, options);
+        }
+// @ts-ignore
+export function useSystemStatsSuspenseQuery(baseOptions?: Apollo.SuspenseQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>): Apollo.UseSuspenseQueryResult<SystemStatsQuery, SystemStatsQueryVariables>;
+export function useSystemStatsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>): Apollo.UseSuspenseQueryResult<SystemStatsQuery | undefined, SystemStatsQueryVariables>;
+export function useSystemStatsSuspenseQuery(baseOptions?: Apollo.SkipToken | Apollo.SuspenseQueryHookOptions<SystemStatsQuery, SystemStatsQueryVariables>) {
+          const options = baseOptions === Apollo.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return Apollo.useSuspenseQuery<SystemStatsQuery, SystemStatsQueryVariables>(SystemStatsDocument, options);
+        }
+export type SystemStatsQueryHookResult = ReturnType<typeof useSystemStatsQuery>;
+export type SystemStatsLazyQueryHookResult = ReturnType<typeof useSystemStatsLazyQuery>;
+export type SystemStatsSuspenseQueryHookResult = ReturnType<typeof useSystemStatsSuspenseQuery>;
+export type SystemStatsQueryResult = Apollo.QueryResult<SystemStatsQuery, SystemStatsQueryVariables>;
 export const SystemHealthChangedDocument = gql`
     subscription SystemHealthChanged {
   systemHealthChanged {

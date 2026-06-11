@@ -176,6 +176,26 @@ query SystemHealth {
   }
 }
 
+fragment SystemStatsFields on SystemStats {
+  activeConversations
+  beamProcessCount
+  uptimeSeconds
+  p95FirstTokenMs
+  tokensPerSecond
+  obanJobsCompleted24h
+  lastStandingsSyncAt
+  llmSpendTodayUsd
+  dailyBudgetRemainingUsd
+}
+
+# Polled every 30s by the PitWallPanel — and ONLY while the panel is open
+# (the query lives inside the sheet content, which unmounts on close).
+query SystemStats {
+  systemStats {
+    ...SystemStatsFields
+  }
+}
+
 subscription SystemHealthChanged {
   systemHealthChanged {
     ...SystemHealthFields
