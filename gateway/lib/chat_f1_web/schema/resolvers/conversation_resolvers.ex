@@ -164,7 +164,9 @@ defmodule ChatF1Web.Schema.Resolvers.ConversationResolvers do
         )
 
       case result do
-        {:ok, _} -> {:ok, true}
+        {:ok, _} ->
+          {:ok, true}
+
         {:error, cs} ->
           Logger.error("submitFeedback failed: #{inspect(cs)}")
           {:error, %{message: "Failed to submit feedback", extensions: %{code: "INTERNAL"}}}

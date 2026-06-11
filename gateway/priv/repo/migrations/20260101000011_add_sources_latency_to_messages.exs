@@ -16,7 +16,9 @@ defmodule ChatF1.Repo.Migrations.AddSourcesLatencyToMessages do
     # (the column type is already jsonb — Postgres handles both)
     execute("ALTER TABLE messages ALTER COLUMN sources SET DEFAULT '[]'::jsonb")
     # Backfill existing {} rows to []
-    execute("UPDATE messages SET sources = '[]'::jsonb WHERE sources = '{}'::jsonb OR sources IS NULL")
+    execute(
+      "UPDATE messages SET sources = '[]'::jsonb WHERE sources = '{}'::jsonb OR sources IS NULL"
+    )
   end
 
   def down do
