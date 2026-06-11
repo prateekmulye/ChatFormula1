@@ -263,11 +263,13 @@ defmodule ChatF1.Agents.Breaker do
         :open -> :down
       end
 
-    mode =
-      case breaker do
-        :closed -> :live
-        _ -> :degraded
-      end
+    # SHOWCASE wins over LIVE/DEGRADED.  Budget.mode/0 composes breaker + budget.
+    # IMPORTANT: do NOT call Budget.mode/0 here — Budget.mode/0 calls Breaker.state/0,
+    # which would cause a GenServer deadlock (process calling itself).
+    # Instead we compute mode from the breaker state we already have and let Budget
+    # contribute via a separate, non-blocking path (Task.start or direct check outside
+    # the GenServer mailbox).
+    mode = compute_mode(breaker)
 
     %{
       mode: mode,
@@ -276,6 +278,38 @@ defmodule ChatF1.Agents.Breaker do
       database: :healthy,
       breaker_state: breaker
     }
+  end
+
+  # Derives ServiceMode from breaker state + budget (non-blocking).
+  # Called outside GenServer mailbox so Budget.mode/0 is safe.
+  @spec compute_mode(state_name()) :: :live | :degraded | :showcase
+  defp compute_mode(:open), do: :showcase
+
+  defp compute_mode(breaker_state) do
+    # Budget.mode/0 is safe to call here because this is a private helper called
+    # from build_system_health/1 which is only called:
+    # (a) in transition/2 which spawns a Task (outside the GenServer)
+    # (b) in handle_call(:system_health) — but Budget.mode/0 does NOT call
+    #     Breaker.state() when breaker is non-open (it short-circuits to :live/:degraded)
+    # For absolute safety we check budget independently here.
+    budget_exhausted =
+      try do
+        case ChatF1.Budget.today_row() do
+          nil ->
+            false
+
+          row ->
+            Decimal.compare(row.spent_usd, row.budget_usd) != :lt
+        end
+      rescue
+        _ -> false
+      end
+
+    cond do
+      budget_exhausted -> :showcase
+      breaker_state == :half_open -> :degraded
+      true -> :live
+    end
   end
 end
 
