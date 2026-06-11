@@ -47,13 +47,14 @@ defmodule ChatF1Web.Schema do
 
   alias ChatF1.Conversations.Server, as: ConvServer
   alias ChatF1Web.Schema.DataloaderSource
-  alias ChatF1Web.Schema.Middleware.{ErrorHandler, RateLimit, ViewerAuth}
-  alias ChatF1Web.Schema.Resolvers.{ConversationResolvers, F1Resolvers}
+  alias ChatF1Web.Schema.Middleware.{ApiKeyScope, ErrorHandler, RateLimit, ViewerAuth}
+  alias ChatF1Web.Schema.Resolvers.{ConversationResolvers, F1Resolvers, OpsResolvers}
 
   import_types(Absinthe.Type.Custom)
   import_types(ChatF1Web.Schema.Types.F1Types)
   import_types(ChatF1Web.Schema.Types.ConversationTypes)
   import_types(ChatF1Web.Schema.Types.AgentTypes)
+  import_types(ChatF1Web.Schema.Types.OpsTypes)
 
   # ─── Dataloader context ──────────────────────────────────────────────────────
 
@@ -62,7 +63,10 @@ defmodule ChatF1Web.Schema do
       Dataloader.new()
       |> Dataloader.add_source(ChatF1.Formula1, DataloaderSource.data())
 
-    Map.put(ctx, :loader, loader)
+    # Propagate api_key from conn.assigns (set by ChatF1Web.Plugs.ApiKey) into
+    # Absinthe context so the ApiKeyScope middleware can read it.
+    api_key = Map.get(ctx, :api_key) || get_in(ctx, [:conn, Access.key(:assigns, %{}), :api_key])
+    ctx |> Map.put(:loader, loader) |> Map.put(:api_key, api_key)
   end
 
   def plugins do
@@ -138,6 +142,19 @@ defmodule ChatF1Web.Schema do
     field :system_health, non_null(:system_health) do
       resolve(&ConversationResolvers.system_health/3)
     end
+
+    @desc """
+    BEAM + system telemetry for the public pit-wall panel.
+    Only telemetry-fed numbers — no theater (see ARCHITECTURE.md risk #12).
+    """
+    field :system_stats, non_null(:system_stats) do
+      resolve(&OpsResolvers.system_stats/3)
+    end
+
+    @desc "Pre-warmed SHOWCASE question chips wired to cached answers."
+    field :demo_questions, non_null(list_of(non_null(:string))) do
+      resolve(&OpsResolvers.demo_questions/3)
+    end
   end
 
   # ─── Mutations ────────────────────────────────────────────────────────────────
@@ -170,6 +187,26 @@ defmodule ChatF1Web.Schema do
     field :delete_conversation, non_null(:boolean) do
       arg(:id, non_null(:id))
       resolve(&ConversationResolvers.delete_conversation/3)
+    end
+
+    @desc """
+    Submit thumbs-up/down feedback on an assistant message.
+    Idempotent per viewer+message — re-submitting updates the existing row.
+    """
+    field :submit_feedback, non_null(:boolean) do
+      arg(:message_id, non_null(:id))
+      arg(:helpful, non_null(:boolean))
+      resolve(&ConversationResolvers.submit_feedback/3)
+    end
+
+    @desc """
+    Enqueues a news/data ingest Oban job.
+    Requires API key with scope 'admin:ingest'.
+    """
+    field :trigger_ingest, non_null(:ingest_job) do
+      arg(:source, non_null(:ingest_source))
+      middleware(ApiKeyScope, scope: "admin:ingest")
+      resolve(&OpsResolvers.trigger_ingest/3)
     end
   end
 

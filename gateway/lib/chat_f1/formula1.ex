@@ -174,6 +174,102 @@ defmodule ChatF1.Formula1 do
     |> Enum.group_by(& &1.race_id)
   end
 
+  # ─── Upsert helpers (used by JolpicaSync) ────────────────────────────────────
+
+  @doc "Upserts a constructor row by name. Called by JolpicaSync."
+  @spec upsert_constructor(map()) :: {:ok, Constructor.t()} | {:error, Ecto.Changeset.t()}
+  def upsert_constructor(attrs) do
+    %Constructor{}
+    |> Constructor.changeset(attrs)
+    |> Repo.insert(
+      on_conflict: {:replace, [:points, :updated_at]},
+      conflict_target: :name,
+      returning: true
+    )
+  end
+
+  @doc """
+  Upserts a driver row by code.
+
+  If `constructor_name` is provided, looks up the constructor by name and
+  sets `constructor_id`.  Missing constructors are silently skipped (the
+  driver row is inserted without a constructor association).
+  """
+  @spec upsert_driver(map()) :: {:ok, Driver.t()} | {:error, Ecto.Changeset.t()}
+  def upsert_driver(%{constructor_name: name} = attrs) when is_binary(name) do
+    constructor_id =
+      case Repo.get_by(Constructor, name: name) do
+        nil -> nil
+        c -> c.id
+      end
+
+    attrs
+    |> Map.delete(:constructor_name)
+    |> Map.put(:constructor_id, constructor_id)
+    |> do_upsert_driver()
+  end
+
+  def upsert_driver(attrs), do: do_upsert_driver(attrs)
+
+  defp do_upsert_driver(attrs) do
+    %Driver{}
+    |> Driver.changeset(attrs)
+    |> Repo.insert(
+      on_conflict: {:replace, [:full_name, :number, :nationality, :constructor_id, :updated_at]},
+      conflict_target: :code,
+      returning: true
+    )
+  end
+
+  @doc "Upserts a race row by (season, round). Called by JolpicaSync."
+  @spec upsert_race(map()) :: {:ok, Race.t()} | {:error, Ecto.Changeset.t()}
+  def upsert_race(attrs) do
+    %Race{}
+    |> Race.changeset(attrs)
+    |> Repo.insert(
+      on_conflict: {:replace, [:name, :circuit, :country, :starts_at, :updated_at]},
+      conflict_target: [:season, :round],
+      returning: true
+    )
+  end
+
+  @doc """
+  Upserts a race result by (season, round, driver_code).
+
+  Looks up the race and driver by natural keys; silently skips if either
+  is not found (the race/driver sync must run before results sync).
+  """
+  @spec upsert_race_result(map()) :: :ok | {:error, term()}
+  def upsert_race_result(%{season: season, round: round, driver_code: code} = attrs) do
+    race =
+      Race
+      |> where([r], r.season == ^season and r.round == ^round)
+      |> Repo.one()
+
+    driver = Repo.get_by(Driver, code: code)
+
+    if is_nil(race) or is_nil(driver) do
+      :ok
+    else
+      %RaceResult{}
+      |> RaceResult.changeset(%{
+        race_id: race.id,
+        driver_id: driver.id,
+        finish_position: attrs[:finish_position],
+        grid_position: attrs[:grid_position],
+        points: attrs[:points] || 0.0
+      })
+      |> Repo.insert(
+        on_conflict: {:replace, [:finish_position, :grid_position, :points, :updated_at]},
+        conflict_target: [:race_id, :driver_id]
+      )
+      |> case do
+        {:ok, _} -> :ok
+        {:error, cs} -> {:error, cs}
+      end
+    end
+  end
+
   # ─── Private helpers ─────────────────────────────────────────────────────────
 
   defp maybe_filter_season(query, nil), do: query

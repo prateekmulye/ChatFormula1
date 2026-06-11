@@ -1,13 +1,18 @@
-# Seeds for ChatFormula1 Phase 2.
+# Seeds for ChatFormula1 Phase 5.
 #
 # Loads drivers and races from ../../data/*.json, derives constructors from
 # driver records, and inserts everything idempotently using upserts.
 #
+# Phase 5 additions:
+#   - showcase_answers: 6 seeded F1 demo questions with placeholder content.
+#     WarmShowcaseCache fills real LLM answers at runtime.
+#
 # Run with:   mix run priv/repo/seeds.exs
 # Reset with: mix ecto.reset
 
-alias ChatF1.{Formula1, Repo}
+alias ChatF1.{Formula1, Repo, Showcase}
 alias ChatF1.Formula1.{Constructor, Driver, Race}
+alias ChatF1.Showcase.Answer
 
 import Ecto.Query
 
@@ -99,3 +104,40 @@ IO.puts("Seeds complete.")
 IO.puts("  Constructors: #{Repo.aggregate(Constructor, :count)}")
 IO.puts("  Drivers:      #{Repo.aggregate(Driver, :count)}")
 IO.puts("  Races:        #{Repo.aggregate(Race, :count)}")
+
+# ─── Showcase answers (Phase 5) ──────────────────────────────────────────────
+# Seeding 6 strong F1 demo questions with placeholder content.
+# WarmShowcaseCache (nightly Oban job) fills in real agent-generated answers.
+# The token_batches and token_timing_histogram are populated by the warmer.
+
+showcase_questions = [
+  "Who is leading the 2025 Formula 1 World Championship?",
+  "What happened at the 2024 Monaco Grand Prix?",
+  "How does the DRS system work in Formula 1?",
+  "Which constructor has won the most Constructors' Championships?",
+  "What are the differences between soft, medium, and hard F1 tyres?",
+  "Who holds the record for most Formula 1 race wins?"
+]
+
+IO.puts("\nSeeding #{length(showcase_questions)} showcase questions...")
+
+Enum.each(showcase_questions, fn question ->
+  placeholder = "This answer is being generated. Please try again shortly or check back later."
+
+  Repo.insert!(
+    %Answer{}
+    |> Answer.changeset(%{
+      question: question,
+      content: placeholder,
+      sources: [],
+      node_trace: [],
+      token_timing_histogram: [],
+      token_batches: [],
+      generated_at: nil
+    }),
+    on_conflict: {:replace, [:updated_at]},
+    conflict_target: :question
+  )
+end)
+
+IO.puts("  Showcase answers: #{Repo.aggregate(Answer, :count)}")

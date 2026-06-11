@@ -13,6 +13,18 @@ defmodule ChatF1Web.Router do
     plug ChatF1Web.Plugs.ViewerToken
   end
 
+  # API-key pipeline — for /dev/dashboard, /metrics.
+  # Any valid unrevoked key with scope admin:dashboard is required.
+  pipeline :api_key_dashboard do
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug ChatF1Web.Plugs.ApiKey, scope: "admin:dashboard"
+  end
+
+  pipeline :api_key_metrics do
+    plug ChatF1Web.Plugs.ApiKey, scope: "admin:dashboard"
+  end
+
   # ── GraphQL API ──────────────────────────────────────────────────────────────
   scope "/graphql" do
     pipe_through :graphql
@@ -34,19 +46,27 @@ defmodule ChatF1Web.Router do
       interface: :playground
   end
 
-  # ── LiveDashboard (dev-only pipeline) ────────────────────────────────────────
-  if Application.compile_env(:chat_f1, :dev_routes) do
-    import Phoenix.LiveDashboard.Router
+  # ── LiveDashboard — API-key gated in ALL envs (replaces dev-only pipeline) ──
+  # Phase 5: header x-api-key with scope admin:dashboard required.
+  # This intentionally works in prod — it's a portfolio showcase dashboard.
+  import Phoenix.LiveDashboard.Router
 
-    scope "/dev" do
-      pipe_through [:fetch_session, :protect_from_forgery]
-      live_dashboard "/dashboard", metrics: ChatF1Web.Telemetry
-    end
+  scope "/dev" do
+    pipe_through :api_key_dashboard
+    live_dashboard "/dashboard", metrics: ChatF1Web.Telemetry
+  end
+
+  # ── Prometheus metrics ───────────────────────────────────────────────────────
+  # Behind the same API-key scope as LiveDashboard.
+  scope "/metrics" do
+    pipe_through :api_key_metrics
+
+    forward "/", PromEx.Plug, prom_ex: ChatF1.Telemetry.PromEx
   end
 
   # ── Health probes ─────────────────────────────────────────────────────────────
   # /up is for Fly.io health checks + wake-on-paint ping from the frontend.
-  # /healthz returns 200 JSON for monitoring tools.
+  # /healthz returns 200 JSON for monitoring tools (portfolio build-probe reads keys).
   scope "/" do
     get "/up", ChatF1Web.HealthController, :up
     get "/healthz", ChatF1Web.HealthController, :healthz
