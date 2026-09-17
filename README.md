@@ -1,22 +1,25 @@
-# 🏎️ ChatFormula1
+# ChatFormula1
 
-An AI-powered Formula 1 chatbot built on a RAG (Retrieval-Augmented
-Generation) pipeline: LangGraph orchestration, Pinecone semantic search,
-and Tavily real-time web search.
+A Formula 1 research application with routed retrieval and streamed answers.
+The developing v2 separates Python/LangGraph inference, an Elixir/Phoenix
+GraphQL gateway, and a typed React client.
 
-> **v2 conversion in progress.** The repo is being rebuilt as a
-> three-app monorepo: an Elixir/Phoenix GraphQL gateway, a slimmed
-> Python LangGraph inference engine, and a React/Apollo frontend.
-> Phase 1 (the Python agent + monorepo skeleton) is complete; the
-> blueprint lives in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and
-> the build plan in [docs/ROADMAP.md](docs/ROADMAP.md).
+**Current source:** all three applications contain implementations. The agent
+routes queries to Pinecone, Tavily, or both; the gateway handles conversations
+and streaming; the client reconciles duplicate and replayed events. Source
+availability does not establish a deployed v2 release or answer-quality result.
+The public v1 demo is separate from this v2 code.
+
+Start with the [architecture](docs/ARCHITECTURE.md),
+[streaming contract](docs/STREAMING_PROTOCOL.md), or
+[client reducer](web/src/features/chat/stream-reducer.ts).
 
 > ChatFormula1 is an unofficial fan project. It is not affiliated with,
 > endorsed by, or connected to Formula 1, the FIA, or any F1 team.
 
 ---
 
-## 📖 What It Does
+## What It Does
 
 ChatFormula1 answers Formula 1 questions through a routed RAG pipeline:
 
@@ -32,26 +35,31 @@ ChatFormula1 answers Formula 1 questions through a routed RAG pipeline:
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-### Agent (implemented — Phase 1)
+### Agent
 - **[Python 3.12](https://www.python.org/)** + **[FastAPI](https://fastapi.tiangolo.com/)** — internal-only NDJSON streaming API
 - **[LangGraph](https://langchain-ai.github.io/langgraph/)** / **[LangChain](https://python.langchain.com/)** — pipeline orchestration (exact-pinned)
-- **Model-agnostic LLMs** — [OpenAI](https://platform.openai.com/) gpt-4o-mini by default, [Ollama](https://ollama.com/) (local or cloud) or any OpenAI-compatible endpoint via a 4-line env change ([ADR-002](docs/adr/002-model-agnostic-providers.md))
+- **Configurable LLM providers** — [OpenAI](https://platform.openai.com/) and [Ollama](https://ollama.com/) configurations are documented in [agent/.env.example](agent/.env.example) and [ADR-002](docs/adr/002-model-agnostic-providers.md).
 - **[Pinecone](https://www.pinecone.io/)** — vector search (`static_corpus` / `news` namespaces, deterministic SHA-256 IDs)
 - **[Tavily](https://tavily.com/)** — real-time web search via `langchain-tavily`
 
-### Coming next (see [docs/ROADMAP.md](docs/ROADMAP.md))
-- **Gateway** (Phase 2-3): Elixir 1.18, Phoenix, Absinthe GraphQL, Oban — the only public backend
-- **Web** (Phase 4): React 18, TypeScript, Vite, Apollo Client
+### Gateway and web client
+- **Gateway:** Elixir 1.18, Phoenix 1.8, Absinthe GraphQL, and PostgreSQL — conversation persistence and a streaming boundary around the internal agent
+- **Web:** React 18, TypeScript, Vite, Apollo Client, and GraphQL subscriptions
+
+The [stream runner](gateway/lib/chat_f1/conversations/stream_runner.ex) handles
+agent transport failures. The [client reducer](web/src/features/chat/stream-reducer.ts)
+deduplicates token batches and flags unexplained sequence gaps for recovery from
+persisted message content. These mechanisms do not imply exactly-once delivery.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 React (web/)  ──GraphQL──▶  Phoenix gateway (gateway/)  ──NDJSON──▶  LangGraph agent (agent/)
-   Phase 4                       Phase 2-3                              Phase 1 ✓
+   typed client                 conversations + streams                routed retrieval
 ```
 
 The agent pipeline: `analyze_query → route → (vector | web | parallel
@@ -61,13 +69,14 @@ startup and streamed as typed NDJSON events — the frozen contract in
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.12 and [Poetry](https://python-poetry.org/docs/#installation)
 - Docker (for the local Postgres + agent containers)
-- API keys (all have free tiers): [OpenAI](https://platform.openai.com/api-keys), [Pinecone](https://app.pinecone.io/), [Tavily](https://app.tavily.com/)
+- Provider credentials appropriate to your configuration: [OpenAI](https://platform.openai.com/api-keys) or a compatible LLM endpoint, [Pinecone](https://app.pinecone.io/), and [Tavily](https://app.tavily.com/)
+- For the full application: Elixir 1.18, Node.js/npm, and PostgreSQL; see the [gateway](gateway/README.md) and [web](web/README.md) guides
 
 ### Local development
 
@@ -75,20 +84,21 @@ startup and streamed as typed NDJSON events — the frozen contract in
 git clone https://github.com/prateekmulye/ChatFormula1.git
 cd ChatFormula1
 
-# Install (agent only in Phase 1)
-make setup
+# Install the agent
+make setup-agent
 
 # Configure
 cp agent/.env.example agent/.env   # add your API keys + INTERNAL_API_TOKEN
 
-# Run the agent natively...
-cd agent && poetry run uvicorn chatf1_agent.server:app --reload
-
-# ...or run postgres + agent via Docker
-make dev
+# Run the agent natively
+(cd agent && poetry run uvicorn chatf1_agent.server:app --reload)
 ```
 
-Stream an answer:
+Alternatively, run `make dev` from the repository root to start PostgreSQL and
+the agent through Docker. Start the gateway and client using their linked guides.
+
+In a second terminal, set `INTERNAL_API_TOKEN` to the same value you configured in
+`agent/.env`, then stream an answer:
 
 ```bash
 curl -N -X POST http://localhost:8000/internal/chat \
@@ -100,22 +110,26 @@ curl -N -X POST http://localhost:8000/internal/chat \
 ### Tests and linting
 
 ```bash
-make test   # pytest — runs with dummy keys, no credentials needed
-make lint   # ruff + black + mypy
+make test-agent   # Python tests
+make lint-agent   # ruff + black + mypy
+
+# After installing gateway/web dependencies and starting the test database:
+make test         # agent + gateway + web
+make lint         # all three applications
 ```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 chatformula1/
-├── agent/                    # Python LangGraph inference service (Phase 1 ✓)
+├── agent/                    # Python LangGraph inference service
 │   ├── src/chatf1_agent/    # graph, state, providers, retrieval, guards, server
 │   ├── ingestion/           # offline ingestion CLI (deterministic SHA-256 IDs)
 │   └── tests/               # incl. NDJSON streaming contract tests
-├── gateway/                  # Phoenix GraphQL gateway (Phase 2 — placeholder)
-├── web/                      # React frontend (Phase 4 — placeholder)
+├── gateway/                  # Phoenix GraphQL gateway and streaming
+├── web/                      # React client and stream reconciliation
 ├── data/                     # F1 datasets (gateway seeds + agent RAG input)
 ├── docs/                     # ARCHITECTURE, ROADMAP, STREAMING_PROTOCOL, ...
 ├── Makefile                  # make setup / dev / test / lint — fans out per app
@@ -124,10 +138,10 @@ chatformula1/
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - **[Architecture](docs/ARCHITECTURE.md)** — the v2 blueprint: services, schema, streaming design
-- **[Roadmap](docs/ROADMAP.md)** — six phases, each demoable in 5 minutes
+- **[Roadmap](docs/ROADMAP.md)** — implementation phases and remaining work
 - **[Streaming Protocol](docs/STREAMING_PROTOCOL.md)** — the frozen agent↔gateway NDJSON contract
 - **[Agent README](agent/README.md)** — running, testing, and ingesting
 - **[Tavily Integration](docs/TAVILY_INTEGRATION.md)** — web search client details
@@ -136,39 +150,34 @@ chatformula1/
 
 ---
 
-## 🔒 Security
+## Security
 
-- The agent is **internal-only**: every route requires a static bearer
-  token (constant-time compared); the public surface arrives with the
-  Phase 2 gateway
-- Prompt-injection heuristics guard the LLM boundary
-- API keys live in environment variables, never in the repo
-- CI runs with dummy keys only — real secrets never touch test runs
-
----
-
-## 💰 Cost
-
-Designed for $0/month fixed: free tiers of Render, Pinecone, and Tavily,
-with gpt-4o-mini as the only variable cost (capped and budgeted — see
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7).
+- The agent's internal endpoints require a static bearer token, checked with
+  constant-time comparison. The Phoenix gateway is the intended public boundary.
+- Prompt-injection heuristics are a defensive layer, not a guarantee that retrieved
+  content or model output is trustworthy.
+- Configure API keys through environment variables; do not commit credentials.
 
 ---
 
-## 🤝 Contributing
+## Cost
+
+Hosting, retrieval, search, and model costs depend on the services and usage you
+configure. Review provider quotas and billing before enabling live traffic; no
+zero-cost deployment or hard spending guarantee is claimed here.
+
+---
+
+## Contributing
 
 Contributions are welcome — see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-## 📄 License
+## License
 
-MIT — see [LICENSE](LICENSE).
+Apache-2.0 — see [LICENSE](LICENSE).
 
-## 📞 Contact
+## Contact
 
-- **GitHub**: [Current Projects 🧠 🚧](https://github.com/prateekmulye)
-- **LinkedIn**: [Say Hi! 🤝](https://www.linkedin.com/in/prateekmulye/)
-- **Email**: prateek@chatformula1.com
-
----
-
-**Built with ❤️ for Formula 1 fans and AI enthusiasts**
+- [Portfolio](https://prateekmulye.dev/)
+- [GitHub](https://github.com/prateekmulye)
+- [LinkedIn](https://www.linkedin.com/in/prateekmulye/)
